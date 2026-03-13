@@ -1,6 +1,6 @@
-import { LayoutDashboard, Building2, FileBarChart, Users } from "lucide-react";
+import { LayoutDashboard, Building2, FileBarChart, Users, LogOut } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { useLocation } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Sidebar,
   SidebarContent,
@@ -18,13 +18,18 @@ const mainItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Obras", url: "/obras", icon: Building2 },
   { title: "Relatórios", url: "/relatorios", icon: FileBarChart },
+];
+
+const adminItems = [
   { title: "Usuários", url: "/usuarios", icon: Users },
 ];
 
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
-  const location = useLocation();
+  const { user, hasRole, signOut } = useAuth();
+
+  const showAdmin = hasRole('admin');
 
   return (
     <Sidebar collapsible="icon">
@@ -65,12 +70,39 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+              {showAdmin && adminItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to={item.url}
+                      end={false}
+                      className="text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                      activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
+                    >
+                      <item.icon className="h-4 w-4" />
+                      {!collapsed && <span>{item.title}</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="p-4">
+      <SidebarFooter className="p-4 space-y-3">
+        {!collapsed && user && (
+          <div className="text-[11px] text-sidebar-foreground/60 font-body truncate">
+            {user.email}
+          </div>
+        )}
+        <SidebarMenuButton
+          onClick={signOut}
+          className="text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground w-full"
+        >
+          <LogOut className="h-4 w-4" />
+          {!collapsed && <span className="font-body">Sair</span>}
+        </SidebarMenuButton>
         {!collapsed && (
           <p className="text-[10px] text-sidebar-foreground/40 font-body text-center">
             © {new Date().getFullYear()} Young Empreendimentos
