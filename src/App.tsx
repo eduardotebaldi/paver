@@ -8,6 +8,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Layout } from "@/components/Layout";
 import Dashboard from "./pages/Dashboard";
 import Obras from "./pages/Obras";
+import ObraDetalhe from "./pages/ObraDetalhe";
 import Relatorios from "./pages/Relatorios";
 import Usuarios from "./pages/Usuarios";
 import Login from "./pages/Login";
@@ -29,6 +30,7 @@ const App = () => (
             <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
               <Route path="/" element={<Dashboard />} />
               <Route path="/obras" element={<Obras />} />
+              <Route path="/obras/:id" element={<ObraDetalhe />} />
               <Route path="/relatorios" element={<Relatorios />} />
               <Route path="/usuarios" element={
                 <ProtectedRoute requiredRole="admin">
