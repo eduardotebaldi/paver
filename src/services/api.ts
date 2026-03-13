@@ -34,6 +34,21 @@ export interface EapItem {
   created_at: string;
 }
 
+export interface DiarioObra {
+  id: string;
+  obra_id: string;
+  data: string;
+  clima: string;
+  temperatura_min?: number;
+  temperatura_max?: number;
+  mao_de_obra: number;
+  atividades: string;
+  observacoes?: string;
+  fotos?: string[];
+  created_by: string;
+  created_at: string;
+}
+
 // === OBRAS ===
 export async function fetchObras() {
   const { data, error } = await supabase
@@ -91,6 +106,15 @@ export async function fetchEapItems(obraId: string) {
   return data as EapItem[];
 }
 
+export async function fetchAllEapItems() {
+  const { data, error } = await supabase
+    .from('paver_eap_items')
+    .select('*')
+    .eq('tipo', 'item');
+  if (error) throw error;
+  return data as EapItem[];
+}
+
 export async function insertEapItems(items: Omit<EapItem, 'id' | 'created_at'>[]) {
   const { data, error } = await supabase
     .from('paver_eap_items')
@@ -102,6 +126,63 @@ export async function insertEapItems(items: Omit<EapItem, 'id' | 'created_at'>[]
 
 export async function deleteEapItemsByObra(obraId: string) {
   const { error } = await supabase.from('paver_eap_items').delete().eq('obra_id', obraId);
+  if (error) throw error;
+}
+
+// === DIÁRIO DE OBRA ===
+export async function fetchDiarios(obraId: string) {
+  const { data, error } = await supabase
+    .from('paver_diarios')
+    .select('*')
+    .eq('obra_id', obraId)
+    .order('data', { ascending: false });
+  if (error) throw error;
+  return data as DiarioObra[];
+}
+
+export async function fetchAllDiarios() {
+  const { data, error } = await supabase
+    .from('paver_diarios')
+    .select('*')
+    .order('data', { ascending: false });
+  if (error) throw error;
+  return data as DiarioObra[];
+}
+
+export async function fetchDiariosThisMonth() {
+  const now = new Date();
+  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+  const { data, error } = await supabase
+    .from('paver_diarios')
+    .select('*')
+    .gte('data', firstDay);
+  if (error) throw error;
+  return data as DiarioObra[];
+}
+
+export async function createDiario(diario: Omit<DiarioObra, 'id' | 'created_at'>) {
+  const { data, error } = await supabase
+    .from('paver_diarios')
+    .insert(diario)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as DiarioObra;
+}
+
+export async function updateDiario(id: string, updates: Partial<DiarioObra>) {
+  const { data, error } = await supabase
+    .from('paver_diarios')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as DiarioObra;
+}
+
+export async function deleteDiario(id: string) {
+  const { error } = await supabase.from('paver_diarios').delete().eq('id', id);
   if (error) throw error;
 }
 

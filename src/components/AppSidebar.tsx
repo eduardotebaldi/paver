@@ -1,4 +1,4 @@
-import { LayoutDashboard, Building2, FileBarChart, Users, LogOut } from "lucide-react";
+import { LayoutDashboard, Building2, FileBarChart, Users, LogOut, ClipboardList } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -6,6 +6,7 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -53,6 +54,7 @@ export function AppSidebar() {
 
       <SidebarContent>
         <SidebarGroup>
+          {!collapsed && <SidebarGroupLabel className="text-sidebar-foreground/40 font-body text-[10px]">MENU</SidebarGroupLabel>}
           <SidebarGroupContent>
             <SidebarMenu>
               {mainItems.map((item) => (
@@ -70,24 +72,34 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
-              {showAdmin && adminItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to={item.url}
-                      end={false}
-                      className="text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                      activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
-                    >
-                      <item.icon className="h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {showAdmin && (
+          <SidebarGroup>
+            {!collapsed && <SidebarGroupLabel className="text-sidebar-foreground/40 font-body text-[10px]">ADMIN</SidebarGroupLabel>}
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {adminItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to={item.url}
+                        end={false}
+                        className="text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                        activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="p-4 space-y-3">
