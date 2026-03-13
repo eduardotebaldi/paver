@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Building2, Plus, Pencil, Trash2, MapPin, Calendar, Loader2 } from 'lucide-react';
+import { Building2, Plus, Pencil, Trash2, MapPin, Calendar, Loader2, Search, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchObras, createObra, updateObra, deleteObra, Obra } from '@/services/api';
@@ -54,9 +54,23 @@ export default function Obras() {
   const [editingObra, setEditingObra] = useState<Obra | null>(null);
   const [form, setForm] = useState<ObraFormData>(emptyForm);
 
+  // Filters
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+
   const { data: obras = [], isLoading } = useQuery({
     queryKey: ['obras'],
     queryFn: fetchObras,
+  });
+
+  // Apply filters
+  const filtered = obras.filter(obra => {
+    const matchSearch = !search ||
+      obra.nome.toLowerCase().includes(search.toLowerCase()) ||
+      obra.cidade?.toLowerCase().includes(search.toLowerCase()) ||
+      obra.endereco?.toLowerCase().includes(search.toLowerCase());
+    const matchStatus = statusFilter === 'all' || obra.status === statusFilter;
+    return matchSearch && matchStatus;
   });
 
   const createMutation = useMutation({
@@ -203,21 +217,50 @@ export default function Obras() {
         )}
       </div>
 
+      {/* Search & Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por nome, cidade ou endereço..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-9 font-body"
+          />
+        </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-full sm:w-48 font-body">
+            <Filter className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all" className="font-body">Todos os status</SelectItem>
+            {Object.entries(statusLabels).map(([k, v]) => (
+              <SelectItem key={k} value={k} className="font-body">{v}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       {isLoading ? (
         <div className="flex justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-accent" />
         </div>
-      ) : obras.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">
             <Building2 className="h-12 w-12 text-muted-foreground/40 mb-4" />
-            <h3 className="text-lg font-heading font-semibold text-muted-foreground">Nenhuma obra cadastrada</h3>
-            <p className="text-sm text-muted-foreground/70 mt-1">Clique em "Nova Obra" para começar</p>
+            <h3 className="text-lg font-heading font-semibold text-muted-foreground">
+              {obras.length === 0 ? 'Nenhuma obra cadastrada' : 'Nenhum resultado encontrado'}
+            </h3>
+            <p className="text-sm text-muted-foreground/70 mt-1 font-body">
+              {obras.length === 0 ? 'Clique em "Nova Obra" para começar' : 'Tente ajustar os filtros'}
+            </p>
           </CardContent>
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {obras.map((obra) => (
+          {filtered.map((obra) => (
             <Card key={obra.id} className="hover:shadow-md transition-shadow cursor-pointer group" onClick={() => navigate(`/obras/${obra.id}`)}>
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
