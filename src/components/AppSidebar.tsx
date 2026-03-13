@@ -1,0 +1,82 @@
+import { LayoutDashboard, Building2, FileBarChart, Users } from "lucide-react";
+import { NavLink } from "@/components/NavLink";
+import { useLocation } from "react-router-dom";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarHeader,
+  SidebarFooter,
+  useSidebar,
+} from "@/components/ui/sidebar";
+
+const mainItems = [
+  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Obras", url: "/obras", icon: Building2 },
+  { title: "Relatórios", url: "/relatorios", icon: FileBarChart },
+  { title: "Usuários", url: "/usuarios", icon: Users },
+];
+
+export function AppSidebar() {
+  const { state } = useSidebar();
+  const collapsed = state === "collapsed";
+  const location = useLocation();
+
+  return (
+    <Sidebar collapsible="icon">
+      <SidebarHeader className="p-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-sidebar-primary">
+            <span className="text-sm font-bold text-sidebar-primary-foreground font-heading">P</span>
+          </div>
+          {!collapsed && (
+            <div className="flex flex-col">
+              <span className="text-sm font-bold text-sidebar-foreground font-heading tracking-wide">
+                PAVER
+              </span>
+              <span className="text-[10px] text-sidebar-foreground/60 font-body">
+                Young Empreendimentos
+              </span>
+            </div>
+          )}
+        </div>
+      </SidebarHeader>
+
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {mainItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to={item.url}
+                      end={item.url === "/"}
+                      className="text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                      activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
+                    >
+                      <item.icon className="h-4 w-4" />
+                      {!collapsed && <span>{item.title}</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+
+      <SidebarFooter className="p-4">
+        {!collapsed && (
+          <p className="text-[10px] text-sidebar-foreground/40 font-body text-center">
+            © {new Date().getFullYear()} Young Empreendimentos
+          </p>
+        )}
+      </SidebarFooter>
+    </Sidebar>
+  );
+}
