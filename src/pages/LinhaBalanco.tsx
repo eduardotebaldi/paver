@@ -26,6 +26,7 @@ export default function LinhaBalancoPage() {
   const [selectedServico, setSelectedServico] = useState<string>('all');
   const [massDateOpen, setMassDateOpen] = useState(false);
   const [baselineOpen, setBaselineOpen] = useState(false);
+  const [pacotePopoverOpen, setPacotePopoverOpen] = useState(false);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
