@@ -295,6 +295,29 @@ const chartConfig: ChartConfig = {
 };
 
 const DAY_MS = 86400000;
+const WEEK_MS = DAY_MS * 7;
+
+/** Generate Monday-aligned week intervals covering the given domain */
+function getWeekBands(domainStart: number, domainEnd: number): { x1: number; x2: number; odd: boolean }[] {
+  // Find first Monday at or before domainStart
+  const startDate = new Date(domainStart);
+  const day = startDate.getUTCDay(); // 0=Sun
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  const firstMonday = new Date(domainStart);
+  firstMonday.setDate(firstMonday.getDate() + diffToMonday);
+  firstMonday.setHours(0, 0, 0, 0);
+
+  const bands: { x1: number; x2: number; odd: boolean }[] = [];
+  let current = firstMonday.getTime();
+  let idx = 0;
+  while (current < domainEnd) {
+    const next = current + WEEK_MS;
+    bands.push({ x1: current, x2: Math.min(next, domainEnd), odd: idx % 2 === 1 });
+    current = next;
+    idx++;
+  }
+  return bands;
+}
 
 function formatDateTick(ts: number) {
   const d = new Date(ts);
