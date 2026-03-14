@@ -624,12 +624,21 @@ function PlantaViewer({
               {fotos.map((foto) => (
                 <div key={foto.id} className="group relative border border-border rounded-lg overflow-hidden">
                   <div className="aspect-square bg-muted">
-                    <img
-                      src={foto.foto_url}
-                      alt={foto.descricao || 'Foto'}
-                      className="w-full h-full object-cover cursor-pointer"
-                      onClick={() => { setSelectedFoto(foto); setPendingPin(null); }}
-                    />
+                    {foto.foto_url.match(/\.(mp4|mov|webm|avi)(\?|$)/i) ? (
+                      <video
+                        src={foto.foto_url}
+                        className="w-full h-full object-cover cursor-pointer"
+                        muted
+                        onClick={() => { setSelectedFoto(foto); setPendingPin(null); }}
+                      />
+                    ) : (
+                      <img
+                        src={foto.foto_url}
+                        alt={foto.descricao || 'Foto'}
+                        className="w-full h-full object-cover cursor-pointer"
+                        onClick={() => { setSelectedFoto(foto); setPendingPin(null); }}
+                      />
+                    )}
                   </div>
                   {canModifyFoto(foto) && (
                     <button
