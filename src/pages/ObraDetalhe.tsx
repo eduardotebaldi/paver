@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Upload, Loader2, FileSpreadsheet, ChevronRight, ChevronDown, Layers, FolderTree } from 'lucide-react';
+import { ArrowLeft, Upload, Loader2, FileSpreadsheet, ChevronRight, ChevronDown, Layers, FolderTree, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +14,7 @@ import { parseEapExcel } from '@/lib/eapParser';
 import DiarioObraTab from '@/components/DiarioObraTab';
 import RelatorioFotograficoTab from '@/components/RelatorioFotograficoTab';
 import ImportOrcamentoWizard from '@/components/ImportOrcamentoWizard';
+import LinhaBalanco from '@/components/LinhaBalanco';
 
 type GroupMode = 'pacote' | 'servico';
 
@@ -198,6 +199,7 @@ export default function ObraDetalhe() {
       <Tabs defaultValue="eap">
         <TabsList>
           <TabsTrigger value="eap" className="font-body">EAP</TabsTrigger>
+          <TabsTrigger value="linha-balanco" className="font-body">Linha de Balanço</TabsTrigger>
           <TabsTrigger value="diario" className="font-body">Diário de Obra</TabsTrigger>
           <TabsTrigger value="fotos" className="font-body">Relatório Fotográfico</TabsTrigger>
         </TabsList>
@@ -357,6 +359,10 @@ export default function ObraDetalhe() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="linha-balanco" className="mt-4">
+          <LinhaBalanco eapItems={eapItems} mode={groupMode} />
         </TabsContent>
 
         <TabsContent value="diario" className="mt-4">

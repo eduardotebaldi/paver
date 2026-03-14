@@ -1,11 +1,15 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { MapPin, Upload, Loader2, Image, Trash2, X, Plus, Camera, FileText, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCcw, FileCode } from 'lucide-react';
+import { MapPin, Upload, Loader2, Image, Trash2, X, Plus, Camera, FileText, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCcw, FileCode, FolderTree, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { fetchEapItems, EapItem } from '@/services/api';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -237,6 +241,16 @@ function PlantaViewer({
   const fotoInputRef = useRef<HTMLInputElement>(null);
   const [pendingPin, setPendingPin] = useState<{ x: number; y: number } | null>(null);
   const [descricao, setDescricao] = useState('');
+  const [fotoPacote, setFotoPacote] = useState('');
+  const [fotoTipoServico, setFotoTipoServico] = useState('');
+
+  // Fetch EAP items for pacote/servico selection
+  const { data: eapItems = [] } = useQuery({
+    queryKey: ['eap', obraId],
+    queryFn: () => fetchEapItems(obraId),
+  });
+  const uniquePacotes = [...new Set(eapItems.filter(i => i.pacote).map(i => i.pacote!))].sort();
+  const uniqueServicos = [...new Set(eapItems.filter(i => i.lote).map(i => i.lote!))].sort();
   const [selectedFoto, setSelectedFoto] = useState<FotoLocalizada | null>(null);
   const [uploading, setUploading] = useState(false);
   const [numPages, setNumPages] = useState<number>(1);
@@ -289,12 +303,16 @@ function PlantaViewer({
         descricao: descricao || undefined,
         pos_x: pendingPin.x,
         pos_y: pendingPin.y,
+        pacote: fotoPacote && fotoPacote !== '__none__' ? fotoPacote : undefined,
+        tipo_servico: fotoTipoServico && fotoTipoServico !== '__none__' ? fotoTipoServico : undefined,
         created_by: user.id,
       });
       queryClient.invalidateQueries({ queryKey: ['fotos-localizadas', planta.id] });
       toast({ title: 'Foto registrada!' });
       setPendingPin(null);
       setDescricao('');
+      setFotoPacote('');
+      setFotoTipoServico('');
     } catch (err: any) {
       toast({ title: 'Erro ao salvar foto', description: err.message, variant: 'destructive' });
     } finally {
@@ -469,6 +487,36 @@ function PlantaViewer({
                 className="font-body"
                 rows={2}
               />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs font-body text-muted-foreground">Pacote de Trabalho</Label>
+                  <Select value={fotoPacote} onValueChange={setFotoPacote}>
+                    <SelectTrigger className="font-body text-xs">
+                      <SelectValue placeholder="Selecionar..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__" className="font-body">Nenhum</SelectItem>
+                      {uniquePacotes.map(p => (
+                        <SelectItem key={p} value={p} className="font-body">{p}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-body text-muted-foreground">Tipo de Serviço</Label>
+                  <Select value={fotoTipoServico} onValueChange={setFotoTipoServico}>
+                    <SelectTrigger className="font-body text-xs">
+                      <SelectValue placeholder="Selecionar..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__" className="font-body">Nenhum</SelectItem>
+                      {uniqueServicos.map(s => (
+                        <SelectItem key={s} value={s} className="font-body">{s}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
               <div className="flex gap-2">
                 <input
                   ref={fotoInputRef}

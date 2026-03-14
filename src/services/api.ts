@@ -32,6 +32,10 @@ export interface EapItem {
   avanco_previsto?: number;
   avanco_realizado?: number;
   ordem?: number;
+  data_inicio_prevista?: string;
+  data_fim_prevista?: string;
+  data_inicio_real?: string;
+  data_fim_real?: string;
   created_at: string;
 }
 
@@ -246,6 +250,9 @@ export interface FotoLocalizada {
   descricao?: string;
   pos_x: number;
   pos_y: number;
+  pacote?: string;
+  tipo_servico?: string;
+  diario_id?: string;
   created_by: string;
   created_at: string;
 }
@@ -280,6 +287,15 @@ export async function fetchFotosLocalizadas(plantaId: string) {
     .from('paver_fotos_localizadas')
     .select('*')
     .eq('planta_id', plantaId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data as FotoLocalizada[];
+}
+
+export async function fetchAllFotosLocalizadas() {
+  const { data, error } = await supabase
+    .from('paver_fotos_localizadas')
+    .select('*')
     .order('created_at', { ascending: false });
   if (error) throw error;
   return data as FotoLocalizada[];

@@ -1243,6 +1243,10 @@ export type Database = {
           avanco_realizado: number | null
           codigo: string | null
           created_at: string | null
+          data_fim_prevista: string | null
+          data_fim_real: string | null
+          data_inicio_prevista: string | null
+          data_inicio_real: string | null
           descricao: string
           id: string
           lote: string | null
@@ -1262,6 +1266,10 @@ export type Database = {
           avanco_realizado?: number | null
           codigo?: string | null
           created_at?: string | null
+          data_fim_prevista?: string | null
+          data_fim_real?: string | null
+          data_inicio_prevista?: string | null
+          data_inicio_real?: string | null
           descricao: string
           id?: string
           lote?: string | null
@@ -1281,6 +1289,10 @@ export type Database = {
           avanco_realizado?: number | null
           codigo?: string | null
           created_at?: string | null
+          data_fim_prevista?: string | null
+          data_fim_real?: string | null
+          data_inicio_prevista?: string | null
+          data_inicio_real?: string | null
           descricao?: string
           id?: string
           lote?: string | null
@@ -1316,36 +1328,52 @@ export type Database = {
           created_at: string | null
           created_by: string
           descricao: string | null
+          diario_id: string | null
           foto_url: string
           id: string
           obra_id: string
+          pacote: string | null
           planta_id: string
           pos_x: number
           pos_y: number
+          tipo_servico: string | null
         }
         Insert: {
           created_at?: string | null
           created_by: string
           descricao?: string | null
+          diario_id?: string | null
           foto_url: string
           id?: string
           obra_id: string
+          pacote?: string | null
           planta_id: string
           pos_x: number
           pos_y: number
+          tipo_servico?: string | null
         }
         Update: {
           created_at?: string | null
           created_by?: string
           descricao?: string | null
+          diario_id?: string | null
           foto_url?: string
           id?: string
           obra_id?: string
+          pacote?: string | null
           planta_id?: string
           pos_x?: number
           pos_y?: number
+          tipo_servico?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "paver_fotos_localizadas_diario_id_fkey"
+            columns: ["diario_id"]
+            isOneToOne: false
+            referencedRelation: "paver_diarios"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "paver_fotos_localizadas_obra_id_fkey"
             columns: ["obra_id"]

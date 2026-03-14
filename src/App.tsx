@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import Obras from "./pages/Obras";
 import ObraDetalhe from "./pages/ObraDetalhe";
 import Relatorios from "./pages/Relatorios";
+import RelatorioFotografico from "./pages/RelatorioFotografico";
 import Usuarios from "./pages/Usuarios";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
@@ -32,6 +33,7 @@ const App = () => (
               <Route path="/obras" element={<Obras />} />
               <Route path="/obras/:id" element={<ObraDetalhe />} />
               <Route path="/relatorios" element={<Relatorios />} />
+              <Route path="/relatorio-fotografico" element={<RelatorioFotografico />} />
               <Route path="/usuarios" element={
                 <ProtectedRoute requiredRole="admin">
                   <Usuarios />
