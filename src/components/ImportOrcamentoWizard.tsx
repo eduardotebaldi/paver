@@ -175,9 +175,9 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
   // Expanded sections in step 2
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
 
-  // Level 3 classification: codigo -> { pacoteTrabalho, tipoServico }
+  // Level 3 classification: codigo -> { pacoteTrabalho, tipoServico, classificacaoAdicional }
   const [classifications, setClassifications] = useState<
-    Map<string, { pacoteTrabalho: string; tipoServico: string }>
+    Map<string, { pacoteTrabalho: string; tipoServico: string; classificacaoAdicional: string }>
   >(new Map());
 
   const { user } = useAuth();
