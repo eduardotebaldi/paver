@@ -468,7 +468,8 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
       if (eapItems.length > 0) {
         for (let i = 0; i < eapItems.length; i += batchSize) {
           const batch = eapItems.slice(i, i + batchSize);
-          await supabase.from('paver_eap_items').insert(batch);
+          const { error: eapError } = await supabase.from('paver_eap_items').insert(batch);
+          if (eapError) throw eapError;
         }
       }
 
