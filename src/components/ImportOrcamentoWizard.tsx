@@ -318,29 +318,70 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
     return Array.from(set).sort();
   }, [classifications]);
 
-  // Build review panels
-  const reviewByPacote = useMemo(() => {
-    const map = new Map<string, number>();
+  // Build review panels with sub-grouping
+  interface ReviewSubGroup {
+    label: string;
+    total: number;
+    items: OrcamentoItem[];
+  }
+  interface ReviewGroup {
+    label: string;
+    total: number;
+    subGroups: ReviewSubGroup[];
+  }
+
+  const reviewByPacote = useMemo((): ReviewGroup[] => {
+    const map = new Map<string, Map<string, OrcamentoItem[]>>();
     for (const item of activeItems) {
       const l3 = classifications.get(item.grupo3Codigo);
-      const label = l3?.pacoteTrabalho || 'Sem classificação';
-      map.set(label, (map.get(label) || 0) + item.precoTotal);
+      const pacote = l3?.pacoteTrabalho || 'Sem classificação';
+      const tipo = l3?.tipoServico || 'Sem classificação';
+      if (!map.has(pacote)) map.set(pacote, new Map());
+      const subMap = map.get(pacote)!;
+      if (!subMap.has(tipo)) subMap.set(tipo, []);
+      subMap.get(tipo)!.push(item);
     }
     return Array.from(map.entries())
-      .sort((a, b) => b[1] - a[1])
-      .map(([label, total]) => ({ label, total }));
+      .map(([label, subMap]) => {
+        const subGroups = Array.from(subMap.entries()).map(([subLabel, items]) => ({
+          label: subLabel,
+          total: items.reduce((s, i) => s + i.precoTotal, 0),
+          items,
+        }));
+        return {
+          label,
+          total: subGroups.reduce((s, sg) => s + sg.total, 0),
+          subGroups,
+        };
+      })
+      .sort((a, b) => b.total - a.total);
   }, [activeItems, classifications]);
 
-  const reviewByTipo = useMemo(() => {
-    const map = new Map<string, number>();
+  const reviewByTipo = useMemo((): ReviewGroup[] => {
+    const map = new Map<string, Map<string, OrcamentoItem[]>>();
     for (const item of activeItems) {
       const l3 = classifications.get(item.grupo3Codigo);
-      const label = l3?.tipoServico || 'Sem classificação';
-      map.set(label, (map.get(label) || 0) + item.precoTotal);
+      const tipo = l3?.tipoServico || 'Sem classificação';
+      const pacote = l3?.pacoteTrabalho || 'Sem classificação';
+      if (!map.has(tipo)) map.set(tipo, new Map());
+      const subMap = map.get(tipo)!;
+      if (!subMap.has(pacote)) subMap.set(pacote, []);
+      subMap.get(pacote)!.push(item);
     }
     return Array.from(map.entries())
-      .sort((a, b) => b[1] - a[1])
-      .map(([label, total]) => ({ label, total }));
+      .map(([label, subMap]) => {
+        const subGroups = Array.from(subMap.entries()).map(([subLabel, items]) => ({
+          label: subLabel,
+          total: items.reduce((s, i) => s + i.precoTotal, 0),
+          items,
+        }));
+        return {
+          label,
+          total: subGroups.reduce((s, sg) => s + sg.total, 0),
+          subGroups,
+        };
+      })
+      .sort((a, b) => b.total - a.total);
   }, [activeItems, classifications]);
 
   const updateClassification = (codigo: string, field: 'pacoteTrabalho' | 'tipoServico', value: string) => {
@@ -967,49 +1008,86 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h3 className="text-sm font-heading font-semibold mb-2 flex items-center gap-1.5">
-                    <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
-                    Por Pacote de Trabalho
-                  </h3>
-                  <ScrollArea className="h-[40vh]">
-                    <div className="space-y-1 pr-2">
-                      {reviewByPacote.map(r => (
-                        <div
-                          key={r.label}
-                          className="flex items-center gap-2 px-3 py-2 rounded-md bg-card border border-border"
-                        >
-                          <span className="flex-1 text-xs font-body truncate">{r.label}</span>
-                          <span className="text-xs font-body font-medium shrink-0">
-                            {formatBRL(r.total)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                </div>
+                {[
+                  { title: 'Por Pacote de Trabalho', subTitle: 'Tipo de Serviço', data: reviewByPacote, prefix: 'rev_pac_' },
+                  { title: 'Por Tipo de Serviço', subTitle: 'Pacote de Trabalho', data: reviewByTipo, prefix: 'rev_tip_' },
+                ].map(panel => (
+                  <div key={panel.title}>
+                    <h3 className="text-sm font-heading font-semibold mb-2 flex items-center gap-1.5">
+                      <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
+                      {panel.title}
+                    </h3>
+                    <ScrollArea className="h-[40vh]">
+                      <div className="space-y-1 pr-2">
+                        {panel.data.map(group => {
+                          const groupKey = panel.prefix + group.label;
+                          const isExpanded = expandedSections.has(groupKey);
+                          return (
+                            <div key={group.label}>
+                              <button
+                                onClick={() => toggleExpanded(groupKey)}
+                                className="w-full flex items-center gap-2 px-3 py-2 rounded-md bg-card border border-border hover:bg-muted/50 transition-colors"
+                              >
+                                {isExpanded ? (
+                                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                ) : (
+                                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                )}
+                                <span className="flex-1 text-xs font-body text-left truncate font-medium">{group.label}</span>
+                                <Badge variant="secondary" className="text-[9px] shrink-0">
+                                  {group.subGroups.reduce((s, sg) => s + sg.items.length, 0)}
+                                </Badge>
+                                <span className="text-xs font-body font-medium shrink-0">
+                                  {formatBRL(group.total)}
+                                </span>
+                              </button>
 
-                <div>
-                  <h3 className="text-sm font-heading font-semibold mb-2 flex items-center gap-1.5">
-                    <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
-                    Por Tipo de Serviço
-                  </h3>
-                  <ScrollArea className="h-[40vh]">
-                    <div className="space-y-1 pr-2">
-                      {reviewByTipo.map(r => (
-                        <div
-                          key={r.label}
-                          className="flex items-center gap-2 px-3 py-2 rounded-md bg-card border border-border"
-                        >
-                          <span className="flex-1 text-xs font-body truncate">{r.label}</span>
-                          <span className="text-xs font-body font-medium shrink-0">
-                            {formatBRL(r.total)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                </div>
+                              {isExpanded && (
+                                <div className="ml-4 border-l-2 border-border space-y-0.5 mt-0.5 mb-1">
+                                  {group.subGroups.map(sub => {
+                                    const subKey = groupKey + '::' + sub.label;
+                                    const subExpanded = expandedSections.has(subKey);
+                                    return (
+                                      <div key={sub.label}>
+                                        <button
+                                          onClick={() => toggleExpanded(subKey)}
+                                          className="w-full flex items-center gap-2 px-2 py-1 pl-4 text-[11px] font-body text-foreground/80 hover:bg-muted/30 rounded-md transition-colors"
+                                        >
+                                          {subExpanded ? (
+                                            <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
+                                          ) : (
+                                            <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                                          )}
+                                          <span className="flex-1 text-left truncate">{sub.label}</span>
+                                          <span className="text-[10px] text-muted-foreground shrink-0">{sub.items.length}</span>
+                                          <span className="text-[10px] font-medium shrink-0 w-20 text-right">{formatBRL(sub.total)}</span>
+                                        </button>
+
+                                        {subExpanded && (
+                                          <div className="ml-8 space-y-0">
+                                            {sub.items.map(item => (
+                                              <div
+                                                key={item.codigo}
+                                                className="flex items-center gap-2 px-2 py-0.5 text-[10px] font-body text-muted-foreground"
+                                              >
+                                                <span className="flex-1 truncate">{item.descricao}</span>
+                                                <span className="shrink-0 w-16 text-right">{formatBRL(item.precoTotal)}</span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </ScrollArea>
+                  </div>
+                ))}
               </div>
             </div>
           )}
