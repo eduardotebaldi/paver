@@ -68,11 +68,13 @@ function AutocompleteInput({
   onChange,
   suggestions,
   placeholder,
+  navId,
 }: {
   value: string;
   onChange: (v: string) => void;
   suggestions: string[];
   placeholder?: string;
+  navId?: string;
 }) {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const filtered = useMemo(
@@ -83,13 +85,28 @@ function AutocompleteInput({
     [suggestions, value],
   );
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!navId) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      const [col, idxStr] = navId.split('__');
+      const idx = parseInt(idxStr, 10);
+      const nextIdx = e.key === 'ArrowDown' ? idx + 1 : idx - 1;
+      const nextEl = document.querySelector<HTMLInputElement>(`[data-nav-id="${col}__${nextIdx}"] input`);
+      if (nextEl) {
+        e.preventDefault();
+        nextEl.focus();
+      }
+    }
+  };
+
   return (
-    <div className="relative">
+    <div className="relative" data-nav-id={navId}>
       <Input
         value={value}
         onChange={e => onChange(e.target.value)}
         onFocus={() => setShowSuggestions(true)}
         onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+        onKeyDown={handleKeyDown}
         placeholder={placeholder}
         className="h-7 text-xs"
       />
