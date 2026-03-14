@@ -109,12 +109,32 @@ export default function RelatorioFotograficoTab({ obraId }: Props) {
       )}
 
       {selectedPlanta && (
-        <PlantaViewer
-          planta={selectedPlanta}
-          obraId={obraId}
-          canEdit={canEdit}
-          onClose={() => setSelectedPlanta(null)}
-        />
+        isDxf(selectedPlanta.imagem_url) ? (
+          <Dialog open onOpenChange={(v) => !v && setSelectedPlanta(null)}>
+            <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="font-heading flex items-center gap-2">
+                  <FileCode className="h-5 w-5 text-accent" />
+                  {selectedPlanta.nome}
+                  <span className="text-xs font-body text-muted-foreground ml-2">DXF</span>
+                </DialogTitle>
+              </DialogHeader>
+              <DxfPlantaViewer
+                planta={selectedPlanta}
+                obraId={obraId}
+                canEdit={canEdit}
+                onClose={() => setSelectedPlanta(null)}
+              />
+            </DialogContent>
+          </Dialog>
+        ) : (
+          <PlantaViewer
+            planta={selectedPlanta}
+            obraId={obraId}
+            canEdit={canEdit}
+            onClose={() => setSelectedPlanta(null)}
+          />
+        )
       )}
     </div>
   );
