@@ -262,7 +262,29 @@ export default function DiarioObraNovoPage() {
     }
   }, [pinQueue, currentPinIndex, selectedPlantaId]);
 
+  const startSkipConfirmation = () => {
+    setSkipConfirming(true);
+    setSkipCountdown(10);
+    if (skipTimerRef.current) clearInterval(skipTimerRef.current);
+    skipTimerRef.current = setInterval(() => {
+      setSkipCountdown(prev => {
+        if (prev <= 1) {
+          if (skipTimerRef.current) clearInterval(skipTimerRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const cancelSkipConfirmation = () => {
+    setSkipConfirming(false);
+    if (skipTimerRef.current) clearInterval(skipTimerRef.current);
+  };
+
   const handleSkipPin = () => {
+    setSkipConfirming(false);
+    if (skipTimerRef.current) clearInterval(skipTimerRef.current);
     if (currentPinIndex < pinQueue.length - 1) {
       setCurrentPinIndex(prev => prev + 1);
     } else {
@@ -271,6 +293,11 @@ export default function DiarioObraNovoPage() {
       setCurrentPinIndex(0);
     }
   };
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => { if (skipTimerRef.current) clearInterval(skipTimerRef.current); };
+  }, []);
 
   const selectedCount = atividades.size;
 
