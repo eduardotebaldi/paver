@@ -300,6 +300,10 @@ export default function ObraDetalhe() {
                       <Link2 className="h-4 w-4 mr-1.5" />
                       Recalcular
                     </Button>
+                  </div>
+                )}
+                {isAdmin && (
+                  <div className="flex gap-2">
                     <Button
                       variant="default"
                       size="sm"
