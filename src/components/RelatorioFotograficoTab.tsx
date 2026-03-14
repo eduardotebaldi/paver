@@ -608,6 +608,42 @@ function PlantaViewer({
           </Card>
         )}
 
+        {/* Photo gallery grid */}
+        {fotos.length > 0 && (
+          <div className="space-y-2">
+            <h4 className="text-sm font-heading font-medium text-foreground">Galeria de Fotos</h4>
+            <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+              {fotos.map((foto) => (
+                <div key={foto.id} className="group relative border border-border rounded-lg overflow-hidden">
+                  <div className="aspect-square bg-muted">
+                    <img
+                      src={foto.foto_url}
+                      alt={foto.descricao || 'Foto'}
+                      className="w-full h-full object-cover cursor-pointer"
+                      onClick={() => { setSelectedFoto(foto); setPendingPin(null); }}
+                    />
+                  </div>
+                  {canModifyFoto(foto) && (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteFoto(foto.id)}
+                      className="absolute top-1.5 right-1.5 h-7 w-7 bg-destructive/90 text-destructive-foreground rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Excluir foto"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                  {foto.descricao && (
+                    <div className="p-1.5">
+                      <p className="text-[10px] text-muted-foreground font-body truncate">{foto.descricao}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <p className="text-xs text-muted-foreground font-body">
           {fotos.length} foto(s) marcada(s) nesta planta
           {canEdit && ' • Clique na planta para marcar uma nova foto'}

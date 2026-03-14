@@ -78,58 +78,59 @@ export default function DiarioObraNovoPage() {
 
   const eapItensOnly = useMemo(() => eapItems.filter(i => i.tipo === 'item'), [eapItems]);
 
-  // Build tree
-  const eapTree = useMemo(() => {
-    const nodeMap = new Map<string, EapNode>();
-    const roots: EapNode[] = [];
-    for (const item of eapItems) {
-      nodeMap.set(item.id, { item, children: [] });
-    }
-    for (const item of eapItems) {
-      const node = nodeMap.get(item.id)!;
-      if (item.parent_id && nodeMap.has(item.parent_id)) {
-        nodeMap.get(item.parent_id)!.children.push(node);
-      } else {
-        roots.push(node);
-      }
-    }
-    const sortChildren = (nodes: EapNode[]) => {
-      nodes.sort((a, b) => (a.item.ordem || 0) - (b.item.ordem || 0));
-      nodes.forEach(n => sortChildren(n.children));
-    };
-    sortChildren(roots);
-    return roots;
+  // Build parent map for hierarchy breadcrumb
+  const parentMap = useMemo(() => {
+    const map = new Map<string, EapItem>();
+    for (const item of eapItems) map.set(item.id, item);
+    return map;
   }, [eapItems]);
 
-  // Filter tree
-  const filteredTree = useMemo(() => {
-    if (!filterText.trim()) return eapTree;
-    const lower = filterText.toLowerCase();
-    const filterNode = (node: EapNode): EapNode | null => {
-      const groupValue = groupMode === 'pacote' ? (node.item.pacote || '') : (node.item.lote || '');
-      const descMatch = node.item.descricao.toLowerCase().includes(lower);
-      const groupMatch = groupValue.toLowerCase().includes(lower);
-      const codeMatch = (node.item.codigo || '').toLowerCase().includes(lower);
-      const filteredChildren = node.children.map(filterNode).filter(Boolean) as EapNode[];
-      if (descMatch || groupMatch || codeMatch || filteredChildren.length > 0) {
-        return { item: node.item, children: filteredChildren.length > 0 ? filteredChildren : node.children };
-      }
-      return null;
-    };
-    return eapTree.map(filterNode).filter(Boolean) as EapNode[];
-  }, [eapTree, filterText, groupMode]);
+  const getHierarchyPath = (item: EapItem): EapItem[] => {
+    const path: EapItem[] = [];
+    let current = item.parent_id ? parentMap.get(item.parent_id) : undefined;
+    while (current) {
+      path.unshift(current);
+      current = current.parent_id ? parentMap.get(current.parent_id) : undefined;
+    }
+    return path;
+  };
 
-  // Auto-expand
+  // Group items by pacote or servico (lote)
+  const groupedItems = useMemo(() => {
+    const groups = new Map<string, EapItem[]>();
+    for (const item of eapItensOnly) {
+      const key = groupMode === 'pacote' ? (item.pacote || 'Sem pacote') : (item.lote || 'Sem serviço');
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(item);
+    }
+    // Sort groups alphabetically
+    return [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  }, [eapItensOnly, groupMode]);
+
+  // Filter groups
+  const filteredGroups = useMemo(() => {
+    if (!filterText.trim()) return groupedItems;
+    const lower = filterText.toLowerCase();
+    return groupedItems
+      .map(([key, items]) => {
+        const keyMatch = key.toLowerCase().includes(lower);
+        const filteredItems = items.filter(item => {
+          const descMatch = item.descricao.toLowerCase().includes(lower);
+          const codeMatch = (item.codigo || '').toLowerCase().includes(lower);
+          const pathMatch = getHierarchyPath(item).some(p => p.descricao.toLowerCase().includes(lower));
+          return descMatch || codeMatch || pathMatch;
+        });
+        if (keyMatch) return [key, items] as [string, EapItem[]];
+        if (filteredItems.length > 0) return [key, filteredItems] as [string, EapItem[]];
+        return null;
+      })
+      .filter(Boolean) as [string, EapItem[]][];
+  }, [groupedItems, filterText]);
+
+  // Auto-expand all groups
   useMemo(() => {
-    const keys = new Set<string>();
-    const collect = (nodes: EapNode[]) => {
-      for (const n of nodes) {
-        if (n.children.length > 0) { keys.add(n.item.id); collect(n.children); }
-      }
-    };
-    collect(filteredTree);
-    setExpandedGroups(keys);
-  }, [filteredTree]);
+    setExpandedGroups(new Set(filteredGroups.map(([key]) => key)));
+  }, [filteredGroups]);
 
   const toggleGroup = (key: string) => {
     setExpandedGroups(prev => {
@@ -240,77 +241,33 @@ export default function DiarioObraNovoPage() {
   const handleBack = () => setStep(1);
   const handleSubmit = () => saveMutation.mutate();
 
-  // Tree helpers
-  const countItems = (nodes: EapNode[]): number => {
-    let c = 0;
-    for (const n of nodes) { if (n.item.tipo === 'item') c++; c += countItems(n.children); }
-    return c;
-  };
-  const countSelected = (nodes: EapNode[]): number => {
-    let c = 0;
-    for (const n of nodes) { if (n.item.tipo === 'item' && atividades.has(n.item.id)) c++; c += countSelected(n.children); }
-    return c;
-  };
-
-  const renderNode = (node: EapNode, depth: number): React.ReactNode => {
-    const { item } = node;
-
-    if (item.tipo === 'agrupador') {
-      const isExpanded = expandedGroups.has(item.id);
-      const itemCount = countItems(node.children);
-      const selCount = countSelected(node.children);
-      return (
-        <div key={item.id}>
-          <Collapsible open={isExpanded} onOpenChange={() => toggleGroup(item.id)}>
-            <CollapsibleTrigger asChild>
-              <button
-                type="button"
-                className={`flex items-center gap-2 w-full px-3 py-2 rounded-md transition-colors text-left ${
-                  depth === 0 ? 'bg-muted/50 hover:bg-muted' : 'hover:bg-muted/30'
-                }`}
-                style={{ paddingLeft: `${12 + depth * 16}px` }}
-              >
-                {isExpanded
-                  ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
-                  : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                }
-                {item.codigo && (
-                  <span className="text-xs font-mono text-accent shrink-0 font-semibold">{item.codigo}</span>
-                )}
-                <span className={`flex-1 text-sm font-heading truncate ${depth === 0 ? 'font-semibold' : 'font-medium'}`}>
-                  {item.descricao}
-                </span>
-                <Badge variant="outline" className="text-[10px] font-body shrink-0">{itemCount} itens</Badge>
-                {selCount > 0 && (
-                  <Badge className="text-[10px] font-body bg-accent text-accent-foreground shrink-0">{selCount} sel.</Badge>
-                )}
-              </button>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <div className={depth === 0 ? 'border-l-2 border-border ml-4 space-y-0.5 mt-0.5' : 'space-y-0.5'}>
-                {node.children.map(child => renderNode(child, depth + 1))}
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-        </div>
-      );
-    }
-
-    // Leaf item
+  // Render a single EAP item row with hierarchy breadcrumb
+  const renderItemRow = (item: EapItem) => {
     const selected = atividades.get(item.id);
     const currentPercent = item.avanco_realizado || 0;
     const totalQtd = item.quantidade || 0;
     const currentQtdRealized = totalQtd * (currentPercent / 100);
+    const hierarchy = getHierarchyPath(item);
 
     return (
       <div
         key={item.id}
         className={`px-3 py-2 transition-colors rounded-md ${selected ? 'bg-accent/5' : 'hover:bg-muted/20'}`}
-        style={{ paddingLeft: `${12 + depth * 16}px` }}
       >
         <div className="flex items-center gap-3">
           <Checkbox checked={!!selected} onCheckedChange={() => toggleItem(item)} />
           <div className="flex-1 min-w-0">
+            {hierarchy.length > 0 && (
+              <div className="flex items-center gap-1 flex-wrap mb-0.5">
+                {hierarchy.map((parent, idx) => (
+                  <span key={parent.id} className="text-[10px] text-muted-foreground/70 font-body flex items-center gap-0.5">
+                    {parent.codigo && <span className="font-mono text-accent/60">{parent.codigo}</span>}
+                    <span className="truncate max-w-[150px]">{parent.descricao}</span>
+                    {idx < hierarchy.length - 1 && <ChevronRight className="h-2.5 w-2.5 text-muted-foreground/40 shrink-0" />}
+                  </span>
+                ))}
+              </div>
+            )}
             <div className="flex items-center gap-2">
               {item.codigo && <span className="text-xs text-muted-foreground font-mono shrink-0">{item.codigo}</span>}
               <span className="text-sm font-body text-foreground truncate">{item.descricao}</span>
@@ -460,15 +417,47 @@ export default function DiarioObraNovoPage() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="space-y-1">
+            <CardContent className="space-y-2">
               {!selectedObraId ? (
                 <p className="text-sm text-muted-foreground font-body italic py-4 text-center">Selecione uma obra para ver os itens da EAP.</p>
               ) : eapItems.length === 0 ? (
                 <p className="text-sm text-muted-foreground font-body italic py-4 text-center">Nenhum item de EAP cadastrado para esta obra.</p>
-              ) : filteredTree.length === 0 ? (
+              ) : filteredGroups.length === 0 ? (
                 <p className="text-sm text-muted-foreground font-body italic py-4 text-center">Nenhum resultado para "{filterText}".</p>
               ) : (
-                filteredTree.map(node => renderNode(node, 0))
+                filteredGroups.map(([groupKey, items]) => {
+                  const isExpanded = expandedGroups.has(groupKey);
+                  const selInGroup = items.filter(i => atividades.has(i.id)).length;
+                  return (
+                    <Collapsible key={groupKey} open={isExpanded} onOpenChange={() => toggleGroup(groupKey)}>
+                      <CollapsibleTrigger asChild>
+                        <button
+                          type="button"
+                          className="flex items-center gap-2 w-full px-3 py-2 rounded-md bg-muted/50 hover:bg-muted transition-colors text-left"
+                        >
+                          {isExpanded
+                            ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                            : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                          }
+                          {groupMode === 'pacote'
+                            ? <Package className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            : <Layers className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          }
+                          <span className="flex-1 text-sm font-heading font-semibold truncate">{groupKey}</span>
+                          <Badge variant="outline" className="text-[10px] font-body shrink-0">{items.length} itens</Badge>
+                          {selInGroup > 0 && (
+                            <Badge className="text-[10px] font-body bg-accent text-accent-foreground shrink-0">{selInGroup} sel.</Badge>
+                          )}
+                        </button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="border-l-2 border-border ml-4 space-y-0.5 mt-0.5">
+                          {items.map(item => renderItemRow(item))}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  );
+                })
               )}
             </CardContent>
           </Card>
