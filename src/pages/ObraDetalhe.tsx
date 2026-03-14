@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { fetchObra, fetchEapItems, insertEapItems, deleteEapItemsByObra, EapItem } from '@/services/api';
 import { parseEapExcel } from '@/lib/eapParser';
 import DiarioObraTab from '@/components/DiarioObraTab';
+import RelatorioFotograficoTab from '@/components/RelatorioFotograficoTab';
 
 export default function ObraDetalhe() {
   const { id } = useParams<{ id: string }>();
@@ -131,6 +132,7 @@ export default function ObraDetalhe() {
         <TabsList>
           <TabsTrigger value="eap" className="font-body">EAP</TabsTrigger>
           <TabsTrigger value="diario" className="font-body">Diário de Obra</TabsTrigger>
+          <TabsTrigger value="fotos" className="font-body">Relatório Fotográfico</TabsTrigger>
         </TabsList>
 
         <TabsContent value="eap" className="mt-4">
@@ -210,6 +212,10 @@ export default function ObraDetalhe() {
 
         <TabsContent value="diario" className="mt-4">
           <DiarioObraTab obraId={id!} />
+        </TabsContent>
+
+        <TabsContent value="fotos" className="mt-4">
+          <RelatorioFotograficoTab obraId={id!} />
         </TabsContent>
       </Tabs>
     </div>

@@ -227,3 +227,84 @@ export async function removeRole(userId: string, role: string) {
     .eq('role', role);
   if (error) throw error;
 }
+
+// === RELATÓRIO FOTOGRÁFICO ===
+export interface PlantaObra {
+  id: string;
+  obra_id: string;
+  nome: string;
+  imagem_url: string;
+  created_at: string;
+}
+
+export interface FotoLocalizada {
+  id: string;
+  planta_id: string;
+  obra_id: string;
+  foto_url: string;
+  descricao?: string;
+  pos_x: number;
+  pos_y: number;
+  created_by: string;
+  created_at: string;
+}
+
+export async function fetchPlantas(obraId: string) {
+  const { data, error } = await supabase
+    .from('paver_plantas')
+    .select('*')
+    .eq('obra_id', obraId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data as PlantaObra[];
+}
+
+export async function createPlanta(planta: Omit<PlantaObra, 'id' | 'created_at'>) {
+  const { data, error } = await supabase
+    .from('paver_plantas')
+    .insert(planta)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as PlantaObra;
+}
+
+export async function deletePlanta(id: string) {
+  const { error } = await supabase.from('paver_plantas').delete().eq('id', id);
+  if (error) throw error;
+}
+
+export async function fetchFotosLocalizadas(plantaId: string) {
+  const { data, error } = await supabase
+    .from('paver_fotos_localizadas')
+    .select('*')
+    .eq('planta_id', plantaId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data as FotoLocalizada[];
+}
+
+export async function createFotoLocalizada(foto: Omit<FotoLocalizada, 'id' | 'created_at'>) {
+  const { data, error } = await supabase
+    .from('paver_fotos_localizadas')
+    .insert(foto)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as FotoLocalizada;
+}
+
+export async function deleteFotoLocalizada(id: string) {
+  const { error } = await supabase.from('paver_fotos_localizadas').delete().eq('id', id);
+  if (error) throw error;
+}
+
+export async function uploadFile(bucket: string, path: string, file: File) {
+  const { data, error } = await supabase.storage.from(bucket).upload(path, file, {
+    cacheControl: '3600',
+    upsert: false,
+  });
+  if (error) throw error;
+  const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(data.path);
+  return urlData.publicUrl;
+}
