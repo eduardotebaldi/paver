@@ -1038,46 +1038,80 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
                                   );
                                   const total = childItems.reduce((s, i) => s + i.precoTotal, 0);
 
+                                  const l3IsExpanded = expandedSections.has('classify_l3_' + g.codigo);
+
                                   return (
-                                    <TableRow key={g.codigo}>
-                                      <TableCell className="text-xs font-mono py-1.5">{g.codigo}</TableCell>
-                                      <TableCell className="py-1.5">
-                                        {(() => {
-                                          const l2Code = g.codigo.split('.').slice(0, 2).join('.');
-                                          const l2Group = groupMap.get(l2Code);
-                                          const parentContext = l2Group ? l2Group.descricao : '';
-                                          return (
-                                            <CollapsibleDescription
-                                              cleanedName={removePrefixes(g.descricao)}
-                                              parentContext={parentContext}
-                                            />
-                                          );
-                                        })()}
-                                      </TableCell>
-                                      <TableCell className="text-xs text-right py-1.5">
-                                        {formatBRL(total)}
-                                      </TableCell>
-                                      <TableCell className="py-1.5">
-                                        <AutocompleteInput
-                                          value={cls.pacoteTrabalho}
-                                          onChange={v =>
-                                            updateClassification(g.codigo, 'pacoteTrabalho', v)
-                                          }
-                                          suggestions={allPacotes}
-                                          placeholder="Pacote..."
-                                        />
-                                      </TableCell>
-                                      <TableCell className="py-1.5">
-                                        <AutocompleteInput
-                                          value={cls.tipoServico}
-                                          onChange={v =>
-                                            updateClassification(g.codigo, 'tipoServico', v)
-                                          }
-                                          suggestions={allTipos}
-                                          placeholder="Tipo..."
-                                        />
-                                      </TableCell>
-                                    </TableRow>
+                                    <React.Fragment key={g.codigo}>
+                                      <TableRow className="hover:bg-muted/30">
+                                        <TableCell className="text-xs font-mono py-1.5">
+                                          <div className="flex items-center gap-1">
+                                            {childItems.length > 0 && (
+                                              <button
+                                                onClick={() => toggleExpanded('classify_l3_' + g.codigo)}
+                                                className="text-muted-foreground hover:text-foreground"
+                                              >
+                                                {l3IsExpanded ? (
+                                                  <ChevronDown className="h-3 w-3" />
+                                                ) : (
+                                                  <ChevronRight className="h-3 w-3" />
+                                                )}
+                                              </button>
+                                            )}
+                                            {g.codigo}
+                                          </div>
+                                        </TableCell>
+                                        <TableCell className="py-1.5">
+                                          <div className="flex items-center gap-2">
+                                            {(() => {
+                                              const l2Code = g.codigo.split('.').slice(0, 2).join('.');
+                                              const l2Group = groupMap.get(l2Code);
+                                              const parentContext = l2Group ? l2Group.descricao : '';
+                                              return (
+                                                <CollapsibleDescription
+                                                  cleanedName={removePrefixes(g.descricao)}
+                                                  parentContext={parentContext}
+                                                />
+                                              );
+                                            })()}
+                                            <Badge variant="outline" className="text-[8px] shrink-0">
+                                              {childItems.length} itens
+                                            </Badge>
+                                          </div>
+                                        </TableCell>
+                                        <TableCell className="text-xs text-right py-1.5">
+                                          {formatBRL(total)}
+                                        </TableCell>
+                                        <TableCell className="py-1.5">
+                                          <AutocompleteInput
+                                            value={cls.pacoteTrabalho}
+                                            onChange={v =>
+                                              updateClassification(g.codigo, 'pacoteTrabalho', v)
+                                            }
+                                            suggestions={allPacotes}
+                                            placeholder="Pacote..."
+                                          />
+                                        </TableCell>
+                                        <TableCell className="py-1.5">
+                                          <AutocompleteInput
+                                            value={cls.tipoServico}
+                                            onChange={v =>
+                                              updateClassification(g.codigo, 'tipoServico', v)
+                                            }
+                                            suggestions={allTipos}
+                                            placeholder="Tipo..."
+                                          />
+                                        </TableCell>
+                                      </TableRow>
+                                      {l3IsExpanded && childItems.map(ci => (
+                                        <TableRow key={ci.codigo} className="bg-muted/10">
+                                          <TableCell className="text-[10px] font-mono py-0.5 pl-10 text-muted-foreground">{ci.codigo}</TableCell>
+                                          <TableCell className="text-[10px] py-0.5 text-muted-foreground">{ci.descricao}</TableCell>
+                                          <TableCell className="text-[10px] text-right py-0.5 text-muted-foreground">{formatBRL(ci.precoTotal)}</TableCell>
+                                          <TableCell className="py-0.5" />
+                                          <TableCell className="py-0.5" />
+                                        </TableRow>
+                                      ))}
+                                    </React.Fragment>
                                   );
                                 })}
                                 {/* Orphan items with no L3 group */}
