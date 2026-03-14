@@ -898,7 +898,7 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
                           i => i.grupo3Codigo === g.codigo && enabledSections.has(i.grupo1Codigo),
                         );
                         return sum + childItems.reduce((s, i) => s + i.precoTotal, 0);
-                      }, 0);
+                      }, 0) + orphanItems.reduce((s, i) => s + i.precoTotal, 0);
 
                       return (
                         <div key={l1.codigo} className="border border-border rounded-lg overflow-hidden">
