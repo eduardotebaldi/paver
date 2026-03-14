@@ -1,21 +1,33 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Camera, Loader2, Filter, FolderTree, Layers, CalendarDays, Building2 } from 'lucide-react';
+import { Camera, Loader2, FolderTree, Layers, Building2, MapPin, FileCode, Image } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import { fetchObras, fetchAllFotosLocalizadas, FotoLocalizada, Obra } from '@/services/api';
-import { supabase } from '@/integrations/supabase/client';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { fetchObras, fetchAllFotosLocalizadas, fetchPlantas, FotoLocalizada, PlantaObra } from '@/services/api';
+import { useAuth } from '@/contexts/AuthContext';
+import DxfPlantaViewer from '@/components/DxfPlantaViewer';
+
+type ViewMode = 'galeria' | 'planta';
+
+function isDxf(url: string) {
+  return url.toLowerCase().includes('.dxf');
+}
 
 export default function RelatorioFotografico() {
+  const [viewMode, setViewMode] = useState<ViewMode>('galeria');
   const [selectedObra, setSelectedObra] = useState<string>('all');
   const [selectedPacote, setSelectedPacote] = useState<string>('all');
   const [selectedServico, setSelectedServico] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [selectedFoto, setSelectedFoto] = useState<FotoLocalizada | null>(null);
+  const [selectedPlanta, setSelectedPlanta] = useState<PlantaObra | null>(null);
+  const { hasRole } = useAuth();
+  const canEdit = hasRole('admin') || hasRole('engenharia');
 
   const { data: obras = [] } = useQuery({
     queryKey: ['obras'],
@@ -27,9 +39,24 @@ export default function RelatorioFotografico() {
     queryFn: fetchAllFotosLocalizadas,
   });
 
+  // Fetch plantas for all obras or selected obra
+  const { data: allPlantas = [] } = useQuery({
+    queryKey: ['all-plantas', selectedObra],
+    queryFn: async () => {
+      if (selectedObra !== 'all') {
+        return fetchPlantas(selectedObra);
+      }
+      // Fetch plantas for all obras
+      const results = await Promise.all(obras.map(o => fetchPlantas(o.id)));
+      return results.flat();
+    },
+    enabled: obras.length > 0,
+  });
+
+  const dxfPlantas = useMemo(() => allPlantas.filter(p => isDxf(p.imagem_url)), [allPlantas]);
+
   const obraMap = Object.fromEntries(obras.map(o => [o.id, o]));
 
-  // Apply filters
   const filteredFotos = useMemo(() => {
     let fotos = allFotos;
     if (selectedObra !== 'all') fotos = fotos.filter(f => f.obra_id === selectedObra);
@@ -40,7 +67,6 @@ export default function RelatorioFotografico() {
     return fotos;
   }, [allFotos, selectedObra, selectedPacote, selectedServico, dateFrom, dateTo]);
 
-  // Unique values for filters
   const uniquePacotes = useMemo(() => {
     const set = new Set<string>();
     allFotos.forEach(f => { if (f.pacote) set.add(f.pacote); });
@@ -55,16 +81,44 @@ export default function RelatorioFotografico() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-heading font-bold text-foreground">Relatório Fotográfico</h1>
-        <p className="text-muted-foreground font-body">Fotos localizadas em plantas de todas as obras</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-heading font-bold text-foreground">Relatório Fotográfico</h1>
+          <p className="text-muted-foreground font-body">Fotos localizadas em plantas de todas as obras</p>
+        </div>
+
+        {/* View mode toggle */}
+        <div className="flex items-center rounded-md border border-border overflow-hidden">
+          <button
+            onClick={() => setViewMode('galeria')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-body transition-colors ${
+              viewMode === 'galeria'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-background text-muted-foreground hover:bg-muted'
+            }`}
+          >
+            <Image className="h-3.5 w-3.5" />
+            Galeria
+          </button>
+          <button
+            onClick={() => setViewMode('planta')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-body transition-colors ${
+              viewMode === 'planta'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-background text-muted-foreground hover:bg-muted'
+            }`}
+          >
+            <MapPin className="h-3.5 w-3.5" />
+            Planta
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 items-end">
         <div className="space-y-1">
           <Label className="text-xs font-body text-muted-foreground">Obra</Label>
-          <Select value={selectedObra} onValueChange={setSelectedObra}>
+          <Select value={selectedObra} onValueChange={(v) => { setSelectedObra(v); setSelectedPacote('all'); setSelectedServico('all'); }}>
             <SelectTrigger className="w-52 font-body">
               <Building2 className="h-4 w-4 mr-2" />
               <SelectValue />
@@ -110,78 +164,123 @@ export default function RelatorioFotografico() {
           </Select>
         </div>
 
-        <div className="space-y-1">
-          <Label className="text-xs font-body text-muted-foreground">De</Label>
-          <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="w-40 font-body" />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs font-body text-muted-foreground">Até</Label>
-          <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="w-40 font-body" />
-        </div>
+        {viewMode === 'galeria' && (
+          <>
+            <div className="space-y-1">
+              <Label className="text-xs font-body text-muted-foreground">De</Label>
+              <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="w-40 font-body" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs font-body text-muted-foreground">Até</Label>
+              <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="w-40 font-body" />
+            </div>
+          </>
+        )}
       </div>
 
-      {/* Photo grid */}
-      {isLoading ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-accent" />
-        </div>
-      ) : filteredFotos.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <Camera className="h-12 w-12 text-muted-foreground/40 mb-4" />
-            <h3 className="text-lg font-heading font-semibold text-muted-foreground">
-              Nenhuma foto encontrada
-            </h3>
-            <p className="text-sm text-muted-foreground/70 mt-1 font-body">
-              Registre fotos nas plantas de uma obra para visualizá-las aqui
-            </p>
-          </CardContent>
-        </Card>
+      {/* View content */}
+      {viewMode === 'galeria' ? (
+        <GaleriaView
+          fotos={filteredFotos}
+          obraMap={obraMap}
+          isLoading={isLoading}
+          selectedFoto={selectedFoto}
+          onSelectFoto={setSelectedFoto}
+        />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          {filteredFotos.map(foto => (
-            <Card
-              key={foto.id}
-              className="overflow-hidden cursor-pointer hover:border-accent/50 transition-colors group"
-              onClick={() => setSelectedFoto(foto)}
-            >
-              <div className="aspect-square bg-muted overflow-hidden">
-                <img
-                  src={foto.foto_url}
-                  alt={foto.descricao || 'Foto'}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                  loading="lazy"
-                />
-              </div>
-              <CardContent className="p-3 space-y-1.5">
-                {foto.descricao && (
-                  <p className="text-sm font-body text-foreground truncate">{foto.descricao}</p>
-                )}
-                <div className="flex flex-wrap gap-1">
-                  <Badge variant="secondary" className="text-[10px] font-body">
-                    {obraMap[foto.obra_id]?.nome || 'Obra'}
-                  </Badge>
-                  {foto.pacote && (
-                    <Badge variant="outline" className="text-[10px] font-body">{foto.pacote}</Badge>
-                  )}
-                  {foto.tipo_servico && (
-                    <Badge variant="outline" className="text-[10px] font-body">{foto.tipo_servico}</Badge>
-                  )}
-                </div>
-                <p className="text-[10px] text-muted-foreground font-body">
-                  {new Date(foto.created_at).toLocaleDateString('pt-BR')}
-                </p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <PlantaView
+          plantas={dxfPlantas}
+          obraMap={obraMap}
+          canEdit={canEdit}
+          selectedPlanta={selectedPlanta}
+          onSelectPlanta={setSelectedPlanta}
+        />
       )}
+    </div>
+  );
+}
 
-      {/* Selected photo modal */}
+function GaleriaView({
+  fotos,
+  obraMap,
+  isLoading,
+  selectedFoto,
+  onSelectFoto,
+}: {
+  fotos: FotoLocalizada[];
+  obraMap: Record<string, { nome: string }>;
+  isLoading: boolean;
+  selectedFoto: FotoLocalizada | null;
+  onSelectFoto: (f: FotoLocalizada | null) => void;
+}) {
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-accent" />
+      </div>
+    );
+  }
+
+  if (fotos.length === 0) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center py-16">
+          <Camera className="h-12 w-12 text-muted-foreground/40 mb-4" />
+          <h3 className="text-lg font-heading font-semibold text-muted-foreground">
+            Nenhuma foto encontrada
+          </h3>
+          <p className="text-sm text-muted-foreground/70 mt-1 font-body">
+            Registre fotos nas plantas de uma obra para visualizá-las aqui
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <>
+      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        {fotos.map(foto => (
+          <Card
+            key={foto.id}
+            className="overflow-hidden cursor-pointer hover:border-accent/50 transition-colors group"
+            onClick={() => onSelectFoto(foto)}
+          >
+            <div className="aspect-square bg-muted overflow-hidden">
+              <img
+                src={foto.foto_url}
+                alt={foto.descricao || 'Foto'}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                loading="lazy"
+              />
+            </div>
+            <CardContent className="p-3 space-y-1.5">
+              {foto.descricao && (
+                <p className="text-sm font-body text-foreground truncate">{foto.descricao}</p>
+              )}
+              <div className="flex flex-wrap gap-1">
+                <Badge variant="secondary" className="text-[10px] font-body">
+                  {obraMap[foto.obra_id]?.nome || 'Obra'}
+                </Badge>
+                {foto.pacote && (
+                  <Badge variant="outline" className="text-[10px] font-body">{foto.pacote}</Badge>
+                )}
+                {foto.tipo_servico && (
+                  <Badge variant="outline" className="text-[10px] font-body">{foto.tipo_servico}</Badge>
+                )}
+              </div>
+              <p className="text-[10px] text-muted-foreground font-body">
+                {new Date(foto.created_at).toLocaleDateString('pt-BR')}
+              </p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
       {selectedFoto && (
         <div
           className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
-          onClick={() => setSelectedFoto(null)}
+          onClick={() => onSelectFoto(null)}
         >
           <div className="max-w-4xl max-h-[90vh] overflow-auto" onClick={e => e.stopPropagation()}>
             <img
@@ -205,6 +304,83 @@ export default function RelatorioFotografico() {
           </div>
         </div>
       )}
-    </div>
+    </>
+  );
+}
+
+function PlantaView({
+  plantas,
+  obraMap,
+  canEdit,
+  selectedPlanta,
+  onSelectPlanta,
+}: {
+  plantas: PlantaObra[];
+  obraMap: Record<string, { nome: string }>;
+  canEdit: boolean;
+  selectedPlanta: PlantaObra | null;
+  onSelectPlanta: (p: PlantaObra | null) => void;
+}) {
+  if (plantas.length === 0) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center py-16">
+          <FileCode className="h-12 w-12 text-muted-foreground/40 mb-4" />
+          <h3 className="text-lg font-heading font-semibold text-muted-foreground">
+            Nenhuma planta DXF encontrada
+          </h3>
+          <p className="text-sm text-muted-foreground/70 mt-1 font-body">
+            Faça upload de arquivos DXF nas obras para visualizá-los aqui
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <>
+      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        {plantas.map(planta => (
+          <Card
+            key={planta.id}
+            className="cursor-pointer hover:border-accent/50 transition-colors"
+            onClick={() => onSelectPlanta(planta)}
+          >
+            <CardContent className="p-4">
+              <div className="aspect-video bg-muted rounded flex flex-col items-center justify-center gap-2 mb-3">
+                <FileCode className="h-10 w-10 text-accent" />
+                <span className="text-xs font-body text-muted-foreground">DXF</span>
+              </div>
+              <p className="text-sm font-heading font-medium truncate">{planta.nome}</p>
+              <p className="text-[10px] text-muted-foreground font-body mt-1">
+                {obraMap[planta.obra_id]?.nome || ''}
+              </p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {selectedPlanta && (
+        <Dialog open onOpenChange={(v) => !v && onSelectPlanta(null)}>
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="font-heading flex items-center gap-2">
+                <FileCode className="h-5 w-5 text-accent" />
+                {selectedPlanta.nome}
+                <Badge variant="secondary" className="text-[10px] ml-2">
+                  {obraMap[selectedPlanta.obra_id]?.nome || ''}
+                </Badge>
+              </DialogTitle>
+            </DialogHeader>
+            <DxfPlantaViewer
+              planta={selectedPlanta}
+              obraId={selectedPlanta.obra_id}
+              canEdit={canEdit}
+              onClose={() => onSelectPlanta(null)}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
   );
 }
