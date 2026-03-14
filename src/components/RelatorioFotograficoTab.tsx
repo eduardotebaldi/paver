@@ -192,7 +192,7 @@ function UploadPlantaButton({ obraId }: { obraId: string }) {
             <input
               ref={fileRef}
               type="file"
-              accept="image/*,.pdf"
+              accept="image/*,.pdf,.dxf"
               className="hidden"
               onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
             />
@@ -202,7 +202,7 @@ function UploadPlantaButton({ obraId }: { obraId: string }) {
               onClick={() => fileRef.current?.click()}
             >
               <Upload className="h-4 w-4 mr-2" />
-              {selectedFile ? selectedFile.name : 'Selecionar imagem ou PDF'}
+              {selectedFile ? selectedFile.name : 'Selecionar imagem, PDF ou DXF'}
             </Button>
           </div>
           <Button
