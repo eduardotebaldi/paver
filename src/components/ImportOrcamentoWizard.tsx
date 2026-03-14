@@ -593,7 +593,7 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
       }
 
       for (const item of activeItems) {
-        const l3 = classifications.get(item.grupo3Codigo) || classifications.get(`orphan_${item.codigo}`);
+        const cls = classifications.get(item.codigo);
         eapItems.push({
           obra_id: obraId,
           codigo: item.codigo,
@@ -601,9 +601,9 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
           tipo: 'item',
           unidade: item.unidade || undefined,
           quantidade: item.quantidade,
-          pacote: l3?.pacoteTrabalho || undefined,
-          lote: l3?.tipoServico || undefined,
-          classificacao_adicional: l3?.classificacaoAdicional || undefined,
+          pacote: cls?.pacoteTrabalho || undefined,
+          lote: cls?.tipoServico || undefined,
+          classificacao_adicional: cls?.classificacaoAdicional || undefined,
           ordem: ordem++,
         });
       }
