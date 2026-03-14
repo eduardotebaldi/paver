@@ -456,7 +456,34 @@ export default function DiarioObraNovoPage() {
                       </CollapsibleTrigger>
                       <CollapsibleContent>
                         <div className="border-l-2 border-border ml-4 space-y-0.5 mt-0.5">
-                          {items.map(item => renderItemRow(item))}
+                          {(() => {
+                            // Sub-group items by classificacao_adicional
+                            const subGroups = new Map<string, EapItem[]>();
+                            for (const item of items) {
+                              const subKey = item.classificacao_adicional || '';
+                              if (!subGroups.has(subKey)) subGroups.set(subKey, []);
+                              subGroups.get(subKey)!.push(item);
+                            }
+                            // If only one sub-group (or all empty), render flat
+                            if (subGroups.size <= 1) {
+                              return items.map(item => renderItemRow(item));
+                            }
+                            return [...subGroups.entries()]
+                              .sort((a, b) => a[0].localeCompare(b[0]))
+                              .map(([subKey, subItems]) => (
+                                <div key={subKey || '__none__'} className="mt-1">
+                                  {subKey && (
+                                    <div className="flex items-center gap-1.5 px-3 py-1 ml-2">
+                                      <span className="text-[10px] font-body font-medium text-muted-foreground/70 italic">{subKey}</span>
+                                      <span className="text-[10px] text-muted-foreground/40 font-body">({subItems.length})</span>
+                                    </div>
+                                  )}
+                                  <div className={subKey ? 'border-l border-border/50 ml-5 space-y-0.5' : 'space-y-0.5'}>
+                                    {subItems.map(item => renderItemRow(item))}
+                                  </div>
+                                </div>
+                              ));
+                          })()}
                         </div>
                       </CollapsibleContent>
                     </Collapsible>
