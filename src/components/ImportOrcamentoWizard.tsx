@@ -927,7 +927,9 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
                     .filter(l1 => enabledSections.has(l1.codigo))
                     .map(l1 => {
                       const l3ForSection = level3Groups.filter(
-                        g => g.codigo.startsWith(l1.codigo + '.'),
+                        g =>
+                          g.codigo.startsWith(l1.codigo + '.') ||
+                          (itemHierarchyMap.l3ByL1.get(l1.codigo)?.has(g.codigo) ?? false),
                       );
                       // Also find orphan items (belonging to this L1 but with no L3 group)
                       const orphanItems = activeItems.filter(
