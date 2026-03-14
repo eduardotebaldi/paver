@@ -13,6 +13,7 @@ import RelatorioFotografico from "./pages/RelatorioFotografico";
 import LinhaBalancoPage from "./pages/LinhaBalanco";
 import Dependencias from "./pages/Dependencias";
 import DiarioObra from "./pages/DiarioObra";
+import DiarioObraNovo from "./pages/DiarioObraNovo";
 import AdminObras from "./pages/AdminObras";
 import Usuarios from "./pages/Usuarios";
 import Login from "./pages/Login";
