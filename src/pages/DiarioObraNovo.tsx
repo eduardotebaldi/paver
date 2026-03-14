@@ -592,6 +592,7 @@ export default function DiarioObraNovoPage() {
       queryClient.invalidateQueries({ queryKey: ['diarios'] });
       queryClient.invalidateQueries({ queryKey: ['diario-atividades'] });
       queryClient.invalidateQueries({ queryKey: ['eap'] });
+      queryClient.invalidateQueries({ queryKey: ['eap-items-balance'] });
       queryClient.invalidateQueries({ queryKey: ['fotos-localizadas'] });
       toast({ title: 'Diário registrado com sucesso!' });
       navigate('/diario-obra');
