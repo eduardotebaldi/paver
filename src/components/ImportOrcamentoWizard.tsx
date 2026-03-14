@@ -861,7 +861,12 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
                                   return (
                                     <TableRow key={g.codigo}>
                                       <TableCell className="text-xs font-mono py-1.5">{g.codigo}</TableCell>
-                                      <TableCell className="text-xs py-1.5">{g.descricao}</TableCell>
+                                      <TableCell className="py-1.5">
+                                        <CollapsibleDescription
+                                          cleanedName={removePrefixes(g.descricao)}
+                                          originalDesc={g.descricao}
+                                        />
+                                      </TableCell>
                                       <TableCell className="text-xs text-right py-1.5">
                                         {formatBRL(total)}
                                       </TableCell>
