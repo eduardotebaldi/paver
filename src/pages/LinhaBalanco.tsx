@@ -273,8 +273,6 @@ export default function LinhaBalancoPage() {
 /* Full-height version of the chart */
 import {
   ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
   type ChartConfig,
 } from '@/components/ui/chart';
 import {
@@ -284,39 +282,116 @@ import {
   YAxis,
   CartesianGrid,
   Legend,
+  ReferenceLine,
+  Tooltip,
+  Rectangle,
 } from 'recharts';
+import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 
 const chartConfig: ChartConfig = {
   previsto: { label: 'Previsto', color: 'hsl(var(--primary))' },
   realizado: { label: 'Realizado', color: 'hsl(var(--accent))' },
-  base: { label: 'Base', color: 'hsl(var(--muted-foreground))' },
 };
+
+const DAY_MS = 86400000;
+
+function formatDateTick(ts: number) {
+  const d = new Date(ts);
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getFullYear()).slice(2)}`;
+}
+
+function formatDateFull(ts: number) {
+  const d = new Date(ts);
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+}
 
 function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem[]; mode: GroupMode; obraName?: string }) {
   const items = eapItems.filter(i => i.tipo === 'item');
+  const todayTs = useMemo(() => new Date().setHours(0, 0, 0, 0), []);
 
-  const chartData = useMemo(() => {
-    const map = new Map<string, { base: number[]; previsto: number[]; realizado: number[] }>();
+  const { chartData, lastMeasurementTs, domainMin, domainMax } = useMemo(() => {
+    const map = new Map<string, {
+      previstoStarts: number[]; previstoEnds: number[];
+      realizadoStarts: number[]; realizadoEnds: number[];
+    }>();
+    let lastMeasurement = 0;
+
     for (const item of items) {
       const key = mode === 'pacote' ? (item.pacote || 'Sem pacote') : (item.lote || 'Sem classificação');
-      if (!map.has(key)) map.set(key, { base: [], previsto: [], realizado: [] });
+      if (!map.has(key)) map.set(key, { previstoStarts: [], previstoEnds: [], realizadoStarts: [], realizadoEnds: [] });
       const entry = map.get(key)!;
-      entry.base.push(item.avanco_base || 0);
-      entry.previsto.push(item.avanco_previsto || 0);
-      entry.realizado.push(item.avanco_realizado || 0);
+
+      if (item.data_inicio_prevista) entry.previstoStarts.push(new Date(item.data_inicio_prevista + 'T00:00:00').getTime());
+      if (item.data_fim_prevista) entry.previstoEnds.push(new Date(item.data_fim_prevista + 'T00:00:00').getTime());
+      if (item.data_inicio_real) {
+        const t = new Date(item.data_inicio_real + 'T00:00:00').getTime();
+        entry.realizadoStarts.push(t);
+        if (t > lastMeasurement) lastMeasurement = t;
+      }
+      if (item.data_fim_real) {
+        const t = new Date(item.data_fim_real + 'T00:00:00').getTime();
+        entry.realizadoEnds.push(t);
+        if (t > lastMeasurement) lastMeasurement = t;
+      }
     }
-    return Array.from(map.entries()).map(([name, data]) => {
-      const avg = (arr: number[]) => arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+
+    let dMin = Infinity, dMax = -Infinity;
+
+    const data = Array.from(map.entries()).map(([name, d]) => {
+      const pStart = d.previstoStarts.length ? Math.min(...d.previstoStarts) : null;
+      const pEnd = d.previstoEnds.length ? Math.max(...d.previstoEnds) : null;
+      const rStart = d.realizadoStarts.length ? Math.min(...d.realizadoStarts) : null;
+      const rEnd = d.realizadoEnds.length ? Math.max(...d.realizadoEnds) : null;
+
+      [pStart, pEnd, rStart, rEnd].forEach(v => {
+        if (v !== null) {
+          if (v < dMin) dMin = v;
+          if (v > dMax) dMax = v;
+        }
+      });
+
       return {
-        name: name.length > 30 ? name.substring(0, 27) + '...' : name,
+        name: name.length > 30 ? name.substring(0, 27) + '…' : name,
         fullName: name,
-        base: Number(avg(data.base).toFixed(1)),
-        previsto: Number(avg(data.previsto).toFixed(1)),
-        realizado: Number(avg(data.realizado).toFixed(1)),
-        count: data.base.length,
+        previsto: pStart != null && pEnd != null ? [pStart, pEnd] as [number, number] : undefined,
+        realizado: rStart != null && rEnd != null ? [rStart, rEnd] as [number, number] : undefined,
       };
     });
-  }, [items, mode]);
+
+    // include today in domain
+    if (todayTs < dMin) dMin = todayTs;
+    if (todayTs > dMax) dMax = todayTs;
+
+    const pad = Math.max((dMax - dMin) * 0.05, DAY_MS * 7);
+    return {
+      chartData: data,
+      lastMeasurementTs: lastMeasurement || null,
+      domainMin: dMin === Infinity ? todayTs - DAY_MS * 30 : dMin - pad,
+      domainMax: dMax === -Infinity ? todayTs + DAY_MS * 30 : dMax + pad,
+    };
+  }, [items, mode, todayTs]);
+
+  const [zoomDomain, setZoomDomain] = useState<[number, number] | null>(null);
+  const activeDomain = zoomDomain || [domainMin, domainMax];
+
+  const zoomIn = () => {
+    const [l, r] = activeDomain;
+    const range = r - l;
+    const center = (l + r) / 2;
+    setZoomDomain([center - range * 0.25, center + range * 0.25]);
+  };
+
+  const zoomOut = () => {
+    const [l, r] = activeDomain;
+    const range = r - l;
+    const center = (l + r) / 2;
+    setZoomDomain([
+      Math.max(domainMin, center - range),
+      Math.min(domainMax, center + range),
+    ]);
+  };
+
+  const resetZoom = () => setZoomDomain(null);
 
   if (items.length === 0) {
     return (
@@ -329,7 +404,18 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
 
   return (
     <Card className="h-full flex flex-col">
-      <CardContent className="flex-1 min-h-0 p-4">
+      <div className="flex items-center justify-end gap-1 px-4 pt-3">
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={zoomIn} title="Zoom in">
+          <ZoomIn className="h-4 w-4" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={zoomOut} title="Zoom out">
+          <ZoomOut className="h-4 w-4" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={resetZoom} title="Resetar zoom">
+          <RotateCcw className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+      <CardContent className="flex-1 min-h-0 p-4 pt-1">
         <ChartContainer config={chartConfig} className="h-full w-full">
           <ComposedChart
             data={chartData}
@@ -339,9 +425,10 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
             <CartesianGrid strokeDasharray="3 3" horizontal={false} />
             <XAxis
               type="number"
-              domain={[0, 100]}
-              tickFormatter={(v) => `${v}%`}
-              fontSize={11}
+              domain={activeDomain}
+              tickFormatter={formatDateTick}
+              fontSize={10}
+              scale="time"
             />
             <YAxis
               type="category"
@@ -350,23 +437,52 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
               fontSize={11}
               tick={{ fill: 'hsl(var(--foreground))' }}
             />
-            <ChartTooltip
-              content={
-                <ChartTooltipContent
-                  labelFormatter={(_, payload) => {
-                    const item = payload?.[0]?.payload;
-                    return item?.fullName || '';
-                  }}
-                  formatter={(value, name) => {
-                    return [`${value}%`, chartConfig[name as keyof typeof chartConfig]?.label || name];
-                  }}
-                />
-              }
+            <Tooltip
+              content={({ payload }) => {
+                if (!payload || payload.length === 0) return null;
+                const row = payload[0]?.payload;
+                if (!row) return null;
+                return (
+                  <div className="rounded-md border bg-popover px-3 py-2 shadow-md text-xs font-body">
+                    <p className="font-medium mb-1">{row.fullName}</p>
+                    {row.previsto && (
+                      <p className="text-primary">
+                        Previsto: {formatDateFull(row.previsto[0])} → {formatDateFull(row.previsto[1])}
+                      </p>
+                    )}
+                    {row.realizado && (
+                      <p className="text-accent">
+                        Realizado: {formatDateFull(row.realizado[0])} → {formatDateFull(row.realizado[1])}
+                      </p>
+                    )}
+                  </div>
+                );
+              }}
             />
             <Legend
               formatter={(value) => chartConfig[value as keyof typeof chartConfig]?.label || value}
             />
-            <Bar dataKey="base" fill="hsl(var(--muted-foreground))" opacity={0.3} barSize={10} radius={[0, 4, 4, 0]} />
+
+            {/* Today reference line */}
+            <ReferenceLine
+              x={todayTs}
+              stroke="hsl(var(--destructive))"
+              strokeWidth={2}
+              strokeDasharray="4 4"
+              label={{ value: 'Hoje', position: 'top', fill: 'hsl(var(--destructive))', fontSize: 10 }}
+            />
+
+            {/* Last measurement reference line */}
+            {lastMeasurementTs && (
+              <ReferenceLine
+                x={lastMeasurementTs}
+                stroke="hsl(var(--chart-4, 43 74% 66%))"
+                strokeWidth={2}
+                strokeDasharray="6 3"
+                label={{ value: 'Últ. medição', position: 'top', fill: 'hsl(var(--chart-4, 43 74% 66%))', fontSize: 10 }}
+              />
+            )}
+
             <Bar dataKey="previsto" fill="hsl(var(--primary))" barSize={10} radius={[0, 4, 4, 0]} />
             <Bar dataKey="realizado" fill="hsl(var(--accent))" barSize={10} radius={[0, 4, 4, 0]} />
           </ComposedChart>
