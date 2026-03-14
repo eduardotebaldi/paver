@@ -318,28 +318,70 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
     return Array.from(set).sort();
   }, [classifications]);
 
-  // Build review panels
-  const reviewByPacote = useMemo(() => {
-    const map = new Map<string, number>();
+  // Build review panels with sub-grouping
+  interface ReviewSubGroup {
+    label: string;
+    total: number;
+    items: OrcamentoItem[];
+  }
+  interface ReviewGroup {
+    label: string;
+    total: number;
+    subGroups: ReviewSubGroup[];
+  }
+
+  const reviewByPacote = useMemo((): ReviewGroup[] => {
+    const map = new Map<string, Map<string, OrcamentoItem[]>>();
     for (const item of activeItems) {
       const l3 = classifications.get(item.grupo3Codigo);
-      const label = l3?.pacoteTrabalho || 'Sem classificação';
-      map.set(label, (map.get(label) || 0) + item.precoTotal);
+      const pacote = l3?.pacoteTrabalho || 'Sem classificação';
+      const tipo = l3?.tipoServico || 'Sem classificação';
+      if (!map.has(pacote)) map.set(pacote, new Map());
+      const subMap = map.get(pacote)!;
+      if (!subMap.has(tipo)) subMap.set(tipo, []);
+      subMap.get(tipo)!.push(item);
     }
     return Array.from(map.entries())
-      .sort((a, b) => b[1] - a[1])
-      .map(([label, total]) => ({ label, total }));
+      .map(([label, subMap]) => {
+        const subGroups = Array.from(subMap.entries()).map(([subLabel, items]) => ({
+          label: subLabel,
+          total: items.reduce((s, i) => s + i.precoTotal, 0),
+          items,
+        }));
+        return {
+          label,
+          total: subGroups.reduce((s, sg) => s + sg.total, 0),
+          subGroups,
+        };
+      })
+      .sort((a, b) => b.total - a.total);
   }, [activeItems, classifications]);
 
-  const reviewByTipo = useMemo(() => {
-    const map = new Map<string, number>();
+  const reviewByTipo = useMemo((): ReviewGroup[] => {
+    const map = new Map<string, Map<string, OrcamentoItem[]>>();
     for (const item of activeItems) {
       const l3 = classifications.get(item.grupo3Codigo);
-      const label = l3?.tipoServico || 'Sem classificação';
-      map.set(label, (map.get(label) || 0) + item.precoTotal);
+      const tipo = l3?.tipoServico || 'Sem classificação';
+      const pacote = l3?.pacoteTrabalho || 'Sem classificação';
+      if (!map.has(tipo)) map.set(tipo, new Map());
+      const subMap = map.get(tipo)!;
+      if (!subMap.has(pacote)) subMap.set(pacote, []);
+      subMap.get(pacote)!.push(item);
     }
     return Array.from(map.entries())
-      .sort((a, b) => b[1] - a[1])
+      .map(([label, subMap]) => {
+        const subGroups = Array.from(subMap.entries()).map(([subLabel, items]) => ({
+          label: subLabel,
+          total: items.reduce((s, i) => s + i.precoTotal, 0),
+          items,
+        }));
+        return {
+          label,
+          total: subGroups.reduce((s, sg) => s + sg.total, 0),
+          subGroups,
+        };
+      })
+      .sort((a, b) => b.total - a.total);
       .map(([label, total]) => ({ label, total }));
   }, [activeItems, classifications]);
 
