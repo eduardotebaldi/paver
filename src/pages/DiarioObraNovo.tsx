@@ -471,8 +471,9 @@ export default function DiarioObraNovoPage() {
                               subGroups.get(subKey)!.push(item);
                             }
                             // If only one sub-group (or all empty), render flat
-                            if (subGroups.size <= 1) {
-                              return items.map(item => renderItemRow(item, true));
+                            // Only render flat if there's a single group with no classificacao
+                            if (subGroups.size === 1 && subGroups.has('')) {
+                              return items.map(item => renderItemRow(item, false));
                             }
                             return [...subGroups.entries()]
                               .sort((a, b) => a[0].localeCompare(b[0]))
