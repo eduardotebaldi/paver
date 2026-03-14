@@ -41,8 +41,6 @@ export default function DiarioObraPage() {
   };
 
   const [selectedObraId, setSelectedObraId] = useState<string>('');
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState<DiarioFormData>(emptyForm);
 
   const { data: obras = [] } = useQuery({
     queryKey: ['obras'],
@@ -96,50 +94,6 @@ export default function DiarioObraPage() {
     enabled: userIds.length > 0,
   });
 
-  const createMutation = useMutation({
-    mutationFn: async (data: DiarioFormData) => {
-      // Create the diary entry
-      const diario = await createDiario({
-        obra_id: selectedObraId,
-        data: data.data,
-        clima: data.clima_manha, // legacy field
-        clima_manha: data.clima_manha,
-        clima_tarde: data.clima_tarde,
-        mao_de_obra: data.mao_de_obra,
-        atividades: data.atividades_eap.length > 0
-          ? data.atividades_eap.map(a => {
-              const item = eapItensOnly.find(i => i.id === a.eap_item_id);
-              return `${item?.descricao || 'Item'}: ${a.avanco_percentual}%`;
-            }).join('; ')
-          : 'Sem atividades registradas',
-        observacoes: data.observacoes || undefined,
-        created_by: user!.id,
-      } as any);
-
-      // Insert atividades
-      if (data.atividades_eap.length > 0) {
-        const { error } = await supabase
-          .from('paver_diario_atividades')
-          .insert(data.atividades_eap.map(a => ({
-            diario_id: diario.id,
-            eap_item_id: a.eap_item_id,
-            avanco_percentual: a.avanco_percentual,
-          })));
-        if (error) throw error;
-      }
-
-      return diario;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['diarios', selectedObraId] });
-      queryClient.invalidateQueries({ queryKey: ['diario-atividades'] });
-      toast({ title: 'Diário registrado!' });
-      setDialogOpen(false);
-      setForm(emptyForm);
-    },
-    onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
-  });
-
   const deleteMutation = useMutation({
     mutationFn: deleteDiario,
     onSuccess: () => {
@@ -149,30 +103,6 @@ export default function DiarioObraPage() {
     },
     onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
   });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    createMutation.mutate(form);
-  };
-
-  const toggleAtividadeEap = (itemId: string) => {
-    setForm(prev => {
-      const exists = prev.atividades_eap.find(a => a.eap_item_id === itemId);
-      if (exists) {
-        return { ...prev, atividades_eap: prev.atividades_eap.filter(a => a.eap_item_id !== itemId) };
-      }
-      return { ...prev, atividades_eap: [...prev.atividades_eap, { eap_item_id: itemId, avanco_percentual: 0 }] };
-    });
-  };
-
-  const updateAtividadeAvanco = (itemId: string, value: number) => {
-    setForm(prev => ({
-      ...prev,
-      atividades_eap: prev.atividades_eap.map(a =>
-        a.eap_item_id === itemId ? { ...a, avanco_percentual: Math.min(100, Math.max(0, value)) } : a
-      ),
-    }));
-  };
 
   const ClimaIcon = ({ clima }: { clima: string }) => {
     const opt = climaOptions.find(c => c.value === clima);
