@@ -34,7 +34,7 @@ const adminItems = [
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
-  const { user, hasRole, signOut } = useAuth();
+  const { user, hasRole, signOut, userName } = useAuth();
 
   const showAdmin = hasRole('admin');
 
@@ -114,7 +114,7 @@ export function AppSidebar() {
       <SidebarFooter className="p-4 space-y-3">
         {!collapsed && user && (
           <div className="text-[11px] text-sidebar-foreground/60 font-body truncate">
-            {user.email}
+            {userName || user.email}
           </div>
         )}
         <SidebarMenuButton

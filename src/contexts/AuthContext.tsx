@@ -9,6 +9,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   roles: AppRole[];
+  userName: string | null;
   hasRole: (role: AppRole) => boolean;
   signOut: () => Promise<void>;
 }
@@ -20,7 +21,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [roles, setRoles] = useState<AppRole[]>([]);
+  const [userName, setUserName] = useState<string | null>(null);
 
+  const fetchProfile = async (userId: string) => {
+    const { data } = await supabase
+      .from('paver_profiles')
+      .select('full_name')
+      .eq('id', userId)
+      .single();
+    if (data?.full_name) setUserName(data.full_name);
+  };
   const fetchRoles = async (userId: string) => {
     const { data } = await supabase
       .from('paver_user_roles')
@@ -40,10 +50,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Defer role fetch to avoid Supabase deadlock
           setTimeout(() => fetchRoles(session.user.id), 0);
+          setTimeout(() => fetchProfile(session.user.id), 0);
         } else {
           setRoles([]);
+          setUserName(null);
         }
         setLoading(false);
       }
@@ -55,6 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchRoles(session.user.id);
+        fetchProfile(session.user.id);
       }
       setLoading(false);
     });
@@ -67,10 +79,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     await supabase.auth.signOut();
     setRoles([]);
+    setUserName(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, roles, hasRole, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, roles, userName, hasRole, signOut }}>
       {children}
     </AuthContext.Provider>
   );
