@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Loader2, CloudSun, Cloud, CloudRain, Sun, Snowflake, Trash2, ClipboardList, User, Clock, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
