@@ -409,6 +409,12 @@ export default function DiarioObraNovoPage() {
             </div>
           </div>
 
+          {/* Observações */}
+          <div className="space-y-2">
+            <Label className="font-body">Observações</Label>
+            <Textarea value={observacoes} onChange={e => setObservacoes(e.target.value)} rows={2} className="font-body" placeholder="Observações gerais sobre o dia..." />
+          </div>
+
           {/* Equipes */}
           <div className="space-y-2">
             <Label className="font-body">Equipes / Mão de Obra</Label>
@@ -420,7 +426,13 @@ export default function DiarioObraNovoPage() {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <CardTitle className="font-heading text-base">Atividades Executadas (EAP)</CardTitle>
-                {selectedCount > 0 && <Badge variant="secondary" className="font-body">{selectedCount} atividade(s) selecionada(s)</Badge>}
+                <div className="flex items-center gap-2">
+                  {selectedCount > 0 && <Badge variant="secondary" className="font-body">{selectedCount} atividade(s) selecionada(s)</Badge>}
+                  <Button type="button" variant="outline" size="sm" onClick={() => navigate('/diario-obra')} className="font-body">Cancelar</Button>
+                  <Button type="button" size="sm" onClick={handleNext} disabled={!selectedObraId} className="bg-accent text-accent-foreground hover:bg-accent/90 font-body">
+                    Próximo: Fotos <ArrowRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </div>
               </div>
               <p className="text-xs text-muted-foreground font-body">
                 Selecione os itens executados. Informe a quantidade do dia — o percentual é calculado automaticamente.
@@ -460,20 +472,6 @@ export default function DiarioObraNovoPage() {
               )}
             </CardContent>
           </Card>
-
-          {/* Observações */}
-          <div className="space-y-2">
-            <Label className="font-body">Observações</Label>
-            <Textarea value={observacoes} onChange={e => setObservacoes(e.target.value)} rows={2} className="font-body" placeholder="Observações gerais sobre o dia..." />
-          </div>
-
-          {/* Actions */}
-          <div className="flex justify-end gap-3 pb-8">
-            <Button type="button" variant="outline" onClick={() => navigate('/diario-obra')} className="font-body">Cancelar</Button>
-            <Button type="button" onClick={handleNext} disabled={!selectedObraId} className="bg-accent text-accent-foreground hover:bg-accent/90 font-body">
-              Próximo: Fotos <ArrowRight className="h-4 w-4 ml-2" />
-            </Button>
-          </div>
         </div>
       ) : (
         /* ═══ STEP 2: Photos ═══ */
