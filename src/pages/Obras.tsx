@@ -181,10 +181,6 @@ export default function Obras() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label className="font-body">Endereço</Label>
-                  <Input value={form.endereco} onChange={e => setForm({ ...form, endereco: e.target.value })} className="font-body" />
-                </div>
-                <div className="space-y-2">
                   <Label className="font-body">Status</Label>
                   <Select value={form.status} onValueChange={v => setForm({ ...form, status: v })}>
                     <SelectTrigger className="font-body"><SelectValue /></SelectTrigger>
