@@ -1404,6 +1404,122 @@ export type Database = {
         }
         Relationships: []
       }
+      paver_orcamento_itens: {
+        Row: {
+          codigo: string
+          codigo_pai_n1: string | null
+          codigo_pai_n2: string | null
+          codigo_pai_n3: string | null
+          created_at: string
+          descricao: string
+          id: string
+          nivel: number
+          obra_id: string
+          orcamento_id: string
+          ordem: number
+          pacote_trabalho: string | null
+          preco_total: number
+          preco_unitario: number
+          quantidade: number
+          tipo_servico: string | null
+          unidade: string | null
+        }
+        Insert: {
+          codigo: string
+          codigo_pai_n1?: string | null
+          codigo_pai_n2?: string | null
+          codigo_pai_n3?: string | null
+          created_at?: string
+          descricao: string
+          id?: string
+          nivel?: number
+          obra_id: string
+          orcamento_id: string
+          ordem?: number
+          pacote_trabalho?: string | null
+          preco_total?: number
+          preco_unitario?: number
+          quantidade?: number
+          tipo_servico?: string | null
+          unidade?: string | null
+        }
+        Update: {
+          codigo?: string
+          codigo_pai_n1?: string | null
+          codigo_pai_n2?: string | null
+          codigo_pai_n3?: string | null
+          created_at?: string
+          descricao?: string
+          id?: string
+          nivel?: number
+          obra_id?: string
+          orcamento_id?: string
+          ordem?: number
+          pacote_trabalho?: string | null
+          preco_total?: number
+          preco_unitario?: number
+          quantidade?: number
+          tipo_servico?: string | null
+          unidade?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paver_orcamento_itens_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "paver_obras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "paver_orcamento_itens_orcamento_id_fkey"
+            columns: ["orcamento_id"]
+            isOneToOne: false
+            referencedRelation: "paver_orcamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      paver_orcamentos: {
+        Row: {
+          arquivo_url: string | null
+          created_at: string
+          created_by: string
+          id: string
+          nome_arquivo: string | null
+          obra_id: string
+          total_itens: number
+          valor_total: number
+        }
+        Insert: {
+          arquivo_url?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          nome_arquivo?: string | null
+          obra_id: string
+          total_itens?: number
+          valor_total?: number
+        }
+        Update: {
+          arquivo_url?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          nome_arquivo?: string | null
+          obra_id?: string
+          total_itens?: number
+          valor_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paver_orcamentos_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "paver_obras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       paver_plantas: {
         Row: {
           created_at: string | null
