@@ -505,6 +505,7 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
     setHeaderLine([]);
     setImportSuccess(false);
     setEnabledSections(new Set());
+    setDisabledItems(new Set());
     setExpandedSections(new Set());
     setClassifications(new Map());
     setDragOver(false);
