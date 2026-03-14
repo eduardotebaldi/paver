@@ -136,8 +136,34 @@ export function parseCsvOrcamento(csvText: string): ParsedOrcamento {
     }
   }
 
-  // Second pass: auto-generate missing level 3 groups for items whose L3 prefix doesn't exist
+  // Second pass: auto-generate missing level 2 AND level 3 groups
   const existingGroupCodes = new Set(groups.map(g => g.codigo));
+
+  // 2a: Synthesize missing L2 groups from L3 groups or items
+  const syntheticL2 = new Map<string, OrcamentoGroup>();
+  for (const g of groups) {
+    if (g.nivel === 3) {
+      const l2Code = g.codigo.split('.').slice(0, 2).join('.');
+      if (!existingGroupCodes.has(l2Code) && !syntheticL2.has(l2Code)) {
+        const l1Code = g.codigo.split('.')[0];
+        const l1Group = groups.find(gg => gg.codigo === l1Code);
+        const desc = l1Group ? l1Group.descricao : 'Serviços';
+        syntheticL2.set(l2Code, {
+          codigo: l2Code,
+          descricao: desc,
+          nivel: 2,
+          grupoTipo: 'tipo_servico',
+          precoTotal: 0,
+        });
+      }
+    }
+  }
+  for (const g of syntheticL2.values()) {
+    groups.push(g);
+    existingGroupCodes.add(g.codigo);
+  }
+
+  // 2b: Synthesize missing L3 groups from items
   const syntheticL3 = new Map<string, OrcamentoGroup>();
 
   for (const item of items) {
@@ -171,7 +197,7 @@ export function parseCsvOrcamento(csvText: string): ParsedOrcamento {
     }
   }
 
-  // Add synthetic groups
+  // Add synthetic L3 groups
   for (const g of syntheticL3.values()) {
     groups.push(g);
   }
