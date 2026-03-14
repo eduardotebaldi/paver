@@ -249,7 +249,7 @@ export default function DiarioObraNovoPage() {
   const handleSubmit = () => saveMutation.mutate();
 
   // Render a single EAP item row with hierarchy breadcrumb
-  const renderItemRow = (item: EapItem) => {
+  const renderItemRow = (item: EapItem, hideClassification = false) => {
     const selected = atividades.get(item.id);
     const currentPercent = item.avanco_realizado || 0;
     const totalQtd = item.quantidade || 0;
