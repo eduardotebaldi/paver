@@ -79,6 +79,7 @@ export default function ObraDetalhe() {
   const queryClient = useQueryClient();
   const { hasRole } = useAuth();
   const canEdit = hasRole('admin') || hasRole('engenharia');
+  const isAdmin = hasRole('admin');
   const fileRef = useRef<HTMLInputElement>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [groupMode, setGroupMode] = useState<GroupMode>('pacote');
@@ -299,6 +300,10 @@ export default function ObraDetalhe() {
                       <Link2 className="h-4 w-4 mr-1.5" />
                       Recalcular
                     </Button>
+                  </div>
+                )}
+                {isAdmin && (
+                  <div className="flex gap-2">
                     <Button
                       variant="default"
                       size="sm"
@@ -402,7 +407,7 @@ export default function ObraDetalhe() {
                                           {(item.avanco_realizado || 0).toFixed(0)}%
                                         </span>
                                       </div>
-                                      {canEdit && (
+                                      {isAdmin && (
                                         <Button
                                           variant="ghost"
                                           size="icon"
