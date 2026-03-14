@@ -89,6 +89,8 @@ export default function DiarioObraNovoPage() {
   const [skipConfirming, setSkipConfirming] = useState(false);
   const [skipCountdown, setSkipCountdown] = useState(10);
   const skipTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [dxfData, setDxfData] = useState<DxfSvgData | null>(null);
+  const [dxfLoading, setDxfLoading] = useState(false);
 
   const { data: obras = [] } = useQuery({ queryKey: ['obras'], queryFn: fetchObras });
   const { data: eapItems = [] } = useQuery({
