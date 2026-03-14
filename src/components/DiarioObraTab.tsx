@@ -64,6 +64,31 @@ export default function DiarioObraTab({ obraId }: DiarioObraTabProps) {
     queryFn: () => fetchDiarios(obraId),
   });
 
+  // Fetch profile names for created_by users
+  const userIds = [...new Set(diarios.map(d => d.created_by).filter(Boolean))];
+  const { data: profilesMap = {} } = useQuery({
+    queryKey: ['paver-profiles', userIds],
+    queryFn: async () => {
+      if (userIds.length === 0) return {};
+      const { data } = await supabase
+        .from('paver_profiles')
+        .select('id, full_name')
+        .in('id', userIds);
+      const map: Record<string, string> = {};
+      (data || []).forEach((p: any) => { map[p.id] = p.full_name || 'Sem nome'; });
+      return map;
+    },
+    enabled: userIds.length > 0,
+  });
+
+  const formatCreatedAt = (dateStr: string) => {
+    const d = new Date(dateStr);
+    return d.toLocaleString('pt-BR', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    });
+  };
+
   const createMutation = useMutation({
     mutationFn: (data: DiarioFormData) => createDiario({
       obra_id: obraId,
