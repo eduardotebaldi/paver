@@ -1748,6 +1748,7 @@ export type Database = {
       }
       paver_profiles: {
         Row: {
+          ativo: boolean
           avatar_url: string | null
           created_at: string | null
           full_name: string | null
@@ -1755,6 +1756,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          ativo?: boolean
           avatar_url?: string | null
           created_at?: string | null
           full_name?: string | null
@@ -1762,6 +1764,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          ativo?: boolean
           avatar_url?: string | null
           created_at?: string | null
           full_name?: string | null
