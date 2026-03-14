@@ -286,7 +286,7 @@ import {
   Tooltip,
   Rectangle,
 } from 'recharts';
-import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+
 
 const chartConfig: ChartConfig = {
   previsto: { label: 'Previsto', color: 'hsl(var(--primary))' },
