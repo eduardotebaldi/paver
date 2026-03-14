@@ -539,7 +539,7 @@ function PlantaViewer({
                 <input
                   ref={fotoInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/*,video/*"
                   className="hidden"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
@@ -557,7 +557,7 @@ function PlantaViewer({
                   ) : (
                     <Camera className="h-4 w-4 mr-2" />
                   )}
-                  Selecionar Foto
+                  Selecionar Foto / Vídeo
                 </Button>
                 <Button
                   variant="ghost"
@@ -599,11 +599,19 @@ function PlantaViewer({
                   </Button>
                 </div>
               </div>
-              <img
-                src={selectedFoto.foto_url}
-                alt={selectedFoto.descricao || 'Foto'}
-                className="w-full max-h-96 object-contain rounded-lg border border-border"
-              />
+              {selectedFoto.foto_url.match(/\.(mp4|mov|webm|avi)(\?|$)/i) ? (
+                <video
+                  src={selectedFoto.foto_url}
+                  controls
+                  className="w-full max-h-96 rounded-lg border border-border"
+                />
+              ) : (
+                <img
+                  src={selectedFoto.foto_url}
+                  alt={selectedFoto.descricao || 'Foto'}
+                  className="w-full max-h-96 object-contain rounded-lg border border-border"
+                />
+              )}
             </CardContent>
           </Card>
         )}
@@ -616,12 +624,21 @@ function PlantaViewer({
               {fotos.map((foto) => (
                 <div key={foto.id} className="group relative border border-border rounded-lg overflow-hidden">
                   <div className="aspect-square bg-muted">
-                    <img
-                      src={foto.foto_url}
-                      alt={foto.descricao || 'Foto'}
-                      className="w-full h-full object-cover cursor-pointer"
-                      onClick={() => { setSelectedFoto(foto); setPendingPin(null); }}
-                    />
+                    {foto.foto_url.match(/\.(mp4|mov|webm|avi)(\?|$)/i) ? (
+                      <video
+                        src={foto.foto_url}
+                        className="w-full h-full object-cover cursor-pointer"
+                        muted
+                        onClick={() => { setSelectedFoto(foto); setPendingPin(null); }}
+                      />
+                    ) : (
+                      <img
+                        src={foto.foto_url}
+                        alt={foto.descricao || 'Foto'}
+                        className="w-full h-full object-cover cursor-pointer"
+                        onClick={() => { setSelectedFoto(foto); setPendingPin(null); }}
+                      />
+                    )}
                   </div>
                   {canModifyFoto(foto) && (
                     <button
