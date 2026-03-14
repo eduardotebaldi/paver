@@ -8,7 +8,7 @@
  *   4 levels (e.g. "3.001.001.001") → Actual service item
  */
 
-export type GrupoTipo = 'tipo_servico' | 'pacote_trabalho';
+export type GrupoTipo = 'tipo_servico' | 'pacote_trabalho' | 'nenhum';
 
 export interface OrcamentoGroup {
   codigo: string;
