@@ -114,7 +114,10 @@ export default function DiarioObraTab({ obraId }: DiarioObraTabProps) {
     mutationFn: deleteDiario,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['diarios', obraId] });
-      toast({ title: 'Diário excluído' });
+      queryClient.invalidateQueries({ queryKey: ['eap'] });
+      queryClient.invalidateQueries({ queryKey: ['eap-all'] });
+      queryClient.invalidateQueries({ queryKey: ['eap-items-balance'] });
+      toast({ title: 'Diário excluído e avanço recalculado' });
     },
     onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
   });

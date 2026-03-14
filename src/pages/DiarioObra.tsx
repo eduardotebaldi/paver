@@ -112,7 +112,10 @@ export default function DiarioObraPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['diarios', selectedObraId] });
       queryClient.invalidateQueries({ queryKey: ['diario-atividades'] });
-      toast({ title: 'Diário excluído' });
+      queryClient.invalidateQueries({ queryKey: ['eap'] });
+      queryClient.invalidateQueries({ queryKey: ['eap-all'] });
+      queryClient.invalidateQueries({ queryKey: ['eap-items-balance'] });
+      toast({ title: 'Diário excluído e avanço recalculado' });
     },
     onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
   });

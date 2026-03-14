@@ -190,8 +190,51 @@ export async function updateDiario(id: string, updates: Partial<DiarioObra>) {
 }
 
 export async function deleteDiario(id: string) {
+  // 1. Get all atividades for this diário before deleting
+  const { data: atividades } = await supabase
+    .from('paver_diario_atividades')
+    .select('eap_item_id')
+    .eq('diario_id', id);
+
+  const affectedItemIds = [...new Set((atividades || []).map((a: any) => a.eap_item_id))];
+
+  // 2. Delete the diário (cascades to paver_diario_atividades)
   const { error } = await supabase.from('paver_diarios').delete().eq('id', id);
   if (error) throw error;
+
+  // 3. Recalculate avanco_realizado for each affected EAP item
+  for (const itemId of affectedItemIds) {
+    // Get the EAP item's total quantity
+    const { data: eapItem } = await supabase
+      .from('paver_eap_items')
+      .select('quantidade')
+      .eq('id', itemId)
+      .single();
+
+    // Sum remaining quantidade_dia from all other diários
+    const { data: remaining } = await supabase
+      .from('paver_diario_atividades')
+      .select('quantidade_dia')
+      .eq('eap_item_id', itemId);
+
+    const totalQtd = eapItem?.quantidade || 0;
+    const sumQtdDia = (remaining || []).reduce((sum: number, r: any) => sum + (r.quantidade_dia || 0), 0);
+    const newAvanco = totalQtd > 0
+      ? Math.min(100, Math.round((sumQtdDia / totalQtd) * 10000) / 100)
+      : 0;
+
+    const updateFields: Record<string, any> = { avanco_realizado: newAvanco };
+
+    // Reset data_inicio_real if no more measurements
+    if (sumQtdDia === 0) {
+      updateFields.data_inicio_real = null;
+      updateFields.data_fim_real = null;
+    } else if (newAvanco < 100) {
+      updateFields.data_fim_real = null;
+    }
+
+    await supabase.from('paver_eap_items').update(updateFields).eq('id', itemId);
+  }
 }
 
 // === PROFILES & ROLES (admin) ===
