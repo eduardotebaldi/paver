@@ -1,14 +1,13 @@
 import { useState, useMemo, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Loader2, Plus, Trash2, FolderTree, Layers, ArrowRight } from 'lucide-react';
+import { Loader2, Plus, Trash2, FolderTree, Layers, ArrowRight, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { fetchEapItems } from '@/services/api';
+import { fetchObras, fetchEapItems } from '@/services/api';
 import {
   fetchDependencyRules,
   createDependencyRule,
@@ -20,15 +19,21 @@ import {
 type TabType = 'servico_em_pacote' | 'pacote_em_servico';
 
 export default function Dependencias() {
-  const { id: obraId } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
+  const [selectedObraId, setSelectedObraId] = useState<string>('');
   const [activeTab, setActiveTab] = useState<TabType>('servico_em_pacote');
   const [newPred, setNewPred] = useState('');
   const [newSucc, setNewSucc] = useState('');
+
+  const { data: obras = [] } = useQuery({
+    queryKey: ['obras'],
+    queryFn: fetchObras,
+  });
+
+  const obraId = selectedObraId || undefined;
 
   const { data: eapItems = [], isLoading: loadingEap } = useQuery({
     queryKey: ['eap', obraId],
