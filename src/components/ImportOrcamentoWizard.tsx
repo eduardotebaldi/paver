@@ -112,6 +112,41 @@ function AutocompleteInput({
   );
 }
 
+/** Collapsible description that shows the cleaned name + original full description */
+function CollapsibleDescription({
+  cleanedName,
+  originalDesc,
+}: {
+  cleanedName: string;
+  originalDesc: string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  // Only show the collapsible part if the original differs from the cleaned name
+  const hasExtra = originalDesc !== cleanedName && originalDesc.length > 0;
+
+  return (
+    <span className="text-xs">
+      <span>{cleanedName}</span>
+      {hasExtra && (
+        <>
+          {' '}
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+            title={expanded ? 'Recolher' : 'Ver descrição completa'}
+          >
+            {expanded ? (
+              <span className="italic text-muted-foreground/60">({originalDesc})</span>
+            ) : (
+              <span className="text-[10px]">(...)</span>
+            )}
+          </button>
+        </>
+      )}
+    </span>
+  );
+}
+
 export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onImportComplete }: Props) {
   const [step, setStep] = useState<Step>('upload');
   const [parsed, setParsed] = useState<ParsedOrcamento | null>(null);
