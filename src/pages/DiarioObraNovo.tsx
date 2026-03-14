@@ -65,6 +65,7 @@ export default function DiarioObraNovoPage() {
   const [observacoes, setObservacoes] = useState('');
   const [atividades, setAtividades] = useState<Map<string, AtividadeEntry>>(new Map());
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [expandedSubGroups, setExpandedSubGroups] = useState<Set<string>>(new Set());
   const [groupMode, setGroupMode] = useState<GroupMode>('pacote');
   const [filterText, setFilterText] = useState('');
   const [fotos, setFotos] = useState<FotoDiario[]>([]);
