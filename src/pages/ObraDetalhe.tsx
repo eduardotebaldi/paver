@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { fetchObra, fetchEapItems, insertEapItems, deleteEapItemsByObra, EapItem } from '@/services/api';
 import { parseEapExcel } from '@/lib/eapParser';
 import DiarioObraTab from '@/components/DiarioObraTab';
+import RelatorioFotograficoTab from '@/components/RelatorioFotograficoTab';
 
 export default function ObraDetalhe() {
   const { id } = useParams<{ id: string }>();

@@ -1,0 +1,397 @@
+import { useState, useRef, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { MapPin, Upload, Loader2, Image, Trash2, X, Plus, Camera } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import {
+  fetchPlantas,
+  createPlanta,
+  deletePlanta,
+  fetchFotosLocalizadas,
+  createFotoLocalizada,
+  deleteFotoLocalizada,
+  uploadFile,
+  PlantaObra,
+  FotoLocalizada,
+} from '@/services/api';
+
+interface Props {
+  obraId: string;
+}
+
+export default function RelatorioFotograficoTab({ obraId }: Props) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { user, hasRole } = useAuth();
+  const canEdit = hasRole('admin') || hasRole('engenharia');
+  const [selectedPlanta, setSelectedPlanta] = useState<PlantaObra | null>(null);
+
+  const { data: plantas = [], isLoading } = useQuery({
+    queryKey: ['plantas', obraId],
+    queryFn: () => fetchPlantas(obraId),
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-heading font-semibold text-foreground">
+          Relatório Fotográfico
+        </h3>
+        {canEdit && <UploadPlantaButton obraId={obraId} />}
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-8">
+          <Loader2 className="h-6 w-6 animate-spin text-accent" />
+        </div>
+      ) : plantas.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <Image className="h-10 w-10 text-muted-foreground/40 mb-3" />
+            <p className="text-sm text-muted-foreground font-body">
+              Nenhuma planta cadastrada. Faça upload de uma planta para começar a marcar fotos.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+          {plantas.map((planta) => (
+            <Card
+              key={planta.id}
+              className="cursor-pointer hover:border-accent/50 transition-colors"
+              onClick={() => setSelectedPlanta(planta)}
+            >
+              <CardContent className="p-3">
+                <div className="aspect-video bg-muted rounded overflow-hidden mb-2">
+                  <img
+                    src={planta.imagem_url}
+                    alt={planta.nome}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <p className="text-sm font-heading font-medium truncate">{planta.nome}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {selectedPlanta && (
+        <PlantaViewer
+          planta={selectedPlanta}
+          obraId={obraId}
+          canEdit={canEdit}
+          onClose={() => setSelectedPlanta(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function UploadPlantaButton({ obraId }: { obraId: string }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [nome, setNome] = useState('');
+  const [open, setOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  const handleUpload = async () => {
+    if (!selectedFile || !nome.trim()) return;
+    setUploading(true);
+    try {
+      const ext = selectedFile.name.split('.').pop();
+      const path = `plantas/${obraId}/${Date.now()}.${ext}`;
+      const url = await uploadFile('paver-fotos', path, selectedFile);
+      await createPlanta({ obra_id: obraId, nome: nome.trim(), imagem_url: url });
+      queryClient.invalidateQueries({ queryKey: ['plantas', obraId] });
+      toast({ title: 'Planta adicionada!' });
+      setOpen(false);
+      setNome('');
+      setSelectedFile(null);
+    } catch (err: any) {
+      toast({ title: 'Erro ao enviar planta', description: err.message, variant: 'destructive' });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" className="font-body">
+          <Plus className="h-4 w-4 mr-2" />
+          Nova Planta
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="font-heading">Adicionar Planta</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <Input
+            placeholder="Nome da planta (ex: Térreo, 1º Pavimento)"
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+            className="font-body"
+          />
+          <div>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+            />
+            <Button
+              variant="outline"
+              className="w-full font-body"
+              onClick={() => fileRef.current?.click()}
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              {selectedFile ? selectedFile.name : 'Selecionar imagem'}
+            </Button>
+          </div>
+          <Button
+            className="w-full font-body"
+            onClick={handleUpload}
+            disabled={uploading || !selectedFile || !nome.trim()}
+          >
+            {uploading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+            Enviar
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function PlantaViewer({
+  planta,
+  obraId,
+  canEdit,
+  onClose,
+}: {
+  planta: PlantaObra;
+  obraId: string;
+  canEdit: boolean;
+  onClose: () => void;
+}) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const fotoInputRef = useRef<HTMLInputElement>(null);
+  const [pendingPin, setPendingPin] = useState<{ x: number; y: number } | null>(null);
+  const [descricao, setDescricao] = useState('');
+  const [selectedFoto, setSelectedFoto] = useState<FotoLocalizada | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const { data: fotos = [] } = useQuery({
+    queryKey: ['fotos-localizadas', planta.id],
+    queryFn: () => fetchFotosLocalizadas(planta.id),
+  });
+
+  const handleImageClick = useCallback(
+    (e: React.MouseEvent<HTMLImageElement>) => {
+      if (!canEdit) return;
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width) * 100;
+      const y = ((e.clientY - rect.top) / rect.height) * 100;
+      setPendingPin({ x, y });
+      setDescricao('');
+      setSelectedFoto(null);
+    },
+    [canEdit]
+  );
+
+  const handleSaveFoto = async (file: File) => {
+    if (!pendingPin || !user) return;
+    setUploading(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const path = `fotos/${obraId}/${Date.now()}.${ext}`;
+      const url = await uploadFile('paver-fotos', path, file);
+      await createFotoLocalizada({
+        planta_id: planta.id,
+        obra_id: obraId,
+        foto_url: url,
+        descricao: descricao || undefined,
+        pos_x: pendingPin.x,
+        pos_y: pendingPin.y,
+        created_by: user.id,
+      });
+      queryClient.invalidateQueries({ queryKey: ['fotos-localizadas', planta.id] });
+      toast({ title: 'Foto registrada!' });
+      setPendingPin(null);
+      setDescricao('');
+    } catch (err: any) {
+      toast({ title: 'Erro ao salvar foto', description: err.message, variant: 'destructive' });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDeleteFoto = async (id: string) => {
+    try {
+      await deleteFotoLocalizada(id);
+      queryClient.invalidateQueries({ queryKey: ['fotos-localizadas', planta.id] });
+      setSelectedFoto(null);
+      toast({ title: 'Foto removida' });
+    } catch (err: any) {
+      toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+    }
+  };
+
+  return (
+    <Dialog open onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="font-heading flex items-center gap-2">
+            <MapPin className="h-5 w-5 text-accent" />
+            {planta.nome}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="relative" ref={containerRef}>
+          <div className="relative inline-block w-full">
+            <img
+              src={planta.imagem_url}
+              alt={planta.nome}
+              className={`w-full rounded-lg border border-border ${canEdit ? 'cursor-crosshair' : ''}`}
+              onClick={handleImageClick}
+              draggable={false}
+            />
+
+            {/* Existing pins */}
+            {fotos.map((foto) => (
+              <button
+                key={foto.id}
+                className={`absolute w-6 h-6 -ml-3 -mt-6 transition-transform hover:scale-125 ${
+                  selectedFoto?.id === foto.id ? 'scale-125 z-20' : 'z-10'
+                }`}
+                style={{ left: `${foto.pos_x}%`, top: `${foto.pos_y}%` }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedFoto(foto);
+                  setPendingPin(null);
+                }}
+                title={foto.descricao || 'Foto'}
+              >
+                <MapPin className="h-6 w-6 text-accent drop-shadow-md fill-accent/30" />
+              </button>
+            ))}
+
+            {/* Pending pin */}
+            {pendingPin && (
+              <div
+                className="absolute w-6 h-6 -ml-3 -mt-6 z-20 animate-bounce"
+                style={{ left: `${pendingPin.x}%`, top: `${pendingPin.y}%` }}
+              >
+                <MapPin className="h-6 w-6 text-primary drop-shadow-md fill-primary/30" />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Pending pin form */}
+        {pendingPin && canEdit && (
+          <Card className="border-accent/30">
+            <CardContent className="pt-4 space-y-3">
+              <p className="text-sm font-body text-muted-foreground">
+                Marque uma foto neste ponto ({pendingPin.x.toFixed(0)}%, {pendingPin.y.toFixed(0)}%)
+              </p>
+              <Textarea
+                placeholder="Descrição (opcional)"
+                value={descricao}
+                onChange={(e) => setDescricao(e.target.value)}
+                className="font-body"
+                rows={2}
+              />
+              <div className="flex gap-2">
+                <input
+                  ref={fotoInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleSaveFoto(file);
+                    e.target.value = '';
+                  }}
+                />
+                <Button
+                  onClick={() => fotoInputRef.current?.click()}
+                  disabled={uploading}
+                  className="font-body"
+                >
+                  {uploading ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Camera className="h-4 w-4 mr-2" />
+                  )}
+                  Selecionar Foto
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => setPendingPin(null)}
+                  className="font-body"
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Selected foto detail */}
+        {selectedFoto && (
+          <Card>
+            <CardContent className="pt-4 space-y-3">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm font-heading font-medium">
+                    {selectedFoto.descricao || 'Sem descrição'}
+                  </p>
+                  <p className="text-xs text-muted-foreground font-body">
+                    {new Date(selectedFoto.created_at).toLocaleDateString('pt-BR')}
+                  </p>
+                </div>
+                <div className="flex gap-1">
+                  {canEdit && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDeleteFoto(selectedFoto.id)}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  )}
+                  <Button variant="ghost" size="icon" onClick={() => setSelectedFoto(null)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <img
+                src={selectedFoto.foto_url}
+                alt={selectedFoto.descricao || 'Foto'}
+                className="w-full max-h-96 object-contain rounded-lg border border-border"
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        <p className="text-xs text-muted-foreground font-body">
+          {fotos.length} foto(s) marcada(s) nesta planta
+          {canEdit && ' • Clique na imagem para marcar uma nova foto'}
+        </p>
+      </DialogContent>
+    </Dialog>
+  );
+}
