@@ -216,7 +216,7 @@ export async function fetchAllUsers(): Promise<UserWithRole[]> {
 export async function assignRole(userId: string, role: string) {
   const { error } = await supabase
     .from('paver_user_roles')
-    .insert({ user_id: userId, role });
+    .insert({ user_id: userId, role: role as any });
   if (error) throw error;
 }
 
