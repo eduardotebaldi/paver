@@ -311,6 +311,8 @@ function PlantaViewer({
       toast({ title: 'Foto registrada!' });
       setPendingPin(null);
       setDescricao('');
+      setFotoPacote('');
+      setFotoTipoServico('');
     } catch (err: any) {
       toast({ title: 'Erro ao salvar foto', description: err.message, variant: 'destructive' });
     } finally {
