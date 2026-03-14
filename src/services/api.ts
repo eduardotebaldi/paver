@@ -225,7 +225,7 @@ export async function removeRole(userId: string, role: string) {
     .from('paver_user_roles')
     .delete()
     .eq('user_id', userId)
-    .eq('role', role);
+    .eq('role', role as any);
   if (error) throw error;
 }
 

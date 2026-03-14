@@ -366,6 +366,7 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, onImport, im
                                       <SelectContent>
                                         <SelectItem value="tipo_servico" className="text-xs">Tipo de Serviço</SelectItem>
                                         <SelectItem value="pacote_trabalho" className="text-xs">Pacote de Trabalho</SelectItem>
+                                        <SelectItem value="nenhum" className="text-xs">Não Classificar</SelectItem>
                                       </SelectContent>
                                     </Select>
 
