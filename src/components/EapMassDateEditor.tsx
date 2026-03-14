@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Calendar, ArrowRight } from 'lucide-react';
+import { Loader2, Calendar, ChevronDown, ChevronRight, FolderTree, Layers, ChevronsUpDown } from 'lucide-react';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import type { EapItem } from '@/services/api';
 
@@ -20,9 +20,36 @@ interface Props {
   onSave: (changes: { id: string; updates: Partial<EapItem> }[]) => Promise<void>;
 }
 
+type GroupMode = 'pacote' | 'servico';
+
+interface GroupedData {
+  key: string;
+  label: string;
+  items: EapItem[];
+}
+
+function buildGroups(items: EapItem[], mode: GroupMode): GroupedData[] {
+  const editableItems = items.filter(i => i.tipo === 'item').sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+  const map = new Map<string, EapItem[]>();
+
+  for (const item of editableItems) {
+    const key = mode === 'pacote'
+      ? (item.pacote || 'Sem pacote')
+      : (item.lote || 'Sem classificação');
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(item);
+  }
+
+  return Array.from(map.entries()).map(([key, items]) => ({ key, label: key, items }));
+}
+
 export default function EapMassDateEditor({ open, onOpenChange, items, onSave }: Props) {
   const [saving, setSaving] = useState(false);
   const [changes, setChanges] = useState<Map<string, DateChange>>(new Map());
+  const [groupMode, setGroupMode] = useState<GroupMode>('pacote');
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+
+  const groups = useMemo(() => buildGroups(items, groupMode), [items, groupMode]);
 
   const editableItems = useMemo(() =>
     items.filter(i => i.tipo === 'item').sort((a, b) => (a.ordem || 0) - (b.ordem || 0)),
@@ -65,7 +92,6 @@ export default function EapMassDateEditor({ open, onOpenChange, items, onSave }:
     }
   };
 
-  // Apply offset to all visible items
   const [offsetDays, setOffsetDays] = useState<string>('');
 
   const applyOffset = () => {
@@ -91,6 +117,28 @@ export default function EapMassDateEditor({ open, onOpenChange, items, onSave }:
     setChanges(next);
   };
 
+  const toggleGroup = (key: string) => {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (collapsedGroups.size === groups.length) {
+      setCollapsedGroups(new Set());
+    } else {
+      setCollapsedGroups(new Set(groups.map(g => g.key)));
+    }
+  };
+
+  const switchGroupMode = (mode: GroupMode) => {
+    setGroupMode(mode);
+    setCollapsedGroups(new Set());
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[80vh] flex flex-col">
@@ -104,28 +152,63 @@ export default function EapMassDateEditor({ open, onOpenChange, items, onSave }:
           </DialogTitle>
         </DialogHeader>
 
-        {/* Offset tool */}
-        <div className="flex items-center gap-2 p-3 rounded-md bg-muted/50 border border-border">
-          <span className="text-xs text-muted-foreground font-body">Deslocar todas as datas em</span>
-          <Input
-            type="number"
-            value={offsetDays}
-            onChange={e => setOffsetDays(e.target.value)}
-            className="w-20 h-8 text-sm"
-            placeholder="0"
-          />
-          <span className="text-xs text-muted-foreground font-body">dias</span>
-          <Button size="sm" variant="secondary" onClick={applyOffset} className="font-body h-8">
-            Aplicar
+        {/* Toolbar */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Group mode toggle */}
+          <div className="flex items-center rounded-md border border-border overflow-hidden">
+            <button
+              onClick={() => switchGroupMode('pacote')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-body transition-colors ${
+                groupMode === 'pacote'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-background text-muted-foreground hover:bg-muted'
+              }`}
+            >
+              <FolderTree className="h-3.5 w-3.5" />
+              Pacote
+            </button>
+            <button
+              onClick={() => switchGroupMode('servico')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-body transition-colors ${
+                groupMode === 'servico'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-background text-muted-foreground hover:bg-muted'
+              }`}
+            >
+              <Layers className="h-3.5 w-3.5" />
+              Serviço
+            </button>
+          </div>
+
+          <Button variant="ghost" size="sm" onClick={toggleAll} className="font-body h-8 text-xs">
+            <ChevronsUpDown className="h-3.5 w-3.5 mr-1" />
+            {collapsedGroups.size === groups.length ? 'Expandir' : 'Recolher'}
           </Button>
+
+          <div className="flex-1" />
+
+          {/* Offset tool */}
+          <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50 border border-border">
+            <span className="text-xs text-muted-foreground font-body">Deslocar</span>
+            <Input
+              type="number"
+              value={offsetDays}
+              onChange={e => setOffsetDays(e.target.value)}
+              className="w-16 h-7 text-xs"
+              placeholder="0"
+            />
+            <span className="text-xs text-muted-foreground font-body">dias</span>
+            <Button size="sm" variant="secondary" onClick={applyOffset} className="font-body h-7 text-xs">
+              Aplicar
+            </Button>
+          </div>
         </div>
 
-        {/* Table */}
+        {/* Grouped Table */}
         <div className="flex-1 overflow-auto min-h-0">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="font-body text-xs w-12">#</TableHead>
                 <TableHead className="font-body text-xs">Item</TableHead>
                 <TableHead className="font-body text-xs w-40">Início Previsto</TableHead>
                 <TableHead className="font-body text-xs w-40">Fim Previsto</TableHead>
@@ -133,42 +216,75 @@ export default function EapMassDateEditor({ open, onOpenChange, items, onSave }:
               </TableRow>
             </TableHeader>
             <TableBody>
-              {editableItems.map((item, idx) => {
-                const inicio = getDate(item, 'data_inicio_prevista');
-                const fim = getDate(item, 'data_fim_prevista');
-                const duration = inicio && fim
-                  ? Math.round((new Date(fim).getTime() - new Date(inicio).getTime()) / (1000 * 60 * 60 * 24))
-                  : null;
-                const isChanged = changes.has(item.id);
+              {groups.map((group) => {
+                const isCollapsed = collapsedGroups.has(group.key);
+                const groupChangedCount = group.items.filter(i => changes.has(i.id)).length;
+
                 return (
-                  <TableRow key={item.id} className={isChanged ? 'bg-accent/10' : ''}>
-                    <TableCell className="text-xs text-muted-foreground font-body">{idx + 1}</TableCell>
-                    <TableCell className="text-xs font-body">
-                      <div className="flex items-center gap-1.5">
-                        {item.codigo && <span className="text-muted-foreground">{item.codigo}</span>}
-                        <span className="truncate max-w-[250px]">{item.descricao}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        type="date"
-                        value={inicio}
-                        onChange={e => updateDate(item.id, 'data_inicio_prevista', e.target.value)}
-                        className="h-7 text-xs"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        type="date"
-                        value={fim}
-                        onChange={e => updateDate(item.id, 'data_fim_prevista', e.target.value)}
-                        className="h-7 text-xs"
-                      />
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground text-center font-body">
-                      {duration !== null ? `${duration}d` : '-'}
-                    </TableCell>
-                  </TableRow>
+                  <>{/* Fragment for group */}
+                    <TableRow
+                      key={`group-${group.key}`}
+                      className="bg-muted/50 hover:bg-muted cursor-pointer"
+                      onClick={() => toggleGroup(group.key)}
+                    >
+                      <TableCell colSpan={4} className="py-2">
+                        <div className="flex items-center gap-2 font-medium text-xs font-heading">
+                          {isCollapsed ? (
+                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                          ) : (
+                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                          )}
+                          <span>{group.label}</span>
+                          <Badge variant="secondary" className="text-[10px] font-body">
+                            {group.items.length}
+                          </Badge>
+                          {groupChangedCount > 0 && (
+                            <Badge variant="default" className="text-[10px] font-body">
+                              {groupChangedCount} alt.
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+
+                    {!isCollapsed && group.items.map((item) => {
+                      const inicio = getDate(item, 'data_inicio_prevista');
+                      const fim = getDate(item, 'data_fim_prevista');
+                      const duration = inicio && fim
+                        ? Math.round((new Date(fim).getTime() - new Date(inicio).getTime()) / (1000 * 60 * 60 * 24))
+                        : null;
+                      const isChanged = changes.has(item.id);
+                      return (
+                        <TableRow key={item.id} className={isChanged ? 'bg-accent/10' : ''}>
+                          <TableCell className="text-xs font-body pl-8">
+                            <div className="flex items-center gap-1.5">
+                              {item.codigo && <span className="text-muted-foreground">{item.codigo}</span>}
+                              <span className="truncate max-w-[250px]">{item.descricao}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="date"
+                              value={inicio}
+                              onChange={e => updateDate(item.id, 'data_inicio_prevista', e.target.value)}
+                              className="h-7 text-xs"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="date"
+                              value={fim}
+                              onChange={e => updateDate(item.id, 'data_fim_prevista', e.target.value)}
+                              className="h-7 text-xs"
+                            />
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground text-center font-body">
+                            {duration !== null ? `${duration}d` : '-'}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </>
                 );
               })}
             </TableBody>

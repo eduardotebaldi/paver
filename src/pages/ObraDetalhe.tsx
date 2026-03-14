@@ -309,20 +309,6 @@ export default function ObraDetalhe() {
                       Importar Orçamento
                     </Button>
                     <input ref={fileRef} type="file" accept=".xlsx,.xls" onChange={handleFileUpload} className="hidden" />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => fileRef.current?.click()}
-                      disabled={importMutation.isPending}
-                      className="font-body"
-                    >
-                      {importMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      ) : (
-                        <FileSpreadsheet className="h-4 w-4 mr-2" />
-                      )}
-                      Importar Excel
-                    </Button>
                   </div>
                 )}
               </div>
