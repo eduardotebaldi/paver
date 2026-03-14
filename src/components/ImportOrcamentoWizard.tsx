@@ -505,7 +505,7 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
       }
 
       for (const item of activeItems) {
-        const l3 = classifications.get(item.grupo3Codigo);
+        const l3 = classifications.get(item.grupo3Codigo) || classifications.get(`orphan_${item.codigo}`);
         eapItems.push({
           obra_id: obraId,
           codigo: item.codigo,
