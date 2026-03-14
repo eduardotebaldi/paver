@@ -1,12 +1,11 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Camera, Loader2, FolderTree, Layers, Building2, MapPin, FileCode, Image } from 'lucide-react';
+import { Camera, Loader2, FolderTree, Layers, Building2, MapPin, FileCode, Image as ImageIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { fetchObras, fetchAllFotosLocalizadas, fetchPlantas, FotoLocalizada, PlantaObra } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import DxfPlantaViewer from '@/components/DxfPlantaViewer';
@@ -25,7 +24,7 @@ export default function RelatorioFotografico() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [selectedFoto, setSelectedFoto] = useState<FotoLocalizada | null>(null);
-  const [selectedPlanta, setSelectedPlanta] = useState<PlantaObra | null>(null);
+  const [selectedPlantaId, setSelectedPlantaId] = useState<string>('');
   const { hasRole } = useAuth();
   const canEdit = hasRole('admin') || hasRole('engenharia');
 
@@ -39,14 +38,12 @@ export default function RelatorioFotografico() {
     queryFn: fetchAllFotosLocalizadas,
   });
 
-  // Fetch plantas for all obras or selected obra
   const { data: allPlantas = [] } = useQuery({
     queryKey: ['all-plantas', selectedObra],
     queryFn: async () => {
       if (selectedObra !== 'all') {
         return fetchPlantas(selectedObra);
       }
-      // Fetch plantas for all obras
       const results = await Promise.all(obras.map(o => fetchPlantas(o.id)));
       return results.flat();
     },
@@ -54,6 +51,15 @@ export default function RelatorioFotografico() {
   });
 
   const dxfPlantas = useMemo(() => allPlantas.filter(p => isDxf(p.imagem_url)), [allPlantas]);
+
+  // Auto-select first planta when list changes
+  const activePlanta = useMemo(() => {
+    if (selectedPlantaId) {
+      const found = dxfPlantas.find(p => p.id === selectedPlantaId);
+      if (found) return found;
+    }
+    return dxfPlantas[0] || null;
+  }, [dxfPlantas, selectedPlantaId]);
 
   const obraMap = Object.fromEntries(obras.map(o => [o.id, o]));
 
@@ -66,6 +72,9 @@ export default function RelatorioFotografico() {
     if (dateTo) fotos = fotos.filter(f => f.created_at <= dateTo + 'T23:59:59');
     return fotos;
   }, [allFotos, selectedObra, selectedPacote, selectedServico, dateFrom, dateTo]);
+
+  // Set of foto IDs that pass filters — used by DxfPlantaViewer
+  const visibleFotoIds = useMemo(() => new Set(filteredFotos.map(f => f.id)), [filteredFotos]);
 
   const uniquePacotes = useMemo(() => {
     const set = new Set<string>();
@@ -97,7 +106,7 @@ export default function RelatorioFotografico() {
                 : 'bg-background text-muted-foreground hover:bg-muted'
             }`}
           >
-            <Image className="h-3.5 w-3.5" />
+            <ImageIcon className="h-3.5 w-3.5" />
             Galeria
           </button>
           <button
@@ -118,7 +127,7 @@ export default function RelatorioFotografico() {
       <div className="flex flex-wrap gap-3 items-end">
         <div className="space-y-1">
           <Label className="text-xs font-body text-muted-foreground">Obra</Label>
-          <Select value={selectedObra} onValueChange={(v) => { setSelectedObra(v); setSelectedPacote('all'); setSelectedServico('all'); }}>
+          <Select value={selectedObra} onValueChange={(v) => { setSelectedObra(v); setSelectedPacote('all'); setSelectedServico('all'); setSelectedPlantaId(''); }}>
             <SelectTrigger className="w-52 font-body">
               <Building2 className="h-4 w-4 mr-2" />
               <SelectValue />
@@ -131,6 +140,25 @@ export default function RelatorioFotografico() {
             </SelectContent>
           </Select>
         </div>
+
+        {viewMode === 'planta' && dxfPlantas.length > 1 && (
+          <div className="space-y-1">
+            <Label className="text-xs font-body text-muted-foreground">Planta</Label>
+            <Select value={activePlanta?.id || ''} onValueChange={setSelectedPlantaId}>
+              <SelectTrigger className="w-52 font-body">
+                <FileCode className="h-4 w-4 mr-2" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {dxfPlantas.map(p => (
+                  <SelectItem key={p.id} value={p.id} className="font-body">
+                    {p.nome} {obraMap[p.obra_id] ? `(${obraMap[p.obra_id].nome})` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         <div className="space-y-1">
           <Label className="text-xs font-body text-muted-foreground">Pacote</Label>
@@ -164,18 +192,14 @@ export default function RelatorioFotografico() {
           </Select>
         </div>
 
-        {viewMode === 'galeria' && (
-          <>
-            <div className="space-y-1">
-              <Label className="text-xs font-body text-muted-foreground">De</Label>
-              <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="w-40 font-body" />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs font-body text-muted-foreground">Até</Label>
-              <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="w-40 font-body" />
-            </div>
-          </>
-        )}
+        <div className="space-y-1">
+          <Label className="text-xs font-body text-muted-foreground">De</Label>
+          <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="w-40 font-body" />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs font-body text-muted-foreground">Até</Label>
+          <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="w-40 font-body" />
+        </div>
       </div>
 
       {/* View content */}
@@ -188,18 +212,20 @@ export default function RelatorioFotografico() {
           onSelectFoto={setSelectedFoto}
         />
       ) : (
-        <PlantaView
-          plantas={dxfPlantas}
+        <PlantaEmbeddedView
+          planta={activePlanta}
+          dxfPlantas={dxfPlantas}
           obraMap={obraMap}
           canEdit={canEdit}
-          selectedPlanta={selectedPlanta}
-          onSelectPlanta={setSelectedPlanta}
+          visibleFotoIds={visibleFotoIds}
+          filteredCount={filteredFotos.length}
         />
       )}
     </div>
   );
 }
 
+/* ─── Galeria View ─── */
 function GaleriaView({
   fotos,
   obraMap,
@@ -308,20 +334,23 @@ function GaleriaView({
   );
 }
 
-function PlantaView({
-  plantas,
+/* ─── Planta Embedded View ─── */
+function PlantaEmbeddedView({
+  planta,
+  dxfPlantas,
   obraMap,
   canEdit,
-  selectedPlanta,
-  onSelectPlanta,
+  visibleFotoIds,
+  filteredCount,
 }: {
-  plantas: PlantaObra[];
+  planta: PlantaObra | null;
+  dxfPlantas: PlantaObra[];
   obraMap: Record<string, { nome: string }>;
   canEdit: boolean;
-  selectedPlanta: PlantaObra | null;
-  onSelectPlanta: (p: PlantaObra | null) => void;
+  visibleFotoIds: Set<string>;
+  filteredCount: number;
 }) {
-  if (plantas.length === 0) {
+  if (dxfPlantas.length === 0) {
     return (
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-16">
@@ -337,50 +366,28 @@ function PlantaView({
     );
   }
 
+  if (!planta) return null;
+
   return (
-    <>
-      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-        {plantas.map(planta => (
-          <Card
-            key={planta.id}
-            className="cursor-pointer hover:border-accent/50 transition-colors"
-            onClick={() => onSelectPlanta(planta)}
-          >
-            <CardContent className="p-4">
-              <div className="aspect-video bg-muted rounded flex flex-col items-center justify-center gap-2 mb-3">
-                <FileCode className="h-10 w-10 text-accent" />
-                <span className="text-xs font-body text-muted-foreground">DXF</span>
-              </div>
-              <p className="text-sm font-heading font-medium truncate">{planta.nome}</p>
-              <p className="text-[10px] text-muted-foreground font-body mt-1">
-                {obraMap[planta.obra_id]?.nome || ''}
-              </p>
-            </CardContent>
-          </Card>
-        ))}
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <FileCode className="h-4 w-4 text-accent" />
+        <span className="text-sm font-heading font-medium">{planta.nome}</span>
+        <Badge variant="secondary" className="text-[10px]">
+          {obraMap[planta.obra_id]?.nome || ''}
+        </Badge>
+        <span className="text-xs text-muted-foreground font-body ml-auto">
+          {filteredCount} foto(s) visível(is) com os filtros atuais
+        </span>
       </div>
 
-      {selectedPlanta && (
-        <Dialog open onOpenChange={(v) => !v && onSelectPlanta(null)}>
-          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="font-heading flex items-center gap-2">
-                <FileCode className="h-5 w-5 text-accent" />
-                {selectedPlanta.nome}
-                <Badge variant="secondary" className="text-[10px] ml-2">
-                  {obraMap[selectedPlanta.obra_id]?.nome || ''}
-                </Badge>
-              </DialogTitle>
-            </DialogHeader>
-            <DxfPlantaViewer
-              planta={selectedPlanta}
-              obraId={selectedPlanta.obra_id}
-              canEdit={canEdit}
-              onClose={() => onSelectPlanta(null)}
-            />
-          </DialogContent>
-        </Dialog>
-      )}
-    </>
+      <DxfPlantaViewer
+        key={planta.id}
+        planta={planta}
+        obraId={planta.obra_id}
+        canEdit={canEdit}
+        visibleFotoIds={visibleFotoIds}
+      />
+    </div>
   );
 }
