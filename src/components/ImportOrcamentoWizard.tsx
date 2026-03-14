@@ -360,6 +360,15 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
     });
   };
 
+  const toggleItemEnabled = (codigo: string) => {
+    setDisabledItems(prev => {
+      const next = new Set(prev);
+      if (next.has(codigo)) next.delete(codigo);
+      else next.add(codigo);
+      return next;
+    });
+  };
+
   const toggleExpanded = (codigo: string) => {
     setExpandedSections(prev => {
       const next = new Set(prev);
