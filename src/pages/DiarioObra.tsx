@@ -24,6 +24,7 @@ const climaOptions = [
 const climaLabels: Record<string, string> = Object.fromEntries(climaOptions.map(c => [c.value, c.label]));
 
 export default function DiarioObraPage() {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user, hasRole } = useAuth();
