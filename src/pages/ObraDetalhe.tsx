@@ -22,7 +22,7 @@ export default function ObraDetalhe() {
   const { hasRole } = useAuth();
   const canEdit = hasRole('admin') || hasRole('engenharia');
   const fileRef = useRef<HTMLInputElement>(null);
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
   const { data: obra, isLoading: loadingObra } = useQuery({
     queryKey: ['obra', id],
