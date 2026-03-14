@@ -1003,8 +1003,8 @@ export default function DiarioObraNovoPage() {
       )}
 
       {/* ═══ PIN MODAL ═══ */}
-      <Dialog open={pinModalOpen} onOpenChange={v => { if (!v) { setPinModalOpen(false); setPinQueue([]); setCurrentPinIndex(0); } }}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <Dialog open={pinModalOpen} onOpenChange={() => { /* prevent close by clicking outside */ }}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" onPointerDownOutside={e => e.preventDefault()} onEscapeKeyDown={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle className="font-heading flex items-center gap-2">
               <MapPin className="h-5 w-5 text-accent" />
