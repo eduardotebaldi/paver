@@ -856,24 +856,36 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
 
                                         return (
                                           <div key={l3.codigo}>
-                                            <button
-                                              onClick={() => toggleExpanded(l3.codigo)}
-                                              className="w-full flex items-center gap-2 px-2 py-1 pl-4 text-xs font-body hover:bg-muted/20 rounded-md transition-colors"
-                                            >
-                                              {l3Items.length > 0 ? (
-                                                l3Expanded ? (
-                                                  <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
+                                            <div className="flex items-center gap-2 px-2 py-1 pl-4 hover:bg-muted/20 rounded-md transition-colors">
+                                              <button
+                                                onClick={() => toggleExpanded(l3.codigo)}
+                                                className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                                              >
+                                                {l3Items.length > 0 ? (
+                                                  l3Expanded ? (
+                                                    <ChevronDown className="h-3 w-3" />
+                                                  ) : (
+                                                    <ChevronRight className="h-3 w-3" />
+                                                  )
                                                 ) : (
-                                                  <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
-                                                )
-                                              ) : (
-                                                <span className="w-3 shrink-0" />
-                                              )}
+                                                  <span className="w-3" />
+                                                )}
+                                              </button>
+                                              <Checkbox
+                                                checked={l3ActiveItems.length === l3Items.length && l3Items.length > 0}
+                                                onCheckedChange={() => toggleGroupItems(l3.codigo, 3)}
+                                                className="h-3.5 w-3.5"
+                                              />
                                               <span className="text-[10px] text-muted-foreground font-mono">{l3.codigo}</span>
-                                              <span className="flex-1 text-left">{l3.descricao}</span>
+                                              <button
+                                                onClick={() => toggleExpanded(l3.codigo)}
+                                                className="flex-1 text-left text-xs font-body"
+                                              >
+                                                {l3.descricao}
+                                              </button>
                                               <span className="text-[10px] text-muted-foreground">{l3ActiveItems.length}/{l3Items.length}</span>
                                               <span className="text-[10px] text-muted-foreground w-20 text-right">{formatBRL(l3Total)}</span>
-                                            </button>
+                                            </div>
 
                                             {l3Expanded && l3Items.length > 0 && (
                                               <div className="ml-6 space-y-0">
