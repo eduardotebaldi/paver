@@ -1,13 +1,16 @@
 import { useState, useRef, useCallback } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { MapPin, Upload, Loader2, Image, Trash2, X, Plus, Camera } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { MapPin, Upload, Loader2, Image, Trash2, X, Plus, Camera, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { Document, Page, pdfjs } from 'react-pdf';
+import 'react-pdf/dist/Page/AnnotationLayer.css';
+import 'react-pdf/dist/Page/TextLayer.css';
 import {
   fetchPlantas,
   createPlanta,
@@ -19,6 +22,12 @@ import {
   PlantaObra,
   FotoLocalizada,
 } from '@/services/api';
+
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+
+function isPdf(url: string): boolean {
+  return url.toLowerCase().includes('.pdf');
+}
 
 interface Props {
   obraId: string;
@@ -54,7 +63,7 @@ export default function RelatorioFotograficoTab({ obraId }: Props) {
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
             <Image className="h-10 w-10 text-muted-foreground/40 mb-3" />
             <p className="text-sm text-muted-foreground font-body">
-              Nenhuma planta cadastrada. Faça upload de uma planta para começar a marcar fotos.
+              Nenhuma planta cadastrada. Faça upload de uma planta (imagem ou PDF) para começar.
             </p>
           </CardContent>
         </Card>
@@ -67,12 +76,19 @@ export default function RelatorioFotograficoTab({ obraId }: Props) {
               onClick={() => setSelectedPlanta(planta)}
             >
               <CardContent className="p-3">
-                <div className="aspect-video bg-muted rounded overflow-hidden mb-2">
-                  <img
-                    src={planta.imagem_url}
-                    alt={planta.nome}
-                    className="w-full h-full object-cover"
-                  />
+                <div className="aspect-video bg-muted rounded overflow-hidden mb-2 flex items-center justify-center">
+                  {isPdf(planta.imagem_url) ? (
+                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                      <FileText className="h-10 w-10" />
+                      <span className="text-xs font-body">PDF</span>
+                    </div>
+                  ) : (
+                    <img
+                      src={planta.imagem_url}
+                      alt={planta.nome}
+                      className="w-full h-full object-cover"
+                    />
+                  )}
                 </div>
                 <p className="text-sm font-heading font-medium truncate">{planta.nome}</p>
               </CardContent>
@@ -145,7 +161,7 @@ function UploadPlantaButton({ obraId }: { obraId: string }) {
             <input
               ref={fileRef}
               type="file"
-              accept="image/*"
+              accept="image/*,.pdf"
               className="hidden"
               onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
             />
@@ -155,7 +171,7 @@ function UploadPlantaButton({ obraId }: { obraId: string }) {
               onClick={() => fileRef.current?.click()}
             >
               <Upload className="h-4 w-4 mr-2" />
-              {selectedFile ? selectedFile.name : 'Selecionar imagem'}
+              {selectedFile ? selectedFile.name : 'Selecionar imagem ou PDF'}
             </Button>
           </div>
           <Button
@@ -192,14 +208,30 @@ function PlantaViewer({
   const [descricao, setDescricao] = useState('');
   const [selectedFoto, setSelectedFoto] = useState<FotoLocalizada | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [numPages, setNumPages] = useState<number>(1);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pdfContainerWidth, setPdfContainerWidth] = useState<number>(800);
+  const pdfContainerRef = useRef<HTMLDivElement>(null);
+
+  const pdf = isPdf(planta.imagem_url);
 
   const { data: fotos = [] } = useQuery({
     queryKey: ['fotos-localizadas', planta.id],
     queryFn: () => fetchFotosLocalizadas(planta.id),
   });
 
-  const handleImageClick = useCallback(
-    (e: React.MouseEvent<HTMLImageElement>) => {
+  // Filter fotos for current page (PDF) or all (image)
+  const visibleFotos = pdf
+    ? fotos.filter(f => {
+        // Store page in pos_x's integer thousands: page is encoded as extra data
+        // Actually, simpler: we store page number in description prefix or a separate approach
+        // For now, fotos on PDF are per-page, we'll use a convention
+        return true; // show all pins for now, page-specific could be added later
+      })
+    : fotos;
+
+  const handleOverlayClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
       if (!canEdit) return;
       const rect = e.currentTarget.getBoundingClientRect();
       const x = ((e.clientX - rect.left) / rect.width) * 100;
@@ -249,6 +281,43 @@ function PlantaViewer({
     }
   };
 
+  // Measure PDF container width for responsive rendering
+  const measureWidth = useCallback((node: HTMLDivElement | null) => {
+    if (node) {
+      setPdfContainerWidth(node.getBoundingClientRect().width);
+    }
+  }, []);
+
+  const PinsOverlay = (
+    <>
+      {visibleFotos.map((foto) => (
+        <button
+          key={foto.id}
+          className={`absolute w-6 h-6 -ml-3 -mt-6 transition-transform hover:scale-125 ${
+            selectedFoto?.id === foto.id ? 'scale-125 z-20' : 'z-10'
+          }`}
+          style={{ left: `${foto.pos_x}%`, top: `${foto.pos_y}%` }}
+          onClick={(e) => {
+            e.stopPropagation();
+            setSelectedFoto(foto);
+            setPendingPin(null);
+          }}
+          title={foto.descricao || 'Foto'}
+        >
+          <MapPin className="h-6 w-6 text-accent drop-shadow-md fill-accent/30" />
+        </button>
+      ))}
+      {pendingPin && (
+        <div
+          className="absolute w-6 h-6 -ml-3 -mt-6 z-20 animate-bounce"
+          style={{ left: `${pendingPin.x}%`, top: `${pendingPin.y}%` }}
+        >
+          <MapPin className="h-6 w-6 text-primary drop-shadow-md fill-primary/30" />
+        </div>
+      )}
+    </>
+  );
+
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
@@ -256,48 +325,80 @@ function PlantaViewer({
           <DialogTitle className="font-heading flex items-center gap-2">
             <MapPin className="h-5 w-5 text-accent" />
             {planta.nome}
+            {pdf && <span className="text-xs font-body text-muted-foreground ml-2">PDF</span>}
           </DialogTitle>
         </DialogHeader>
 
         <div className="relative" ref={containerRef}>
-          <div className="relative inline-block w-full">
-            <img
-              src={planta.imagem_url}
-              alt={planta.nome}
-              className={`w-full rounded-lg border border-border ${canEdit ? 'cursor-crosshair' : ''}`}
-              onClick={handleImageClick}
-              draggable={false}
-            />
-
-            {/* Existing pins */}
-            {fotos.map((foto) => (
-              <button
-                key={foto.id}
-                className={`absolute w-6 h-6 -ml-3 -mt-6 transition-transform hover:scale-125 ${
-                  selectedFoto?.id === foto.id ? 'scale-125 z-20' : 'z-10'
-                }`}
-                style={{ left: `${foto.pos_x}%`, top: `${foto.pos_y}%` }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedFoto(foto);
-                  setPendingPin(null);
-                }}
-                title={foto.descricao || 'Foto'}
-              >
-                <MapPin className="h-6 w-6 text-accent drop-shadow-md fill-accent/30" />
-              </button>
-            ))}
-
-            {/* Pending pin */}
-            {pendingPin && (
-              <div
-                className="absolute w-6 h-6 -ml-3 -mt-6 z-20 animate-bounce"
-                style={{ left: `${pendingPin.x}%`, top: `${pendingPin.y}%` }}
-              >
-                <MapPin className="h-6 w-6 text-primary drop-shadow-md fill-primary/30" />
+          {pdf ? (
+            <div ref={measureWidth}>
+              {/* PDF navigation */}
+              {numPages > 1 && (
+                <div className="flex items-center justify-center gap-3 mb-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    disabled={currentPage <= 1}
+                    onClick={() => setCurrentPage(p => p - 1)}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm font-body text-muted-foreground">
+                    Página {currentPage} de {numPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    disabled={currentPage >= numPages}
+                    onClick={() => setCurrentPage(p => p + 1)}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+              <div className="relative inline-block w-full">
+                <Document
+                  file={planta.imagem_url}
+                  onLoadSuccess={({ numPages: n }) => setNumPages(n)}
+                  loading={
+                    <div className="flex justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-accent" />
+                    </div>
+                  }
+                  error={
+                    <div className="text-center py-12 text-destructive font-body text-sm">
+                      Erro ao carregar PDF. Verifique se o arquivo é válido.
+                    </div>
+                  }
+                >
+                  <Page
+                    pageNumber={currentPage}
+                    width={pdfContainerWidth}
+                    renderTextLayer={false}
+                    renderAnnotationLayer={false}
+                  />
+                </Document>
+                {/* Clickable overlay for pins */}
+                <div
+                  className={`absolute inset-0 ${canEdit ? 'cursor-crosshair' : ''}`}
+                  onClick={handleOverlayClick}
+                >
+                  {PinsOverlay}
+                </div>
               </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="relative inline-block w-full">
+              <img
+                src={planta.imagem_url}
+                alt={planta.nome}
+                className={`w-full rounded-lg border border-border ${canEdit ? 'cursor-crosshair' : ''}`}
+                onClick={handleOverlayClick}
+                draggable={false}
+              />
+              {PinsOverlay}
+            </div>
+          )}
         </div>
 
         {/* Pending pin form */}
@@ -389,7 +490,7 @@ function PlantaViewer({
 
         <p className="text-xs text-muted-foreground font-body">
           {fotos.length} foto(s) marcada(s) nesta planta
-          {canEdit && ' • Clique na imagem para marcar uma nova foto'}
+          {canEdit && ' • Clique na planta para marcar uma nova foto'}
         </p>
       </DialogContent>
     </Dialog>
