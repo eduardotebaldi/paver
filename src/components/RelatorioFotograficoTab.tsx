@@ -241,6 +241,16 @@ function PlantaViewer({
   const fotoInputRef = useRef<HTMLInputElement>(null);
   const [pendingPin, setPendingPin] = useState<{ x: number; y: number } | null>(null);
   const [descricao, setDescricao] = useState('');
+  const [fotoPacote, setFotoPacote] = useState('');
+  const [fotoTipoServico, setFotoTipoServico] = useState('');
+
+  // Fetch EAP items for pacote/servico selection
+  const { data: eapItems = [] } = useQuery({
+    queryKey: ['eap', obraId],
+    queryFn: () => fetchEapItems(obraId),
+  });
+  const uniquePacotes = [...new Set(eapItems.filter(i => i.pacote).map(i => i.pacote!))].sort();
+  const uniqueServicos = [...new Set(eapItems.filter(i => i.lote).map(i => i.lote!))].sort();
   const [selectedFoto, setSelectedFoto] = useState<FotoLocalizada | null>(null);
   const [uploading, setUploading] = useState(false);
   const [numPages, setNumPages] = useState<number>(1);
