@@ -19,6 +19,9 @@ export default function Relatorios() {
   const [selectedPacote, setSelectedPacote] = useState<string>('all');
   const [selectedServico, setSelectedServico] = useState<string>('all');
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [openObra, setOpenObra] = useState(false);
+  const [openPacote, setOpenPacote] = useState(false);
+  const [openServico, setOpenServico] = useState(false);
 
   const { data: obras = [], isLoading: loadingObras } = useQuery({
     queryKey: ['obras'],
