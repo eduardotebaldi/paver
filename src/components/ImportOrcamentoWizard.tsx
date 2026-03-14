@@ -112,7 +112,7 @@ function AutocompleteInput({
   );
 }
 
-/** Collapsible description: shows cleaned name + parent context in muted italic parentheses */
+/** Collapsible description: shows cleaned name + parent context preview in muted italic */
 function CollapsibleDescription({
   cleanedName,
   parentContext,
@@ -122,6 +122,11 @@ function CollapsibleDescription({
 }) {
   const [expanded, setExpanded] = useState(false);
   const hasContext = parentContext.length > 0;
+  const previewLength = 20;
+  const needsTruncation = parentContext.length > previewLength;
+  const preview = needsTruncation
+    ? parentContext.slice(0, previewLength) + '…'
+    : parentContext;
 
   return (
     <span className="text-xs">
@@ -132,12 +137,12 @@ function CollapsibleDescription({
           <button
             onClick={() => setExpanded(!expanded)}
             className="text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors inline"
-            title={expanded ? 'Recolher' : 'Ver contexto'}
+            title={expanded ? 'Recolher' : 'Ver contexto completo'}
           >
             {expanded ? (
               <span className="italic text-muted-foreground/50 text-[10px]">({parentContext})</span>
             ) : (
-              <span className="text-[10px]">(...)</span>
+              <span className="italic text-muted-foreground/40 text-[10px]">({preview})</span>
             )}
           </button>
         </>
@@ -463,7 +468,8 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
       if (eapItems.length > 0) {
         for (let i = 0; i < eapItems.length; i += batchSize) {
           const batch = eapItems.slice(i, i + batchSize);
-          await supabase.from('paver_eap_items').insert(batch);
+          const { error: eapError } = await supabase.from('paver_eap_items').insert(batch);
+          if (eapError) throw eapError;
         }
       }
 
