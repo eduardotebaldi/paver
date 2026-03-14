@@ -524,18 +524,34 @@ export default function DiarioObraNovoPage() {
               {atividades.size === 0 ? (
                 <p className="text-xs text-muted-foreground font-body italic">Nenhuma atividade selecionada.</p>
               ) : (
-                <div className="space-y-1">
+                <div className="space-y-2">
                   {Array.from(atividades.values()).map(a => {
                     const item = eapItensOnly.find(i => i.id === a.eap_item_id);
                     return (
-                      <div key={a.eap_item_id} className="flex items-center justify-between text-xs font-body">
-                        <span className="truncate text-foreground">
-                          {item?.codigo && <span className="font-mono text-muted-foreground mr-1">{item.codigo}</span>}
-                          {item?.descricao || 'Item'}
-                        </span>
-                        <div className="flex items-center gap-2 shrink-0">
-                          {a.quantidade_dia > 0 && <span className="text-muted-foreground">+{a.quantidade_dia} {item?.unidade || 'un'}</span>}
-                          <Badge variant="secondary" className="text-[10px]">{a.avanco_percentual.toFixed(1)}%</Badge>
+                      <div key={a.eap_item_id} className="border border-border/50 rounded-md p-2 space-y-1">
+                        <div className="flex items-center justify-between text-xs font-body">
+                          <span className="truncate text-foreground">
+                            {item?.codigo && <span className="font-mono text-muted-foreground mr-1">{item.codigo}</span>}
+                            {item?.descricao || 'Item'}
+                          </span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {a.quantidade_dia > 0 && <span className="text-muted-foreground">+{a.quantidade_dia} {item?.unidade || 'un'}</span>}
+                            <Badge variant="secondary" className="text-[10px]">{a.avanco_percentual.toFixed(1)}%</Badge>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 flex-wrap">
+                          {item?.pacote && (
+                            <span className="flex items-center gap-1 text-[10px] text-muted-foreground font-body">
+                              <Package className="h-3 w-3" />
+                              <span className="font-medium">Pacote:</span> {item.pacote}
+                            </span>
+                          )}
+                          {item?.lote && (
+                            <span className="flex items-center gap-1 text-[10px] text-muted-foreground font-body">
+                              <Layers className="h-3 w-3" />
+                              <span className="font-medium">Serviço:</span> {item.lote}
+                            </span>
+                          )}
                         </div>
                       </div>
                     );
