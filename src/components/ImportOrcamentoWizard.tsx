@@ -815,24 +815,36 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
 
                               return (
                                 <div key={l2.codigo}>
-                                  <button
-                                    onClick={() => toggleExpanded(l2.codigo)}
-                                    className="w-full flex items-center gap-2 px-3 py-1.5 pl-4 text-sm font-body text-foreground/80 hover:bg-muted/30 rounded-md transition-colors"
-                                  >
-                                    {hasChildren ? (
-                                      l2Expanded ? (
-                                        <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                  <div className="flex items-center gap-2 px-3 py-1.5 pl-4 hover:bg-muted/30 rounded-md transition-colors">
+                                    <button
+                                      onClick={() => toggleExpanded(l2.codigo)}
+                                      className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                                    >
+                                      {hasChildren ? (
+                                        l2Expanded ? (
+                                          <ChevronDown className="h-3.5 w-3.5" />
+                                        ) : (
+                                          <ChevronRight className="h-3.5 w-3.5" />
+                                        )
                                       ) : (
-                                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                      )
-                                    ) : (
-                                      <span className="w-3.5 shrink-0" />
-                                    )}
+                                        <span className="w-3.5" />
+                                      )}
+                                    </button>
+                                    <Switch
+                                      checked={l2ActiveItems.length > 0}
+                                      onCheckedChange={() => toggleGroupItems(l2.codigo, 2)}
+                                      className="h-4 w-7 [&>span]:h-3 [&>span]:w-3"
+                                    />
                                     <span className="text-[10px] text-muted-foreground font-mono">{l2.codigo}</span>
-                                    <span className="flex-1 text-left">{l2.descricao}</span>
+                                    <button
+                                      onClick={() => toggleExpanded(l2.codigo)}
+                                      className="flex-1 text-left text-sm font-body text-foreground/80"
+                                    >
+                                      {l2.descricao}
+                                    </button>
                                     <span className="text-[10px] text-muted-foreground">{l2ActiveItems.length}/{l2Items.length} itens</span>
                                     <span className="text-xs text-muted-foreground w-24 text-right">{formatBRL(l2Total)}</span>
-                                  </button>
+                                  </div>
 
                                   {l2Expanded && (
                                     <div className="ml-6 border-l border-border/50">
