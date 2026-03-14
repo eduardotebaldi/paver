@@ -213,9 +213,19 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
 
       for (const g of result.groups) {
         if (g.nivel === 3) {
-          // Tipo de Serviço = level 1 parent description (remove leading number prefix)
-          const l1Code = g.codigo.split('.')[0];
-          const l1 = groupMap.get(l1Code);
+          // Tipo de Serviço = level 1 parent description
+          // Try direct first segment, then padded version (e.g. "1" -> "01")
+          const firstSeg = g.codigo.split('.')[0];
+          let l1 = groupMap.get(firstSeg);
+          if (!l1) {
+            // Try finding L1 by numeric match (e.g. code "1" matches group "01")
+            for (const [, gg] of groupMap) {
+              if (gg.nivel === 1 && parseInt(gg.codigo, 10) === parseInt(firstSeg, 10)) {
+                l1 = gg;
+                break;
+              }
+            }
+          }
           const tipoServico = l1 ? l1.descricao.replace(/^\d+\s*[-–]\s*/, '').trim() : '';
 
           // Classificação Adicional = level 2 parent description

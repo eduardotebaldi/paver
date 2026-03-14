@@ -136,17 +136,78 @@ export function parseCsvOrcamento(csvText: string): ParsedOrcamento {
     }
   }
 
-  // Second pass: auto-generate missing level 2 AND level 3 groups
+  // Second pass: auto-generate missing level 3 AND level 2 groups
   const existingGroupCodes = new Set(groups.map(g => g.codigo));
 
-  // 2a: Synthesize missing L2 groups from L3 groups or items
+  // Build a map from the first segment of a code to the actual L1 group code
+  // Handles cases like L1="01" but items start with "1.000.000.001"
+  const l1CodeByFirstSegment = new Map<string, string>();
+  for (const g of groups) {
+    if (g.nivel === 1) {
+      l1CodeByFirstSegment.set(g.codigo, g.codigo);
+      // Also map the numeric equivalent (e.g. "01" -> "01", but also "1" -> "01")
+      const numericKey = String(parseInt(g.codigo, 10));
+      if (!l1CodeByFirstSegment.has(numericKey)) {
+        l1CodeByFirstSegment.set(numericKey, g.codigo);
+      }
+    }
+  }
+
+  // Helper: resolve L1 code from an item's first code segment
+  const resolveL1Code = (firstSegment: string): string => {
+    return l1CodeByFirstSegment.get(firstSegment) || l1CodeByFirstSegment.get(String(parseInt(firstSegment, 10))) || firstSegment;
+  };
+
+  // 2a: Synthesize missing L3 groups from items (do L3 FIRST so L2 pass can see them)
+  const syntheticL3 = new Map<string, OrcamentoGroup>();
+
+  for (const item of items) {
+    const parts = item.codigo.split('.');
+    if (parts.length >= 4) {
+      const expectedL3 = parts.slice(0, 3).join('.');
+      const expectedL2 = parts.slice(0, 2).join('.');
+      const resolvedL1 = resolveL1Code(parts[0]);
+
+      if (!existingGroupCodes.has(expectedL3) && !syntheticL3.has(expectedL3)) {
+        const l2Group = groups.find(g => g.codigo === expectedL2);
+        const l1Group = groups.find(g => g.codigo === resolvedL1);
+        const desc = l2Group ? l2Group.descricao : (l1Group ? l1Group.descricao : 'Serviços');
+
+        syntheticL3.set(expectedL3, {
+          codigo: expectedL3,
+          descricao: desc,
+          nivel: 3,
+          grupoTipo: 'pacote_trabalho',
+          precoTotal: 0,
+        });
+        existingGroupCodes.add(expectedL3);
+      }
+
+      // Fix item's group references
+      item.grupo3Codigo = expectedL3;
+      item.grupo2Codigo = expectedL2;
+      item.grupo1Codigo = resolvedL1;
+    } else {
+      // Even for items that already have grupo references, fix L1 mapping
+      if (item.grupo1Codigo) {
+        item.grupo1Codigo = resolveL1Code(item.grupo1Codigo);
+      }
+    }
+  }
+
+  // Add synthetic L3 groups
+  for (const g of syntheticL3.values()) {
+    groups.push(g);
+  }
+
+  // 2b: Synthesize missing L2 groups from ALL L3 groups (including synthetic ones)
   const syntheticL2 = new Map<string, OrcamentoGroup>();
   for (const g of groups) {
     if (g.nivel === 3) {
       const l2Code = g.codigo.split('.').slice(0, 2).join('.');
       if (!existingGroupCodes.has(l2Code) && !syntheticL2.has(l2Code)) {
-        const l1Code = g.codigo.split('.')[0];
-        const l1Group = groups.find(gg => gg.codigo === l1Code);
+        const resolvedL1 = resolveL1Code(g.codigo.split('.')[0]);
+        const l1Group = groups.find(gg => gg.codigo === resolvedL1);
         const desc = l1Group ? l1Group.descricao : 'Serviços';
         syntheticL2.set(l2Code, {
           codigo: l2Code,
@@ -161,45 +222,6 @@ export function parseCsvOrcamento(csvText: string): ParsedOrcamento {
   for (const g of syntheticL2.values()) {
     groups.push(g);
     existingGroupCodes.add(g.codigo);
-  }
-
-  // 2b: Synthesize missing L3 groups from items
-  const syntheticL3 = new Map<string, OrcamentoGroup>();
-
-  for (const item of items) {
-    // Derive the expected level 3 code from the item code (first 3 segments)
-    const parts = item.codigo.split('.');
-    if (parts.length >= 4) {
-      const expectedL3 = parts.slice(0, 3).join('.');
-      if (!existingGroupCodes.has(expectedL3) && !syntheticL3.has(expectedL3)) {
-        // Find the level 2 parent to derive a description
-        const l2Code = parts.slice(0, 2).join('.');
-        const l2Group = groups.find(g => g.codigo === l2Code);
-        const desc = l2Group ? l2Group.descricao : 'Serviços';
-
-        const synth: OrcamentoGroup = {
-          codigo: expectedL3,
-          descricao: desc,
-          nivel: 3,
-          grupoTipo: 'pacote_trabalho',
-          precoTotal: 0,
-        };
-        syntheticL3.set(expectedL3, synth);
-        existingGroupCodes.add(expectedL3);
-      }
-      // Also fix the item's grupo3Codigo if it's missing or wrong
-      if (!item.grupo3Codigo || item.grupo3Codigo !== expectedL3) {
-        item.grupo3Codigo = expectedL3;
-        // Also fix L1 and L2 if needed
-        if (!item.grupo1Codigo) item.grupo1Codigo = parts[0];
-        if (!item.grupo2Codigo) item.grupo2Codigo = parts.slice(0, 2).join('.');
-      }
-    }
-  }
-
-  // Add synthetic L3 groups
-  for (const g of syntheticL3.values()) {
-    groups.push(g);
   }
 
   // Third pass: promote leaf level-3 groups (with price data and no child items) to items
