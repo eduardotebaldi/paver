@@ -742,7 +742,7 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
             </div>
           )}
 
-          {/* STEP 3: Classification with heuristic auto-suggestions */}
+          {/* STEP 3: Classification with heuristic auto-suggestions, grouped by level 1 */}
           {step === 'classify' && (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground font-body">
@@ -755,51 +755,104 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
               </p>
 
               <ScrollArea className="h-[50vh]">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-xs w-24">Código EAP</TableHead>
-                      <TableHead className="text-xs">Descrição</TableHead>
-                      <TableHead className="text-xs w-28 text-right">Valor Total</TableHead>
-                      <TableHead className="text-xs w-44">Pacote de Trabalho</TableHead>
-                      <TableHead className="text-xs w-44">Tipo de Serviço</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {level3Groups.map(g => {
-                      const cls = classifications.get(g.codigo) || {
-                        pacoteTrabalho: '',
-                        tipoServico: '',
-                      };
-                      const childItems = items.filter(i => i.grupo3Codigo === g.codigo && enabledSections.has(i.grupo1Codigo));
-                      const total = childItems.reduce((s, i) => s + i.precoTotal, 0);
+                <div className="space-y-2 pr-2">
+                  {level1Groups
+                    .filter(l1 => enabledSections.has(l1.codigo))
+                    .map(l1 => {
+                      const l3ForSection = level3Groups.filter(
+                        g => g.codigo.startsWith(l1.codigo + '.'),
+                      );
+                      if (l3ForSection.length === 0) return null;
+                      const sectionExpanded = expandedSections.has('classify_' + l1.codigo);
+                      const sectionTotal = l3ForSection.reduce((sum, g) => {
+                        const childItems = items.filter(
+                          i => i.grupo3Codigo === g.codigo && enabledSections.has(i.grupo1Codigo),
+                        );
+                        return sum + childItems.reduce((s, i) => s + i.precoTotal, 0);
+                      }, 0);
 
                       return (
-                        <TableRow key={g.codigo}>
-                          <TableCell className="text-xs font-mono py-1.5">{g.codigo}</TableCell>
-                          <TableCell className="text-xs py-1.5">{g.descricao}</TableCell>
-                          <TableCell className="text-xs text-right py-1.5">{formatBRL(total)}</TableCell>
-                          <TableCell className="py-1.5">
-                            <AutocompleteInput
-                              value={cls.pacoteTrabalho}
-                              onChange={v => updateClassification(g.codigo, 'pacoteTrabalho', v)}
-                              suggestions={allPacotes}
-                              placeholder="Pacote..."
-                            />
-                          </TableCell>
-                          <TableCell className="py-1.5">
-                            <AutocompleteInput
-                              value={cls.tipoServico}
-                              onChange={v => updateClassification(g.codigo, 'tipoServico', v)}
-                              suggestions={allTipos}
-                              placeholder="Tipo..."
-                            />
-                          </TableCell>
-                        </TableRow>
+                        <div key={l1.codigo} className="border border-border rounded-lg overflow-hidden">
+                          <button
+                            onClick={() => toggleExpanded('classify_' + l1.codigo)}
+                            className="w-full flex items-center gap-2 px-4 py-2.5 bg-muted/50 hover:bg-muted transition-colors"
+                          >
+                            {sectionExpanded ? (
+                              <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                            )}
+                            <span className="text-xs text-muted-foreground font-mono">{l1.codigo}</span>
+                            <span className="flex-1 text-left text-sm font-heading font-semibold">
+                              {l1.descricao}
+                            </span>
+                            <Badge variant="secondary" className="text-[10px] font-body">
+                              {l3ForSection.length} itens
+                            </Badge>
+                            <span className="text-xs font-body font-medium w-28 text-right">
+                              {formatBRL(sectionTotal)}
+                            </span>
+                          </button>
+
+                          {sectionExpanded && (
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead className="text-xs w-24">Código</TableHead>
+                                  <TableHead className="text-xs">Descrição</TableHead>
+                                  <TableHead className="text-xs w-28 text-right">Valor Total</TableHead>
+                                  <TableHead className="text-xs w-44">Pacote de Trabalho</TableHead>
+                                  <TableHead className="text-xs w-44">Tipo de Serviço</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {l3ForSection.map(g => {
+                                  const cls = classifications.get(g.codigo) || {
+                                    pacoteTrabalho: '',
+                                    tipoServico: '',
+                                  };
+                                  const childItems = items.filter(
+                                    i => i.grupo3Codigo === g.codigo && enabledSections.has(i.grupo1Codigo),
+                                  );
+                                  const total = childItems.reduce((s, i) => s + i.precoTotal, 0);
+
+                                  return (
+                                    <TableRow key={g.codigo}>
+                                      <TableCell className="text-xs font-mono py-1.5">{g.codigo}</TableCell>
+                                      <TableCell className="text-xs py-1.5">{g.descricao}</TableCell>
+                                      <TableCell className="text-xs text-right py-1.5">
+                                        {formatBRL(total)}
+                                      </TableCell>
+                                      <TableCell className="py-1.5">
+                                        <AutocompleteInput
+                                          value={cls.pacoteTrabalho}
+                                          onChange={v =>
+                                            updateClassification(g.codigo, 'pacoteTrabalho', v)
+                                          }
+                                          suggestions={allPacotes}
+                                          placeholder="Pacote..."
+                                        />
+                                      </TableCell>
+                                      <TableCell className="py-1.5">
+                                        <AutocompleteInput
+                                          value={cls.tipoServico}
+                                          onChange={v =>
+                                            updateClassification(g.codigo, 'tipoServico', v)
+                                          }
+                                          suggestions={allTipos}
+                                          placeholder="Tipo..."
+                                        />
+                                      </TableCell>
+                                    </TableRow>
+                                  );
+                                })}
+                              </TableBody>
+                            </Table>
+                          )}
+                        </div>
                       );
                     })}
-                  </TableBody>
-                </Table>
+                </div>
               </ScrollArea>
             </div>
           )}
