@@ -194,7 +194,7 @@ export default function DxfPlantaViewer({ planta, obraId, canEdit, onClose, visi
     return (
       <div className="text-center py-12">
         <p className="text-sm text-destructive font-body">{error || 'Erro ao carregar DXF'}</p>
-        <Button variant="link" onClick={onClose} className="mt-2">Voltar</Button>
+        {onClose && <Button variant="link" onClick={onClose} className="mt-2">Voltar</Button>}
       </div>
     );
   }
