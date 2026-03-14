@@ -130,44 +130,106 @@ export default function Relatorios() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 items-center">
-        <Select value={selectedObra} onValueChange={(v) => { setSelectedObra(v); setSelectedPacote('all'); setSelectedServico('all'); }}>
-          <SelectTrigger className="w-56 font-body">
-            <Filter className="h-4 w-4 mr-2" />
-            <SelectValue placeholder="Filtrar por obra" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all" className="font-body">Todas as obras</SelectItem>
-            {obras.map(o => (
-              <SelectItem key={o.id} value={o.id} className="font-body">{o.nome}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {/* Obra combobox */}
+        <Popover open={openObra} onOpenChange={setOpenObra}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" role="combobox" aria-expanded={openObra} className="w-56 justify-between font-body">
+              <div className="flex items-center gap-2 truncate">
+                <Filter className="h-4 w-4 shrink-0" />
+                <span className="truncate">
+                  {selectedObra === 'all' ? 'Todas as obras' : obras.find(o => o.id === selectedObra)?.nome || 'Obra'}
+                </span>
+              </div>
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-56 p-0">
+            <Command>
+              <CommandInput placeholder="Buscar obra..." className="font-body" />
+              <CommandList>
+                <CommandEmpty className="font-body text-xs p-2">Nenhuma obra encontrada.</CommandEmpty>
+                <CommandGroup>
+                  <CommandItem value="all" onSelect={() => { setSelectedObra('all'); setSelectedPacote('all'); setSelectedServico('all'); setOpenObra(false); }} className="font-body">
+                    <Check className={cn("mr-2 h-4 w-4", selectedObra === 'all' ? "opacity-100" : "opacity-0")} />
+                    Todas as obras
+                  </CommandItem>
+                  {obras.map(o => (
+                    <CommandItem key={o.id} value={o.nome} onSelect={() => { setSelectedObra(o.id); setSelectedPacote('all'); setSelectedServico('all'); setOpenObra(false); }} className="font-body">
+                      <Check className={cn("mr-2 h-4 w-4", selectedObra === o.id ? "opacity-100" : "opacity-0")} />
+                      {o.nome}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
 
-        <Select value={selectedPacote} onValueChange={setSelectedPacote}>
-          <SelectTrigger className="w-52 font-body">
-            <FolderTree className="h-4 w-4 mr-2" />
-            <SelectValue placeholder="Pacote de trabalho" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all" className="font-body">Todos os pacotes</SelectItem>
-            {uniquePacotes.map(p => (
-              <SelectItem key={p} value={p} className="font-body">{p}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {/* Pacote combobox */}
+        <Popover open={openPacote} onOpenChange={setOpenPacote}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" role="combobox" aria-expanded={openPacote} className="w-52 justify-between font-body">
+              <div className="flex items-center gap-2 truncate">
+                <FolderTree className="h-4 w-4 shrink-0" />
+                <span className="truncate">{selectedPacote === 'all' ? 'Todos os pacotes' : selectedPacote}</span>
+              </div>
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-52 p-0">
+            <Command>
+              <CommandInput placeholder="Buscar pacote..." className="font-body" />
+              <CommandList>
+                <CommandEmpty className="font-body text-xs p-2">Nenhum pacote encontrado.</CommandEmpty>
+                <CommandGroup>
+                  <CommandItem value="all" onSelect={() => { setSelectedPacote('all'); setOpenPacote(false); }} className="font-body">
+                    <Check className={cn("mr-2 h-4 w-4", selectedPacote === 'all' ? "opacity-100" : "opacity-0")} />
+                    Todos os pacotes
+                  </CommandItem>
+                  {uniquePacotes.map(p => (
+                    <CommandItem key={p} value={p} onSelect={() => { setSelectedPacote(p); setOpenPacote(false); }} className="font-body">
+                      <Check className={cn("mr-2 h-4 w-4", selectedPacote === p ? "opacity-100" : "opacity-0")} />
+                      {p}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
 
-        <Select value={selectedServico} onValueChange={setSelectedServico}>
-          <SelectTrigger className="w-52 font-body">
-            <Layers className="h-4 w-4 mr-2" />
-            <SelectValue placeholder="Tipo de serviço" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all" className="font-body">Todos os tipos</SelectItem>
-            {uniqueServicos.map(s => (
-              <SelectItem key={s} value={s} className="font-body">{s}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {/* Serviço combobox */}
+        <Popover open={openServico} onOpenChange={setOpenServico}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" role="combobox" aria-expanded={openServico} className="w-52 justify-between font-body">
+              <div className="flex items-center gap-2 truncate">
+                <Layers className="h-4 w-4 shrink-0" />
+                <span className="truncate">{selectedServico === 'all' ? 'Todos os tipos' : selectedServico}</span>
+              </div>
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-52 p-0">
+            <Command>
+              <CommandInput placeholder="Buscar tipo..." className="font-body" />
+              <CommandList>
+                <CommandEmpty className="font-body text-xs p-2">Nenhum tipo encontrado.</CommandEmpty>
+                <CommandGroup>
+                  <CommandItem value="all" onSelect={() => { setSelectedServico('all'); setOpenServico(false); }} className="font-body">
+                    <Check className={cn("mr-2 h-4 w-4", selectedServico === 'all' ? "opacity-100" : "opacity-0")} />
+                    Todos os tipos
+                  </CommandItem>
+                  {uniqueServicos.map(s => (
+                    <CommandItem key={s} value={s} onSelect={() => { setSelectedServico(s); setOpenServico(false); }} className="font-body">
+                      <Check className={cn("mr-2 h-4 w-4", selectedServico === s ? "opacity-100" : "opacity-0")} />
+                      {s}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
 
         {/* Group mode toggle */}
         <div className="flex items-center rounded-md border border-border overflow-hidden ml-auto">
