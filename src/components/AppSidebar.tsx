@@ -41,20 +41,23 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="p-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-sidebar-primary">
-            <span className="text-sm font-bold text-sidebar-primary-foreground font-heading">P</span>
-          </div>
-          {!collapsed && (
-            <div className="flex flex-col">
-              <span className="text-sm font-bold text-sidebar-foreground font-heading tracking-wide">
-                PAVER
-              </span>
-              <span className="text-[10px] text-sidebar-foreground/60 font-body">
-                Young Empreendimentos
-              </span>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-sidebar-primary">
+              <span className="text-sm font-bold text-sidebar-primary-foreground font-heading">P</span>
             </div>
-          )}
+            {!collapsed && (
+              <div className="flex flex-col">
+                <span className="text-sm font-bold text-sidebar-foreground font-heading tracking-wide">
+                  PAVER
+                </span>
+                <span className="text-[10px] text-sidebar-foreground/60 font-body">
+                  Young Empreendimentos
+                </span>
+              </div>
+            )}
+          </div>
+          <SidebarTrigger className="text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent" />
         </div>
       </SidebarHeader>
 
