@@ -853,13 +853,13 @@ export default function DiarioObraNovoPage() {
                     <MapPin className="h-3 w-3" />
                     Clique na planta para marcar a localização
                   </p>
-                  {currentPlanta.imagem_url.match(/\.(pdf|dxf)(\?|$)/i) ? (
+                  {currentPlanta.imagem_url.match(/\.pdf(\?|$)/i) ? (
                     <div className="bg-muted/50 rounded-lg p-8 text-center">
                       <p className="text-sm text-muted-foreground font-body">
-                        Esta planta é um arquivo {currentPlanta.imagem_url.match(/\.dxf/i) ? 'DXF' : 'PDF'}.
+                        Esta planta é um arquivo PDF.
                       </p>
                       <p className="text-xs text-muted-foreground/70 font-body mt-1">
-                        A marcação de localização está disponível apenas para plantas em formato de imagem (JPG, PNG).
+                        A marcação de localização está disponível apenas para plantas em formato de imagem (JPG, PNG) ou DXF.
                       </p>
                       <Button
                         type="button"
@@ -872,6 +872,18 @@ export default function DiarioObraNovoPage() {
                         Continuar sem localização
                       </Button>
                     </div>
+                  ) : currentPlanta.imagem_url.match(/\.dxf(\?|$)/i) ? (
+                    <DxfPinCanvas
+                      plantaUrl={currentPlanta.imagem_url}
+                      dxfData={dxfData}
+                      dxfLoading={dxfLoading}
+                      setDxfData={setDxfData}
+                      setDxfLoading={setDxfLoading}
+                      onPinPlace={handlePinPlace}
+                      pinned={fotos[pinQueue[currentPinIndex]]?.pinned && fotos[pinQueue[currentPinIndex]]?.plantaId === selectedPlantaId}
+                      pinX={fotos[pinQueue[currentPinIndex]]?.posX}
+                      pinY={fotos[pinQueue[currentPinIndex]]?.posY}
+                    />
                   ) : (
                     <div
                       className="relative w-full border border-border rounded-lg overflow-hidden cursor-crosshair"
