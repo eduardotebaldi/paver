@@ -1,4 +1,4 @@
-import { LayoutDashboard, Building2, FileBarChart, Users, LogOut, Camera, BarChart3, GitBranch, ClipboardList } from "lucide-react";
+import { LayoutDashboard, FileBarChart, Users, LogOut, Camera, BarChart3, GitBranch, ClipboardList, FolderTree, Building2 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -17,15 +17,16 @@ import {
 
 const mainItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Obras", url: "/obras", icon: Building2 },
+  { title: "EAP", url: "/eap", icon: FolderTree },
+  { title: "Diário de Obra", url: "/diario-obra", icon: ClipboardList },
   { title: "Relatórios", url: "/relatorios", icon: FileBarChart },
   { title: "Rel. Fotográfico", url: "/relatorio-fotografico", icon: Camera },
   { title: "Linha de Balanço", url: "/linha-balanco", icon: BarChart3 },
-  { title: "Diário de Obra", url: "/diario-obra", icon: ClipboardList },
   { title: "Dependências", url: "/dependencias", icon: GitBranch },
 ];
 
 const adminItems = [
+  { title: "Gestão de Obras", url: "/admin/obras", icon: Building2 },
   { title: "Usuários", url: "/usuarios", icon: Users },
 ];
 

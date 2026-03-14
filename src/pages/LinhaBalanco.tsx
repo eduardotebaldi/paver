@@ -1,10 +1,17 @@
 import { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { BarChart3, Building2, Loader2, FolderTree, Layers } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { BarChart3, Building2, Loader2, FolderTree, Layers, Calendar, History, Link2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { fetchObras, fetchEapItems } from '@/services/api';
+import { bulkUpdateEapItems, calculateDependencyDates } from '@/services/eapApi';
+import type { EapItem } from '@/services/api';
+import EapMassDateEditor from '@/components/EapMassDateEditor';
+import BaselineManager from '@/components/BaselineManager';
 import LinhaBalancoChart from '@/components/LinhaBalanco';
 
 type GroupMode = 'pacote' | 'servico';
@@ -14,6 +21,13 @@ export default function LinhaBalancoPage() {
   const [mode, setMode] = useState<GroupMode>('pacote');
   const [selectedPacote, setSelectedPacote] = useState<string>('all');
   const [selectedServico, setSelectedServico] = useState<string>('all');
+  const [massDateOpen, setMassDateOpen] = useState(false);
+  const [baselineOpen, setBaselineOpen] = useState(false);
+
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { hasRole } = useAuth();
+  const canEdit = hasRole('admin') || hasRole('engenharia');
 
   const { data: obras = [] } = useQuery({
     queryKey: ['obras'],
@@ -46,6 +60,33 @@ export default function LinhaBalancoPage() {
   }, [eapItems, selectedPacote, selectedServico]);
 
   const obraName = obras.find(o => o.id === selectedObra)?.nome;
+
+  const handleBulkSave = async (changes: { id: string; updates: Partial<EapItem> }[]) => {
+    await bulkUpdateEapItems(changes);
+    queryClient.invalidateQueries({ queryKey: ['eap-items-balance', selectedObra] });
+    toast({ title: `${changes.length} itens atualizados!` });
+  };
+
+  const handleRecalcDeps = async () => {
+    const calculated = calculateDependencyDates(eapItems);
+    const changes: { id: string; updates: Partial<EapItem> }[] = [];
+    calculated.forEach((dates, itemId) => {
+      changes.push({
+        id: itemId,
+        updates: {
+          data_inicio_prevista: dates.inicio,
+          data_fim_prevista: dates.fim,
+        },
+      });
+    });
+    if (changes.length > 0) {
+      await bulkUpdateEapItems(changes);
+      queryClient.invalidateQueries({ queryKey: ['eap-items-balance', selectedObra] });
+      toast({ title: `Datas recalculadas para ${changes.length} itens!` });
+    } else {
+      toast({ title: 'Nenhum item com dependências para recalcular', variant: 'destructive' });
+    }
+  };
 
   // No obra selected — show selector prompt
   if (!selectedObra) {
@@ -147,6 +188,24 @@ export default function LinhaBalancoPage() {
             </SelectContent>
           </Select>
         </div>
+
+        {/* Action buttons — moved from EAP */}
+        {canEdit && selectedObra && (
+          <div className="flex gap-2 ml-auto">
+            <Button variant="outline" size="sm" onClick={() => setMassDateOpen(true)} className="font-body">
+              <Calendar className="h-4 w-4 mr-1.5" />
+              Datas
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setBaselineOpen(true)} className="font-body">
+              <History className="h-4 w-4 mr-1.5" />
+              Baselines
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleRecalcDeps} className="font-body">
+              <Link2 className="h-4 w-4 mr-1.5" />
+              Recalcular
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Chart — fills remaining space */}
@@ -159,6 +218,22 @@ export default function LinhaBalancoPage() {
           <LinhaBalancoFullChart eapItems={filteredItems} mode={mode} obraName={obraName} />
         )}
       </div>
+
+      {/* Mass date editor */}
+      <EapMassDateEditor
+        open={massDateOpen}
+        onOpenChange={setMassDateOpen}
+        items={eapItems}
+        onSave={handleBulkSave}
+      />
+
+      {/* Baseline manager */}
+      <BaselineManager
+        open={baselineOpen}
+        onOpenChange={setBaselineOpen}
+        obraId={selectedObra}
+        eapItems={eapItems}
+      />
     </div>
   );
 }
@@ -178,7 +253,6 @@ import {
   CartesianGrid,
   Legend,
 } from 'recharts';
-import type { EapItem } from '@/services/api';
 
 const chartConfig: ChartConfig = {
   previsto: { label: 'Previsto', color: 'hsl(var(--primary))' },
