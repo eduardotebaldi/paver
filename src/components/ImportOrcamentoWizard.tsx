@@ -987,6 +987,41 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
                                     </TableRow>
                                   );
                                 })}
+                                {/* Orphan items with no L3 group */}
+                                {orphanItems.map(item => {
+                                  const virtualKey = `orphan_${item.codigo}`;
+                                  const cls = classifications.get(virtualKey) || {
+                                    pacoteTrabalho: '',
+                                    tipoServico: '',
+                                  };
+                                  return (
+                                    <TableRow key={item.codigo} className="bg-amber-50/30">
+                                      <TableCell className="text-xs font-mono py-1.5">{item.codigo}</TableCell>
+                                      <TableCell className="py-1.5">
+                                        <span className="text-xs">{item.descricao}</span>
+                                      </TableCell>
+                                      <TableCell className="text-xs text-right py-1.5">
+                                        {formatBRL(item.precoTotal)}
+                                      </TableCell>
+                                      <TableCell className="py-1.5">
+                                        <AutocompleteInput
+                                          value={cls.pacoteTrabalho}
+                                          onChange={v => updateClassification(virtualKey, 'pacoteTrabalho', v)}
+                                          suggestions={allPacotes}
+                                          placeholder="Pacote..."
+                                        />
+                                      </TableCell>
+                                      <TableCell className="py-1.5">
+                                        <AutocompleteInput
+                                          value={cls.tipoServico}
+                                          onChange={v => updateClassification(virtualKey, 'tipoServico', v)}
+                                          suggestions={allTipos}
+                                          placeholder="Tipo..."
+                                        />
+                                      </TableCell>
+                                    </TableRow>
+                                  );
+                                })}
                               </TableBody>
                             </Table>
                           )}
