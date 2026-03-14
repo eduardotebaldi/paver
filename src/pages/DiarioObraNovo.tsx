@@ -139,6 +139,14 @@ export default function DiarioObraNovoPage() {
     });
   };
 
+  const toggleSubGroup = (key: string) => {
+    setExpandedSubGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+
   const toggleItem = (item: EapItem) => {
     setAtividades(prev => {
       const next = new Map(prev);
