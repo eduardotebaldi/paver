@@ -175,7 +175,7 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
   // Expanded sections in step 2
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
 
-  // Level 3 classification: codigo -> { pacoteTrabalho, tipoServico, classificacaoAdicional }
+  // Item-level classification: item codigo -> { pacoteTrabalho, tipoServico, classificacaoAdicional }
   const [classifications, setClassifications] = useState<
     Map<string, { pacoteTrabalho: string; tipoServico: string; classificacaoAdicional: string }>
   >(new Map());
@@ -206,20 +206,19 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
       const l1Codes = new Set(result.groups.filter(g => g.nivel === 1).map(g => g.codigo));
       setEnabledSections(l1Codes);
 
-      // Pre-populate classifications for level 3 groups
+      // Pre-populate classifications at item level (heuristic from L3/L1 parents)
       const classMap = new Map<string, { pacoteTrabalho: string; tipoServico: string; classificacaoAdicional: string }>();
-      const groupMap = new Map<string, OrcamentoGroup>();
-      result.groups.forEach(g => groupMap.set(g.codigo, g));
+      const gMap = new Map<string, OrcamentoGroup>();
+      result.groups.forEach(g => gMap.set(g.codigo, g));
 
+      // Build L3 heuristics first
+      const l3Heuristics = new Map<string, { pacoteTrabalho: string; tipoServico: string; classificacaoAdicional: string }>();
       for (const g of result.groups) {
         if (g.nivel === 3) {
-          // Tipo de Serviço = level 1 parent description
-          // Try direct first segment, then padded version (e.g. "1" -> "01")
           const firstSeg = g.codigo.split('.')[0];
-          let l1 = groupMap.get(firstSeg);
+          let l1 = gMap.get(firstSeg);
           if (!l1) {
-            // Try finding L1 by numeric match (e.g. code "1" matches group "01")
-            for (const [, gg] of groupMap) {
+            for (const [, gg] of gMap) {
               if (gg.nivel === 1 && parseInt(gg.codigo, 10) === parseInt(firstSeg, 10)) {
                 l1 = gg;
                 break;
@@ -227,16 +226,30 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
             }
           }
           const tipoServico = l1 ? l1.descricao.replace(/^\d+\s*[-–]\s*/, '').trim() : '';
-
-          // Classificação Adicional = level 2 parent description
           const l2Code = g.codigo.split('.').slice(0, 2).join('.');
-          const l2 = groupMap.get(l2Code);
+          const l2 = gMap.get(l2Code);
           const classificacaoAdicional = l2 ? l2.descricao.replace(/^\d+[\.\d]*\s*[-–]\s*/, '').trim() : '';
-
-          // Pacote de Trabalho = own description with prefixes removed
           const pacoteTrabalho = removePrefixes(g.descricao);
+          l3Heuristics.set(g.codigo, { pacoteTrabalho, tipoServico, classificacaoAdicional });
+        }
+      }
 
-          classMap.set(g.codigo, { pacoteTrabalho, tipoServico, classificacaoAdicional });
+      // Apply heuristics to each item
+      for (const item of result.items) {
+        const l3h = l3Heuristics.get(item.grupo3Codigo);
+        if (l3h) {
+          classMap.set(item.codigo, { ...l3h });
+        } else {
+          // Orphan: derive from L1
+          const firstSeg = item.codigo.split('.')[0];
+          let l1 = gMap.get(firstSeg);
+          if (!l1) {
+            for (const [, gg] of gMap) {
+              if (gg.nivel === 1 && parseInt(gg.codigo, 10) === parseInt(firstSeg, 10)) { l1 = gg; break; }
+            }
+          }
+          const tipoServico = l1 ? l1.descricao.replace(/^\d+\s*[-–]\s*/, '').trim() : '';
+          classMap.set(item.codigo, { pacoteTrabalho: removePrefixes(item.descricao), tipoServico, classificacaoAdicional: '' });
         }
       }
       setClassifications(classMap);
@@ -384,9 +397,9 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
   const reviewByPacote = useMemo((): ReviewGroup[] => {
     const map = new Map<string, Map<string, OrcamentoItem[]>>();
     for (const item of activeItems) {
-      const l3 = classifications.get(item.grupo3Codigo) || classifications.get(`orphan_${item.codigo}`);
-      const pacote = l3?.pacoteTrabalho || 'Sem classificação';
-      const tipo = l3?.tipoServico || 'Sem classificação';
+      const cls = classifications.get(item.codigo);
+      const pacote = cls?.pacoteTrabalho || 'Sem classificação';
+      const tipo = cls?.tipoServico || 'Sem classificação';
       if (!map.has(pacote)) map.set(pacote, new Map());
       const subMap = map.get(pacote)!;
       if (!subMap.has(tipo)) subMap.set(tipo, []);
@@ -411,9 +424,9 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
   const reviewByTipo = useMemo((): ReviewGroup[] => {
     const map = new Map<string, Map<string, OrcamentoItem[]>>();
     for (const item of activeItems) {
-      const l3 = classifications.get(item.grupo3Codigo) || classifications.get(`orphan_${item.codigo}`);
-      const tipo = l3?.tipoServico || 'Sem classificação';
-      const pacote = l3?.pacoteTrabalho || 'Sem classificação';
+      const cls = classifications.get(item.codigo);
+      const tipo = cls?.tipoServico || 'Sem classificação';
+      const pacote = cls?.pacoteTrabalho || 'Sem classificação';
       if (!map.has(tipo)) map.set(tipo, new Map());
       const subMap = map.get(tipo)!;
       if (!subMap.has(pacote)) subMap.set(pacote, []);
@@ -521,7 +534,7 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
       // 3. Insert items in batches
       const batchSize = 200;
       const itemsToInsert = activeItems.map((item, idx) => {
-        const l3 = classifications.get(item.grupo3Codigo) || classifications.get(`orphan_${item.codigo}`);
+        const cls = classifications.get(item.codigo);
         return {
           orcamento_id: orcamentoId,
           obra_id: obraId,
@@ -531,8 +544,8 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
           quantidade: item.quantidade,
           preco_unitario: item.precoUnitario,
           preco_total: item.precoTotal,
-          pacote_trabalho: l3?.pacoteTrabalho || null,
-          tipo_servico: l3?.tipoServico || null,
+          pacote_trabalho: cls?.pacoteTrabalho || null,
+          tipo_servico: cls?.tipoServico || null,
           nivel: 4,
           codigo_pai_n1: item.grupo1Codigo || null,
           codigo_pai_n2: item.grupo2Codigo || null,
@@ -580,7 +593,7 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
       }
 
       for (const item of activeItems) {
-        const l3 = classifications.get(item.grupo3Codigo) || classifications.get(`orphan_${item.codigo}`);
+        const cls = classifications.get(item.codigo);
         eapItems.push({
           obra_id: obraId,
           codigo: item.codigo,
@@ -588,9 +601,9 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
           tipo: 'item',
           unidade: item.unidade || undefined,
           quantidade: item.quantidade,
-          pacote: l3?.pacoteTrabalho || undefined,
-          lote: l3?.tipoServico || undefined,
-          classificacao_adicional: l3?.classificacaoAdicional || undefined,
+          pacote: cls?.pacoteTrabalho || undefined,
+          lote: cls?.tipoServico || undefined,
+          classificacao_adicional: cls?.classificacaoAdicional || undefined,
           ordem: ordem++,
         });
       }
@@ -967,7 +980,7 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
             </div>
           )}
 
-          {/* STEP 3: Classification with heuristic auto-suggestions, grouped by level 1 */}
+          {/* STEP 3: Classification at item level, grouped by level 1 */}
           {step === 'classify' && (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground font-body">
@@ -984,24 +997,10 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
                   {level1Groups
                     .filter(l1 => enabledSections.has(l1.codigo))
                     .map(l1 => {
-                      const l3ForSection = level3Groups.filter(
-                        g =>
-                          g.codigo.startsWith(l1.codigo + '.') ||
-                          (itemHierarchyMap.l3ByL1.get(l1.codigo)?.has(g.codigo) ?? false),
-                      );
-                      // Also find orphan items (belonging to this L1 but with no L3 group)
-                      const orphanItems = activeItems.filter(
-                        i => i.grupo1Codigo === l1.codigo && (!i.grupo3Codigo || !level3Groups.some(g => g.codigo === i.grupo3Codigo)),
-                      );
-                      if (l3ForSection.length === 0 && orphanItems.length === 0) return null;
+                      const sectionItems = activeItems.filter(i => i.grupo1Codigo === l1.codigo);
+                      if (sectionItems.length === 0) return null;
                       const sectionExpanded = expandedSections.has('classify_' + l1.codigo);
-                      const sectionChildItems = l3ForSection.reduce((acc, g) => {
-                        const childItems = items.filter(
-                          i => i.grupo3Codigo === g.codigo && enabledSections.has(i.grupo1Codigo) && !disabledItems.has(i.codigo),
-                        );
-                        return acc.concat(childItems);
-                      }, [] as OrcamentoItem[]);
-                      const sectionTotal = sectionChildItems.reduce((s, i) => s + i.precoTotal, 0) + orphanItems.reduce((s, i) => s + i.precoTotal, 0);
+                      const sectionTotal = sectionItems.reduce((s, i) => s + i.precoTotal, 0);
 
                       return (
                         <div key={l1.codigo} className="border border-border rounded-lg overflow-hidden">
@@ -1019,7 +1018,7 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
                               {l1.descricao}
                             </span>
                             <Badge variant="secondary" className="text-[10px] font-body">
-                              {sectionChildItems.length + orphanItems.length} itens · {l3ForSection.length} pacotes
+                              {sectionItems.length} itens
                             </Badge>
                             <span className="text-xs font-body font-medium w-28 text-right">
                               {formatBRL(sectionTotal)}
@@ -1030,110 +1029,23 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
                             <Table>
                               <TableHeader>
                                 <TableRow>
-                                  <TableHead className="text-xs w-24">Código</TableHead>
+                                  <TableHead className="text-xs w-28">Código</TableHead>
                                   <TableHead className="text-xs">Descrição</TableHead>
-                                  <TableHead className="text-xs w-28 text-right">Valor Total</TableHead>
-                                  <TableHead className="text-xs w-44">Pacote de Trabalho</TableHead>
-                                  <TableHead className="text-xs w-44">Tipo de Serviço</TableHead>
+                                  <TableHead className="text-xs w-24 text-right">Valor Total</TableHead>
+                                  <TableHead className="text-xs w-40">Pacote de Trabalho</TableHead>
+                                  <TableHead className="text-xs w-40">Tipo de Serviço</TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
-                                {l3ForSection.map(g => {
-                                  const cls = classifications.get(g.codigo) || {
+                                {sectionItems.map(item => {
+                                  const cls = classifications.get(item.codigo) || {
                                     pacoteTrabalho: '',
                                     tipoServico: '',
-                                  };
-                                  const childItems = items.filter(
-                                    i => i.grupo3Codigo === g.codigo && enabledSections.has(i.grupo1Codigo),
-                                  );
-                                  const total = childItems.reduce((s, i) => s + i.precoTotal, 0);
-
-                                  const l3IsExpanded = expandedSections.has('classify_l3_' + g.codigo);
-
-                                  return (
-                                    <React.Fragment key={g.codigo}>
-                                      <TableRow className="hover:bg-muted/30">
-                                        <TableCell className="text-xs font-mono py-1.5">
-                                          <div className="flex items-center gap-1">
-                                            {childItems.length > 0 && (
-                                              <button
-                                                onClick={() => toggleExpanded('classify_l3_' + g.codigo)}
-                                                className="text-muted-foreground hover:text-foreground"
-                                              >
-                                                {l3IsExpanded ? (
-                                                  <ChevronDown className="h-3 w-3" />
-                                                ) : (
-                                                  <ChevronRight className="h-3 w-3" />
-                                                )}
-                                              </button>
-                                            )}
-                                            {g.codigo}
-                                          </div>
-                                        </TableCell>
-                                        <TableCell className="py-1.5">
-                                          <div className="flex items-center gap-2">
-                                            {(() => {
-                                              const l2Code = g.codigo.split('.').slice(0, 2).join('.');
-                                              const l2Group = groupMap.get(l2Code);
-                                              const parentContext = l2Group ? l2Group.descricao : '';
-                                              return (
-                                                <CollapsibleDescription
-                                                  cleanedName={removePrefixes(g.descricao)}
-                                                  parentContext={parentContext}
-                                                />
-                                              );
-                                            })()}
-                                            <Badge variant="outline" className="text-[8px] shrink-0">
-                                              {childItems.length} itens
-                                            </Badge>
-                                          </div>
-                                        </TableCell>
-                                        <TableCell className="text-xs text-right py-1.5">
-                                          {formatBRL(total)}
-                                        </TableCell>
-                                        <TableCell className="py-1.5">
-                                          <AutocompleteInput
-                                            value={cls.pacoteTrabalho}
-                                            onChange={v =>
-                                              updateClassification(g.codigo, 'pacoteTrabalho', v)
-                                            }
-                                            suggestions={allPacotes}
-                                            placeholder="Pacote..."
-                                          />
-                                        </TableCell>
-                                        <TableCell className="py-1.5">
-                                          <AutocompleteInput
-                                            value={cls.tipoServico}
-                                            onChange={v =>
-                                              updateClassification(g.codigo, 'tipoServico', v)
-                                            }
-                                            suggestions={allTipos}
-                                            placeholder="Tipo..."
-                                          />
-                                        </TableCell>
-                                      </TableRow>
-                                      {l3IsExpanded && childItems.map(ci => (
-                                        <TableRow key={ci.codigo} className="bg-muted/10">
-                                          <TableCell className="text-[10px] font-mono py-0.5 pl-10 text-muted-foreground">{ci.codigo}</TableCell>
-                                          <TableCell className="text-[10px] py-0.5 text-muted-foreground">{ci.descricao}</TableCell>
-                                          <TableCell className="text-[10px] text-right py-0.5 text-muted-foreground">{formatBRL(ci.precoTotal)}</TableCell>
-                                          <TableCell className="py-0.5" />
-                                          <TableCell className="py-0.5" />
-                                        </TableRow>
-                                      ))}
-                                    </React.Fragment>
-                                  );
-                                })}
-                                {/* Orphan items with no L3 group */}
-                                {orphanItems.map(item => {
-                                  const virtualKey = `orphan_${item.codigo}`;
-                                  const cls = classifications.get(virtualKey) || {
-                                    pacoteTrabalho: '',
-                                    tipoServico: '',
+                                    classificacaoAdicional: '',
                                   };
                                   return (
-                                    <TableRow key={item.codigo} className="bg-muted/20">
-                                      <TableCell className="text-xs font-mono py-1.5">{item.codigo}</TableCell>
+                                    <TableRow key={item.codigo}>
+                                      <TableCell className="text-[10px] font-mono py-1.5">{item.codigo}</TableCell>
                                       <TableCell className="py-1.5">
                                         <span className="text-xs">{item.descricao}</span>
                                       </TableCell>
@@ -1143,7 +1055,7 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
                                       <TableCell className="py-1.5">
                                         <AutocompleteInput
                                           value={cls.pacoteTrabalho}
-                                          onChange={v => updateClassification(virtualKey, 'pacoteTrabalho', v)}
+                                          onChange={v => updateClassification(item.codigo, 'pacoteTrabalho', v)}
                                           suggestions={allPacotes}
                                           placeholder="Pacote..."
                                         />
@@ -1151,7 +1063,7 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
                                       <TableCell className="py-1.5">
                                         <AutocompleteInput
                                           value={cls.tipoServico}
-                                          onChange={v => updateClassification(virtualKey, 'tipoServico', v)}
+                                          onChange={v => updateClassification(item.codigo, 'tipoServico', v)}
                                           suggestions={allTipos}
                                           placeholder="Tipo..."
                                         />
