@@ -305,6 +305,32 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, onImport, im
                           </button>
                           <span className="text-[10px] text-muted-foreground font-mono">{l1.codigo}</span>
                           <span className="text-sm font-medium font-heading flex-1">{l1.descricao}</span>
+
+                          <Select
+                            value={l1.grupoTipo}
+                            onValueChange={(v) => changeGroupType(l1.codigo, v as GrupoTipo)}
+                          >
+                            <SelectTrigger className="h-6 w-[140px] text-[10px]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="tipo_servico" className="text-xs">Tipo de Serviço</SelectItem>
+                              <SelectItem value="pacote_trabalho" className="text-xs">Pacote de Trabalho</SelectItem>
+                            </SelectContent>
+                          </Select>
+
+                          <button
+                            onClick={() => toggleAllInGroup(l1.codigo, 1, l1ActiveCount < l1Items.length)}
+                            className="text-muted-foreground hover:text-foreground transition-colors"
+                            title={l1ActiveCount === l1Items.length ? 'Desativar todos' : 'Ativar todos'}
+                          >
+                            {l1ActiveCount === l1Items.length ? (
+                              <Eye className="h-3.5 w-3.5" />
+                            ) : (
+                              <EyeOff className="h-3.5 w-3.5" />
+                            )}
+                          </button>
+
                           <span className="text-[10px] text-muted-foreground">{l1ActiveCount}/{l1Items.length}</span>
                           <span className="text-[10px] text-muted-foreground">{formatBRL(l1.precoTotal)}</span>
                         </div>
