@@ -13,6 +13,7 @@ import { fetchObra, fetchEapItems, insertEapItems, deleteEapItemsByObra, EapItem
 import { parseEapExcel } from '@/lib/eapParser';
 import DiarioObraTab from '@/components/DiarioObraTab';
 import RelatorioFotograficoTab from '@/components/RelatorioFotograficoTab';
+import ImportOrcamentoWizard from '@/components/ImportOrcamentoWizard';
 
 type GroupMode = 'pacote' | 'servico';
 
