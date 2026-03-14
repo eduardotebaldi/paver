@@ -168,6 +168,9 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
   // Section toggles (level 1 codes)
   const [enabledSections, setEnabledSections] = useState<Set<string>>(new Set());
 
+  // Individual item toggles (disabled item codigos)
+  const [disabledItems, setDisabledItems] = useState<Set<string>>(new Set());
+
   // Expanded sections in step 2
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
 
