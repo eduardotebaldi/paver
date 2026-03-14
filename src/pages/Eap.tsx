@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2, FileSpreadsheet, ChevronRight, ChevronDown, Layers, FolderTree, Link2, Building2 } from 'lucide-react';
+import CollapsibleClassification from '@/components/CollapsibleClassification';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
