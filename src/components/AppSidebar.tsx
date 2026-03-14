@@ -1,4 +1,4 @@
-import { LayoutDashboard, Building2, FileBarChart, Users, LogOut, ClipboardList } from "lucide-react";
+import { LayoutDashboard, Building2, FileBarChart, Users, LogOut, Camera, BarChart3 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -19,6 +19,7 @@ const mainItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Obras", url: "/obras", icon: Building2 },
   { title: "Relatórios", url: "/relatorios", icon: FileBarChart },
+  { title: "Rel. Fotográfico", url: "/relatorio-fotografico", icon: Camera },
 ];
 
 const adminItems = [

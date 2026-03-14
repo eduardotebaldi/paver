@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { FileBarChart, Loader2, Download, Filter } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { FileBarChart, Loader2, Download, Filter, FolderTree, Layers } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -9,8 +9,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { fetchObras, fetchAllEapItems, Obra, EapItem } from '@/services/api';
 
+type GroupMode = 'pacote' | 'servico';
+
 export default function Relatorios() {
   const [selectedObra, setSelectedObra] = useState<string>('all');
+  const [groupMode, setGroupMode] = useState<GroupMode>('pacote');
+  const [selectedPacote, setSelectedPacote] = useState<string>('all');
+  const [selectedServico, setSelectedServico] = useState<string>('all');
 
   const { data: obras = [], isLoading: loadingObras } = useQuery({
     queryKey: ['obras'],
@@ -22,18 +27,46 @@ export default function Relatorios() {
     queryFn: fetchAllEapItems,
   });
 
-  const filteredItems = selectedObra === 'all'
+  // Filter by obra
+  const obraFiltered = selectedObra === 'all'
     ? allEapItems
     : allEapItems.filter(i => i.obra_id === selectedObra);
 
+  // Get unique pacotes and servicos from obra-filtered items
+  const uniquePacotes = useMemo(() => {
+    const set = new Set<string>();
+    obraFiltered.forEach(i => { if (i.pacote) set.add(i.pacote); });
+    return Array.from(set).sort();
+  }, [obraFiltered]);
+
+  const uniqueServicos = useMemo(() => {
+    const set = new Set<string>();
+    obraFiltered.forEach(i => { if (i.lote) set.add(i.lote); });
+    return Array.from(set).sort();
+  }, [obraFiltered]);
+
+  // Apply pacote/servico filters
+  const filteredItems = useMemo(() => {
+    let items = obraFiltered;
+    if (selectedPacote !== 'all') items = items.filter(i => i.pacote === selectedPacote);
+    if (selectedServico !== 'all') items = items.filter(i => i.lote === selectedServico);
+    return items;
+  }, [obraFiltered, selectedPacote, selectedServico]);
+
   const obraMap = Object.fromEntries(obras.map(o => [o.id, o]));
 
-  // Group by obra
-  const groupedByObra: Record<string, EapItem[]> = {};
-  filteredItems.forEach(item => {
-    if (!groupedByObra[item.obra_id]) groupedByObra[item.obra_id] = [];
-    groupedByObra[item.obra_id].push(item);
-  });
+  // Group items based on mode
+  const grouped = useMemo(() => {
+    const map = new Map<string, { label: string; items: EapItem[] }>();
+    for (const item of filteredItems) {
+      const key = groupMode === 'pacote'
+        ? (item.pacote || 'Sem pacote')
+        : (item.lote || 'Sem classificação');
+      if (!map.has(key)) map.set(key, { label: key, items: [] });
+      map.get(key)!.items.push(item);
+    }
+    return Array.from(map.values());
+  }, [filteredItems, groupMode]);
 
   const totalItems = filteredItems.length;
   const avgBase = totalItems > 0 ? filteredItems.reduce((s, i) => s + (i.avanco_base || 0), 0) / totalItems : 0;
@@ -41,11 +74,12 @@ export default function Relatorios() {
   const avgRealizado = totalItems > 0 ? filteredItems.reduce((s, i) => s + (i.avanco_realizado || 0), 0) / totalItems : 0;
 
   const handleExportCSV = () => {
-    const headers = ['Obra', 'Código', 'Descrição', 'Lote', 'Unidade', 'Qtd', 'Base %', 'Previsto %', 'Realizado %'];
+    const headers = ['Obra', 'Código', 'Descrição', 'Pacote', 'Tipo Serviço', 'Unidade', 'Qtd', 'Base %', 'Previsto %', 'Realizado %'];
     const rows = filteredItems.map(item => [
       obraMap[item.obra_id]?.nome || '',
       item.codigo || '',
       item.descricao,
+      item.pacote || '',
       item.lote || '',
       item.unidade || '',
       String(item.quantidade || 0),
@@ -53,7 +87,6 @@ export default function Relatorios() {
       String(item.avanco_previsto || 0),
       String(item.avanco_realizado || 0),
     ]);
-
     const csv = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -84,10 +117,10 @@ export default function Relatorios() {
         </Button>
       </div>
 
-      {/* Filter */}
-      <div className="flex gap-3">
-        <Select value={selectedObra} onValueChange={setSelectedObra}>
-          <SelectTrigger className="w-64 font-body">
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3 items-center">
+        <Select value={selectedObra} onValueChange={(v) => { setSelectedObra(v); setSelectedPacote('all'); setSelectedServico('all'); }}>
+          <SelectTrigger className="w-56 font-body">
             <Filter className="h-4 w-4 mr-2" />
             <SelectValue placeholder="Filtrar por obra" />
           </SelectTrigger>
@@ -98,6 +131,58 @@ export default function Relatorios() {
             ))}
           </SelectContent>
         </Select>
+
+        <Select value={selectedPacote} onValueChange={setSelectedPacote}>
+          <SelectTrigger className="w-52 font-body">
+            <FolderTree className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="Pacote de trabalho" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all" className="font-body">Todos os pacotes</SelectItem>
+            {uniquePacotes.map(p => (
+              <SelectItem key={p} value={p} className="font-body">{p}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={selectedServico} onValueChange={setSelectedServico}>
+          <SelectTrigger className="w-52 font-body">
+            <Layers className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="Tipo de serviço" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all" className="font-body">Todos os tipos</SelectItem>
+            {uniqueServicos.map(s => (
+              <SelectItem key={s} value={s} className="font-body">{s}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Group mode toggle */}
+        <div className="flex items-center rounded-md border border-border overflow-hidden ml-auto">
+          <button
+            onClick={() => setGroupMode('pacote')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-body transition-colors ${
+              groupMode === 'pacote'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-background text-muted-foreground hover:bg-muted'
+            }`}
+          >
+            <FolderTree className="h-3.5 w-3.5" />
+            Pacote
+          </button>
+          <button
+            onClick={() => setGroupMode('servico')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-body transition-colors ${
+              groupMode === 'servico'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-background text-muted-foreground hover:bg-muted'
+            }`}
+          >
+            <Layers className="h-3.5 w-3.5" />
+            Serviço
+          </button>
+        </div>
       </div>
 
       {/* Summary cards */}
@@ -137,7 +222,7 @@ export default function Relatorios() {
         </Card>
       </div>
 
-      {/* Table */}
+      {/* Table grouped */}
       {isLoading ? (
         <div className="flex justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-accent" />
@@ -155,43 +240,70 @@ export default function Relatorios() {
           </CardContent>
         </Card>
       ) : (
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="font-heading">Obra</TableHead>
-                  <TableHead className="font-heading">Código</TableHead>
-                  <TableHead className="font-heading">Descrição</TableHead>
-                  <TableHead className="font-heading">Lote</TableHead>
-                  <TableHead className="font-heading text-right">Base</TableHead>
-                  <TableHead className="font-heading text-right">Previsto</TableHead>
-                  <TableHead className="font-heading text-right">Realizado</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredItems.map(item => (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-body text-xs">{obraMap[item.obra_id]?.nome || '—'}</TableCell>
-                    <TableCell className="font-mono text-xs">{item.codigo || '—'}</TableCell>
-                    <TableCell className="font-body text-sm">{item.descricao}</TableCell>
-                    <TableCell>
-                      {item.lote ? <Badge variant="outline" className="text-[10px]">{item.lote}</Badge> : '—'}
-                    </TableCell>
-                    <TableCell className="text-right font-body text-sm">{(item.avanco_base || 0).toFixed(1)}%</TableCell>
-                    <TableCell className="text-right font-body text-sm">{(item.avanco_previsto || 0).toFixed(1)}%</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Progress value={item.avanco_realizado || 0} className="w-16 h-1.5" />
-                        <span className="font-body text-sm font-medium">{(item.avanco_realizado || 0).toFixed(1)}%</span>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        <div className="space-y-4">
+          {grouped.map(group => {
+            const groupAvg = group.items.length > 0
+              ? group.items.reduce((s, i) => s + (i.avanco_realizado || 0), 0) / group.items.length
+              : 0;
+            return (
+              <Card key={group.label}>
+                <CardContent className="p-0">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                    <div className="flex items-center gap-2">
+                      {groupMode === 'pacote' ? (
+                        <FolderTree className="h-4 w-4 text-accent" />
+                      ) : (
+                        <Layers className="h-4 w-4 text-accent" />
+                      )}
+                      <span className="font-heading font-semibold text-sm">{group.label}</span>
+                      <Badge variant="secondary" className="text-[10px]">{group.items.length}</Badge>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Progress value={groupAvg} className="w-20 h-1.5" />
+                      <span className="text-xs font-body text-muted-foreground">{groupAvg.toFixed(1)}%</span>
+                    </div>
+                  </div>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="font-heading">Obra</TableHead>
+                        <TableHead className="font-heading">Descrição</TableHead>
+                        <TableHead className="font-heading">
+                          {groupMode === 'pacote' ? 'Tipo Serviço' : 'Pacote'}
+                        </TableHead>
+                        <TableHead className="font-heading text-right">Base</TableHead>
+                        <TableHead className="font-heading text-right">Previsto</TableHead>
+                        <TableHead className="font-heading text-right">Realizado</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {group.items.map(item => (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-body text-xs">{obraMap[item.obra_id]?.nome || '—'}</TableCell>
+                          <TableCell className="font-body text-sm">{item.descricao}</TableCell>
+                          <TableCell>
+                            {groupMode === 'pacote'
+                              ? (item.lote ? <Badge variant="outline" className="text-[10px]">{item.lote}</Badge> : '—')
+                              : (item.pacote ? <Badge variant="outline" className="text-[10px]">{item.pacote}</Badge> : '—')
+                            }
+                          </TableCell>
+                          <TableCell className="text-right font-body text-sm">{(item.avanco_base || 0).toFixed(1)}%</TableCell>
+                          <TableCell className="text-right font-body text-sm">{(item.avanco_previsto || 0).toFixed(1)}%</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <Progress value={item.avanco_realizado || 0} className="w-16 h-1.5" />
+                              <span className="font-body text-sm font-medium">{(item.avanco_realizado || 0).toFixed(1)}%</span>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       )}
     </div>
   );
