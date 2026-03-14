@@ -284,10 +284,10 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Legend,
   ReferenceLine,
   ReferenceArea,
   Tooltip,
+  Cell,
 } from 'recharts';
 
 const DAY_MS = 86400000;
