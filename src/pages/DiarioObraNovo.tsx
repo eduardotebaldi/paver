@@ -81,9 +81,12 @@ export default function DiarioObraNovoPage() {
 
   // Pin modal state
   const [pinModalOpen, setPinModalOpen] = useState(false);
-  const [pinQueue, setPinQueue] = useState<number[]>([]); // indices of fotos awaiting pinning
+  const [pinQueue, setPinQueue] = useState<number[]>([]);
   const [currentPinIndex, setCurrentPinIndex] = useState(0);
   const [selectedPlantaId, setSelectedPlantaId] = useState<string>('');
+  const [skipConfirming, setSkipConfirming] = useState(false);
+  const [skipCountdown, setSkipCountdown] = useState(10);
+  const skipTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const { data: obras = [] } = useQuery({ queryKey: ['obras'], queryFn: fetchObras });
   const { data: eapItems = [] } = useQuery({
