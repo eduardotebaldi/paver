@@ -112,22 +112,26 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="p-4 space-y-3">
-        {!collapsed && user && (
-          <div className="text-[11px] text-sidebar-foreground/60 font-body truncate">
-            {userName || user.email}
-          </div>
-        )}
-        <SidebarMenuButton
-          onClick={signOut}
-          className="text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground w-full"
-        >
-          <LogOut className="h-4 w-4" />
-          {!collapsed && <span className="font-body">Sair</span>}
-        </SidebarMenuButton>
-        {!collapsed && (
-          <p className="text-[10px] text-sidebar-foreground/40 font-body text-center">
-            © {new Date().getFullYear()} Young Empreendimentos
-          </p>
+        {collapsed ? (
+          <SidebarTrigger className="w-full flex items-center justify-center rounded-md border border-sidebar-border bg-sidebar-accent/50 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground h-9" />
+        ) : (
+          <>
+            {user && (
+              <div className="text-[11px] text-sidebar-foreground/60 font-body truncate">
+                {userName || user.email}
+              </div>
+            )}
+            <SidebarMenuButton
+              onClick={signOut}
+              className="text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground w-full"
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="font-body">Sair</span>
+            </SidebarMenuButton>
+            <p className="text-[10px] text-sidebar-foreground/40 font-body text-center">
+              © {new Date().getFullYear()} Young Empreendimentos
+            </p>
+          </>
         )}
       </SidebarFooter>
     </Sidebar>
