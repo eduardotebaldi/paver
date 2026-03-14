@@ -1055,12 +1055,13 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
-                                {sectionItems.map(item => {
+                                {sectionItems.map((item, rowIdx) => {
                                   const cls = classifications.get(item.codigo) || {
                                     pacoteTrabalho: '',
                                     tipoServico: '',
                                     classificacaoAdicional: '',
                                   };
+                                  const globalIdx = activeItems.indexOf(item);
                                   return (
                                     <TableRow key={item.codigo}>
                                       <TableCell className="text-[10px] font-mono py-1.5">{item.codigo}</TableCell>
@@ -1079,6 +1080,7 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
                                           onChange={v => updateClassification(item.codigo, 'pacoteTrabalho', v)}
                                           suggestions={allPacotes}
                                           placeholder="Pacote..."
+                                          navId={`pacote__${globalIdx}`}
                                         />
                                       </TableCell>
                                       <TableCell className="py-1.5">
@@ -1087,6 +1089,7 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
                                           onChange={v => updateClassification(item.codigo, 'tipoServico', v)}
                                           suggestions={allTipos}
                                           placeholder="Tipo..."
+                                          navId={`tipo__${globalIdx}`}
                                         />
                                       </TableCell>
                                     </TableRow>
