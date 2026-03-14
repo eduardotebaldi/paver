@@ -232,6 +232,9 @@ export default function EapPage() {
                                   >
                                     <span className="flex-1 text-muted-foreground">
                                       {item.descricao}
+                                      {item.classificacao_adicional && (
+                                        <CollapsibleClassification text={item.classificacao_adicional} />
+                                      )}
                                     </span>
                                     {item.data_inicio_prevista && (
                                       <span className="text-[9px] text-muted-foreground">
