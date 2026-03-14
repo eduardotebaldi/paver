@@ -93,7 +93,7 @@ export default function Dashboard() {
               <Card
                 key={obra.id}
                 className="cursor-pointer hover:shadow-md transition-shadow"
-                onClick={() => navigate(`/obras/${obra.id}`)}
+                onClick={() => navigate(`/eap`)}
               >
                 <CardContent className="pt-4 pb-4">
                   <div className="flex items-start justify-between mb-2">
