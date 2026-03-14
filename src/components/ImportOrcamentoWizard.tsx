@@ -125,21 +125,12 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
   const [importSuccess, setImportSuccess] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
-  const [parsed, setParsed] = useState<ParsedOrcamento | null>(null);
-  const [groups, setGroups] = useState<OrcamentoGroup[]>([]);
-  const [items, setItems] = useState<OrcamentoItem[]>([]);
-  const [parseError, setParseError] = useState<string | null>(null);
-  const [rawFile, setRawFile] = useState<File | null>(null);
-  const [previewLines, setPreviewLines] = useState<string[][]>([]);
-  const [headerLine, setHeaderLine] = useState<string[]>([]);
-  const [importing, setImporting] = useState(false);
-  const [importSuccess, setImportSuccess] = useState(false);
-  const [dragOver, setDragOver] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Section toggles (level 1 codes)
   const [enabledSections, setEnabledSections] = useState<Set<string>>(new Set());
+
+  // Expanded sections in step 2
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
 
   // Level 3 classification: codigo -> { pacoteTrabalho, tipoServico }
   const [classifications, setClassifications] = useState<
@@ -179,7 +170,7 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
 
       for (const g of result.groups) {
         if (g.nivel === 3) {
-          // Tipo de Serviço = level 1 parent description
+          // Tipo de Serviço = level 1 parent description (remove leading number prefix)
           const l1Code = g.codigo.split('.')[0];
           const l1 = groupMap.get(l1Code);
           const tipoServico = l1 ? l1.descricao.replace(/^\d+\s*[-–]\s*/, '').trim() : '';
@@ -236,8 +227,7 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
 
   // Active items (belonging to enabled sections)
   const activeItems = useMemo(
-    () =>
-      items.filter(i => enabledSections.has(i.grupo1Codigo)),
+    () => items.filter(i => enabledSections.has(i.grupo1Codigo)),
     [items, enabledSections],
   );
 
@@ -245,6 +235,24 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
   const enabledTotal = useMemo(
     () => activeItems.reduce((s, i) => s + i.precoTotal, 0),
     [activeItems],
+  );
+
+  // Child groups helper
+  const getChildGroups = useCallback(
+    (parentCodigo: string, targetNivel: number) =>
+      groups.filter(g => g.nivel === targetNivel && g.codigo.startsWith(parentCodigo + '.')),
+    [groups],
+  );
+
+  // Items for a group
+  const getItemsForGroup = useCallback(
+    (groupCodigo: string, nivel: number) =>
+      items.filter(i => {
+        if (nivel === 1) return i.grupo1Codigo === groupCodigo;
+        if (nivel === 2) return i.grupo2Codigo === groupCodigo;
+        return i.grupo3Codigo === groupCodigo;
+      }),
+    [items],
   );
 
   // Autocomplete suggestions
@@ -296,6 +304,15 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
 
   const toggleSection = (codigo: string) => {
     setEnabledSections(prev => {
+      const next = new Set(prev);
+      if (next.has(codigo)) next.delete(codigo);
+      else next.add(codigo);
+      return next;
+    });
+  };
+
+  const toggleExpanded = (codigo: string) => {
+    setExpandedSections(prev => {
       const next = new Set(prev);
       if (next.has(codigo)) next.delete(codigo);
       else next.add(codigo);
@@ -368,13 +385,11 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
       }
 
       // 4. Also insert into EAP for backward compatibility
-      // Delete existing EAP items
       await supabase.from('paver_eap_items').delete().eq('obra_id', obraId);
 
       let ordem = 0;
       const eapItems: any[] = [];
 
-      // Add groups as agrupadores
       for (const g of groups) {
         if (!enabledSections.has(g.codigo.split('.')[0])) continue;
         const l3class = classifications.get(g.codigo);
@@ -389,7 +404,6 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
         });
       }
 
-      // Add items
       for (const item of activeItems) {
         const l3 = classifications.get(item.grupo3Codigo);
         eapItems.push({
@@ -432,6 +446,7 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
     setHeaderLine([]);
     setImportSuccess(false);
     setEnabledSections(new Set());
+    setExpandedSections(new Set());
     setClassifications(new Map());
     setDragOver(false);
   };
@@ -441,13 +456,13 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
     onOpenChange(v);
   };
 
-  const steps: { key: Step; label: string; num: number }[] = [
+  const stepsConfig: { key: Step; label: string; num: number }[] = [
     { key: 'upload', label: 'Upload', num: 1 },
     { key: 'sections', label: 'Seções', num: 2 },
     { key: 'classify', label: 'Classificação', num: 3 },
     { key: 'review', label: 'Revisão', num: 4 },
   ];
-  const stepIdx = steps.findIndex(s => s.key === step);
+  const stepIdx = stepsConfig.findIndex(s => s.key === step);
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -461,7 +476,7 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
 
         {/* Step indicators */}
         <div className="flex items-center gap-1 text-xs font-body">
-          {steps.map((s, i) => (
+          {stepsConfig.map((s, i) => (
             <div key={s.key} className="flex items-center gap-1">
               {i > 0 && <ChevronRight className="h-3 w-3 text-muted-foreground" />}
               <span
@@ -561,11 +576,11 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
             </div>
           )}
 
-          {/* STEP 2: Sections */}
+          {/* STEP 2: Sections — expandable */}
           {step === 'sections' && (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground font-body">
-                Selecione as seções que deseja importar. O total é atualizado em tempo real.
+                Selecione as seções que deseja importar. Clique na seta para ver o conteúdo de cada seção.
               </p>
 
               <div className="flex items-center gap-3 px-3 py-2 bg-muted/50 rounded-md">
@@ -581,29 +596,144 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
               <ScrollArea className="h-[45vh]">
                 <div className="space-y-1 pr-4">
                   {level1Groups.map(l1 => {
-                    const sectionItems = items.filter(i => i.grupo1Codigo === l1.codigo);
+                    const sectionItems = getItemsForGroup(l1.codigo, 1);
                     const sectionTotal = sectionItems.reduce((s, i) => s + i.precoTotal, 0);
                     const enabled = enabledSections.has(l1.codigo);
+                    const expanded = expandedSections.has(l1.codigo);
+                    const l2Groups = getChildGroups(l1.codigo, 2);
 
                     return (
-                      <div
-                        key={l1.codigo}
-                        className={`flex items-center gap-3 px-4 py-3 rounded-lg border transition-colors ${
-                          enabled ? 'bg-card border-border' : 'bg-muted/30 border-transparent opacity-60'
-                        }`}
-                      >
-                        <Switch
-                          checked={enabled}
-                          onCheckedChange={() => toggleSection(l1.codigo)}
-                        />
-                        <span className="text-xs text-muted-foreground font-mono w-8">{l1.codigo}</span>
-                        <span className="flex-1 text-sm font-body font-medium">{l1.descricao}</span>
-                        <span className="text-xs text-muted-foreground font-body">
-                          {sectionItems.length} itens
-                        </span>
-                        <span className="text-sm font-body font-medium w-28 text-right">
-                          {formatBRL(sectionTotal)}
-                        </span>
+                      <div key={l1.codigo}>
+                        <div
+                          className={`flex items-center gap-3 px-4 py-3 rounded-lg border transition-colors ${
+                            enabled ? 'bg-card border-border' : 'bg-muted/30 border-transparent opacity-60'
+                          }`}
+                        >
+                          <button
+                            onClick={() => toggleExpanded(l1.codigo)}
+                            className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            {expanded ? (
+                              <ChevronDown className="h-4 w-4" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4" />
+                            )}
+                          </button>
+                          <Switch
+                            checked={enabled}
+                            onCheckedChange={() => toggleSection(l1.codigo)}
+                          />
+                          <span className="text-xs text-muted-foreground font-mono w-8">{l1.codigo}</span>
+                          <span className="flex-1 text-sm font-body font-medium">{l1.descricao}</span>
+                          <span className="text-xs text-muted-foreground font-body">
+                            {sectionItems.length} itens
+                          </span>
+                          <span className="text-sm font-body font-medium w-28 text-right">
+                            {formatBRL(sectionTotal)}
+                          </span>
+                        </div>
+
+                        {/* Expanded content: level 2 → level 3 → items */}
+                        {expanded && (
+                          <div className="ml-8 border-l-2 border-border mt-1 mb-2">
+                            {l2Groups.map(l2 => {
+                              const l2Expanded = expandedSections.has(l2.codigo);
+                              const l3Groups = getChildGroups(l2.codigo, 3);
+                              const l2Items = getItemsForGroup(l2.codigo, 2);
+                              const l2Total = l2Items.reduce((s, i) => s + i.precoTotal, 0);
+
+                              return (
+                                <div key={l2.codigo}>
+                                  <button
+                                    onClick={() => toggleExpanded(l2.codigo)}
+                                    className="w-full flex items-center gap-2 px-3 py-1.5 pl-4 text-sm font-body text-foreground/80 hover:bg-muted/30 rounded-md transition-colors"
+                                  >
+                                    {l3Groups.length > 0 ? (
+                                      l2Expanded ? (
+                                        <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                      ) : (
+                                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                      )
+                                    ) : (
+                                      <span className="w-3.5 shrink-0" />
+                                    )}
+                                    <span className="text-[10px] text-muted-foreground font-mono">{l2.codigo}</span>
+                                    <span className="flex-1 text-left">{l2.descricao}</span>
+                                    <span className="text-[10px] text-muted-foreground">{l2Items.length} itens</span>
+                                    <span className="text-xs text-muted-foreground w-24 text-right">{formatBRL(l2Total)}</span>
+                                  </button>
+
+                                  {l2Expanded && (
+                                    <div className="ml-6 border-l border-border/50">
+                                      {l3Groups.map(l3 => {
+                                        const l3Expanded = expandedSections.has(l3.codigo);
+                                        const l3Items = getItemsForGroup(l3.codigo, 3);
+                                        const l3Total = l3Items.reduce((s, i) => s + i.precoTotal, 0);
+
+                                        return (
+                                          <div key={l3.codigo}>
+                                            <button
+                                              onClick={() => toggleExpanded(l3.codigo)}
+                                              className="w-full flex items-center gap-2 px-2 py-1 pl-4 text-xs font-body hover:bg-muted/20 rounded-md transition-colors"
+                                            >
+                                              {l3Items.length > 0 ? (
+                                                l3Expanded ? (
+                                                  <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
+                                                ) : (
+                                                  <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                                                )
+                                              ) : (
+                                                <span className="w-3 shrink-0" />
+                                              )}
+                                              <span className="text-[10px] text-muted-foreground font-mono">{l3.codigo}</span>
+                                              <span className="flex-1 text-left">{l3.descricao}</span>
+                                              <span className="text-[10px] text-muted-foreground">{l3Items.length}</span>
+                                              <span className="text-[10px] text-muted-foreground w-20 text-right">{formatBRL(l3Total)}</span>
+                                            </button>
+
+                                            {l3Expanded && l3Items.length > 0 && (
+                                              <div className="ml-6 space-y-0">
+                                                {l3Items.map(item => (
+                                                  <div
+                                                    key={item.codigo}
+                                                    className="flex items-center gap-2 px-2 py-0.5 pl-4 text-[10px] font-body text-muted-foreground"
+                                                  >
+                                                    <span className="font-mono">{item.codigo}</span>
+                                                    <span className="flex-1 truncate">{item.descricao}</span>
+                                                    <Badge variant="outline" className="text-[8px] shrink-0">{item.unidade}</Badge>
+                                                    <span className="w-10 text-right">{item.quantidade.toLocaleString('pt-BR')}</span>
+                                                    <span className="w-16 text-right">{formatBRL(item.precoTotal)}</span>
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            )}
+                                          </div>
+                                        );
+                                      })}
+
+                                      {/* Items directly under level 2 */}
+                                      {l2Items
+                                        .filter(i => !i.grupo3Codigo || !groups.some(g => g.codigo === i.grupo3Codigo))
+                                        .map(item => (
+                                          <div
+                                            key={item.codigo}
+                                            className="flex items-center gap-2 px-2 py-0.5 pl-4 text-[10px] font-body text-muted-foreground"
+                                          >
+                                            <span className="w-3 shrink-0" />
+                                            <span className="font-mono">{item.codigo}</span>
+                                            <span className="flex-1 truncate">{item.descricao}</span>
+                                            <Badge variant="outline" className="text-[8px] shrink-0">{item.unidade}</Badge>
+                                            <span className="w-10 text-right">{item.quantidade.toLocaleString('pt-BR')}</span>
+                                            <span className="w-16 text-right">{formatBRL(item.precoTotal)}</span>
+                                          </div>
+                                        ))}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -612,12 +742,16 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
             </div>
           )}
 
-          {/* STEP 3: Classification */}
+          {/* STEP 3: Classification with heuristic auto-suggestions */}
           {step === 'classify' && (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground font-body">
-                Classifique os itens de nível 3 por Pacote de Trabalho e Tipo de Serviço.
-                Sugestões aparecem com base nos valores já digitados.
+                Classificação pré-preenchida por heurística. Edite livremente antes de avançar.
+                <br />
+                <span className="text-xs">
+                  <strong>Tipo de Serviço</strong>: baseado na descrição do nível 1 pai ·{' '}
+                  <strong>Pacote de Trabalho</strong>: baseado na descrição do nível 3 (sem prefixos MO/MAT/EQ)
+                </span>
               </p>
 
               <ScrollArea className="h-[50vh]">
@@ -684,7 +818,6 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                {/* By Pacote */}
                 <div>
                   <h3 className="text-sm font-heading font-semibold mb-2 flex items-center gap-1.5">
                     <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
@@ -707,7 +840,6 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
                   </ScrollArea>
                 </div>
 
-                {/* By Tipo */}
                 <div>
                   <h3 className="text-sm font-heading font-semibold mb-2 flex items-center gap-1.5">
                     <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
@@ -757,7 +889,7 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
                   variant="ghost"
                   size="sm"
                   onClick={() => {
-                    const prevStep = steps[stepIdx - 1]?.key;
+                    const prevStep = stepsConfig[stepIdx - 1]?.key;
                     if (prevStep) setStep(prevStep);
                   }}
                   disabled={importing}
