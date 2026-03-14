@@ -213,6 +213,10 @@ export default function ObraDetalhe() {
         <TabsContent value="diario" className="mt-4">
           <DiarioObraTab obraId={id!} />
         </TabsContent>
+
+        <TabsContent value="fotos" className="mt-4">
+          <RelatorioFotograficoTab obraId={id!} />
+        </TabsContent>
       </Tabs>
     </div>
   );
