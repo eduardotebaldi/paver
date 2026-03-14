@@ -258,9 +258,14 @@ export default function EapMassDateEditor({ open, onOpenChange, items, onSave }:
                       return (
                         <TableRow key={item.id} className={isChanged ? 'bg-accent/10' : ''}>
                           <TableCell className="text-xs font-body pl-8">
-                            <div className="flex items-center gap-1.5">
-                              {item.codigo && <span className="text-muted-foreground">{item.codigo}</span>}
-                              <span className="truncate max-w-[250px]">{item.descricao}</span>
+                            <div className="flex flex-col">
+                              <div className="flex items-center gap-1.5">
+                                {item.codigo && <span className="text-muted-foreground">{item.codigo}</span>}
+                                <span className="truncate max-w-[250px]">{item.descricao}</span>
+                              </div>
+                              {item.classificacao_adicional && (
+                                <CollapsibleClassification text={item.classificacao_adicional} />
+                              )}
                             </div>
                           </TableCell>
                           <TableCell>
