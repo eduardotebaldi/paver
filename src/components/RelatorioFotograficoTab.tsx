@@ -339,7 +339,7 @@ function PlantaViewer({
 
         <div className="relative" ref={containerRef}>
           {pdf ? (
-            <div ref={measureWidth}>
+            <div ref={zoomContainerRef}>
               {/* PDF controls: zoom + navigation */}
               <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
                 <div className="flex items-center gap-2">
