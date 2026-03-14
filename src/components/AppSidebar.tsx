@@ -114,7 +114,7 @@ export function AppSidebar() {
       <SidebarFooter className="p-4 space-y-3">
         {!collapsed && user && (
           <div className="text-[11px] text-sidebar-foreground/60 font-body truncate">
-            {user.email}
+            {userName || user.email}
           </div>
         )}
         <SidebarMenuButton
