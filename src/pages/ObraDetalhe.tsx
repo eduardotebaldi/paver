@@ -22,7 +22,7 @@ export default function ObraDetalhe() {
   const { hasRole } = useAuth();
   const canEdit = hasRole('admin') || hasRole('engenharia');
   const fileRef = useRef<HTMLInputElement>(null);
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
   const { data: obra, isLoading: loadingObra } = useQuery({
     queryKey: ['obra', id],
@@ -59,13 +59,31 @@ export default function ObraDetalhe() {
   };
 
   const toggleGroup = (itemId: string) => {
-    setExpandedGroups(prev => {
+    setCollapsedGroups(prev => {
       const next = new Set(prev);
       if (next.has(itemId)) next.delete(itemId);
       else next.add(itemId);
       return next;
     });
   };
+
+  // Group items under their preceding agrupador
+  const groupedEap = (() => {
+    const groups: { agrupador: EapItem; items: EapItem[] }[] = [];
+    let current: { agrupador: EapItem; items: EapItem[] } | null = null;
+    for (const item of eapItems) {
+      if (item.tipo === 'agrupador') {
+        current = { agrupador: item, items: [] };
+        groups.push(current);
+      } else if (current) {
+        current.items.push(item);
+      } else {
+        // items without a preceding agrupador
+        groups.push({ agrupador: item, items: [] });
+      }
+    }
+    return groups;
+  })();
 
   const agrupadores = eapItems.filter(i => i.tipo === 'agrupador');
   const itens = eapItems.filter(i => i.tipo === 'item');
@@ -173,33 +191,51 @@ export default function ObraDetalhe() {
                 </div>
               ) : (
                 <div className="space-y-1">
-                  {eapItems.map((item) => (
-                    <div key={item.id}>
-                      {item.tipo === 'agrupador' ? (
+                  {groupedEap.map((group) => (
+                    <div key={group.agrupador.id}>
+                      {group.agrupador.tipo === 'agrupador' ? (
                         <button
-                          onClick={() => toggleGroup(item.id)}
+                          onClick={() => toggleGroup(group.agrupador.id)}
                           className="w-full flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 hover:bg-muted text-sm font-medium font-heading transition-colors"
                         >
-                          {expandedGroups.has(item.id) ? (
-                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                          ) : (
+                          {collapsedGroups.has(group.agrupador.id) ? (
                             <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                          ) : (
+                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
                           )}
-                          {item.codigo && <Badge variant="outline" className="text-[10px] font-mono">{item.codigo}</Badge>}
-                          <span>{item.descricao}</span>
-                          {item.lote && <Badge className="ml-auto text-[10px] bg-accent/10 text-accent border-0">{item.lote}</Badge>}
+                          <span>{group.agrupador.descricao}</span>
+                          {group.items.length > 0 && (
+                            <span className="ml-auto text-xs text-muted-foreground font-body">
+                              {group.items.length} item(s)
+                            </span>
+                          )}
+                          {group.agrupador.lote && <Badge className="text-[10px] bg-accent/10 text-accent border-0">{group.agrupador.lote}</Badge>}
                         </button>
                       ) : (
-                        <div className="flex items-center gap-3 px-3 py-2 pl-10 text-sm font-body border-l-2 border-border ml-4">
-                          {item.codigo && <span className="text-xs font-mono text-muted-foreground w-16 shrink-0">{item.codigo}</span>}
-                          <span className="flex-1">{item.descricao}</span>
-                          {item.unidade && <span className="text-xs text-muted-foreground">{item.unidade}</span>}
+                        <div className="flex items-center gap-3 px-3 py-2 text-sm font-body">
+                          <span className="flex-1">{group.agrupador.descricao}</span>
                           <div className="flex items-center gap-2 shrink-0 w-32">
-                            <Progress value={item.avanco_realizado || 0} className="h-1.5" />
+                            <Progress value={group.agrupador.avanco_realizado || 0} className="h-1.5" />
                             <span className="text-[10px] text-muted-foreground w-8 text-right">
-                              {(item.avanco_realizado || 0).toFixed(0)}%
+                              {(group.agrupador.avanco_realizado || 0).toFixed(0)}%
                             </span>
                           </div>
+                        </div>
+                      )}
+                      {group.agrupador.tipo === 'agrupador' && !collapsedGroups.has(group.agrupador.id) && (
+                        <div className="space-y-0.5">
+                          {group.items.map((item) => (
+                            <div key={item.id} className="flex items-center gap-3 px-3 py-2 pl-10 text-sm font-body border-l-2 border-border ml-4">
+                              <span className="flex-1">{item.descricao}</span>
+                              {item.unidade && <span className="text-xs text-muted-foreground">{item.unidade}</span>}
+                              <div className="flex items-center gap-2 shrink-0 w-32">
+                                <Progress value={item.avanco_realizado || 0} className="h-1.5" />
+                                <span className="text-[10px] text-muted-foreground w-8 text-right">
+                                  {(item.avanco_realizado || 0).toFixed(0)}%
+                                </span>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       )}
                     </div>
