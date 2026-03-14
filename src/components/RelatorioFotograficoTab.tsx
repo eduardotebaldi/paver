@@ -283,12 +283,17 @@ function PlantaViewer({
     }
   };
 
-  // Measure PDF container width for responsive rendering
-  const measureWidth = useCallback((node: HTMLDivElement | null) => {
-    if (node) {
-      const w = node.getBoundingClientRect().width;
-      setPdfContainerWidth(prev => prev === w ? prev : w);
-    }
+  // Measure PDF container width for responsive rendering (base width, without zoom)
+  const zoomContainerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const node = zoomContainerRef.current;
+    if (!node) return;
+    const observer = new ResizeObserver((entries) => {
+      // We only care about the container's own width, not the zoomed content
+    });
+    // Measure once on mount
+    setPdfContainerWidth(node.getBoundingClientRect().width);
+    return () => observer.disconnect();
   }, []);
 
   const PinsOverlay = (
