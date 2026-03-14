@@ -382,7 +382,6 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
         };
       })
       .sort((a, b) => b.total - a.total);
-      .map(([label, total]) => ({ label, total }));
   }, [activeItems, classifications]);
 
   const updateClassification = (codigo: string, field: 'pacoteTrabalho' | 'tipoServico', value: string) => {
