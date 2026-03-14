@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { MapPin, Upload, Loader2, Image, Trash2, X, Plus, Camera, FileText, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { MapPin, Upload, Loader2, Image, Trash2, X, Plus, Camera, FileText, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCcw, FileCode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -23,11 +23,16 @@ import {
   PlantaObra,
   FotoLocalizada,
 } from '@/services/api';
+import DxfPlantaViewer from '@/components/DxfPlantaViewer';
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 function isPdf(url: string): boolean {
   return url.toLowerCase().includes('.pdf');
+}
+
+function isDxf(url: string): boolean {
+  return url.toLowerCase().includes('.dxf');
 }
 
 interface Props {
