@@ -47,7 +47,16 @@ export default function RelatorioFotograficoTab({ obraId }: Props) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user, hasRole } = useAuth();
-  const canEdit = hasRole('admin') || hasRole('engenharia');
+  const isAdmin = hasRole('admin');
+  const canEdit = isAdmin || hasRole('engenharia');
+
+  const canModifyFoto = (foto: FotoLocalizada) => {
+    if (isAdmin) return true;
+    if (foto.created_by !== user?.id) return false;
+    const created = new Date(foto.created_at);
+    const now = new Date();
+    return (now.getTime() - created.getTime()) <= 2 * 24 * 60 * 60 * 1000;
+  };
   const [selectedPlanta, setSelectedPlanta] = useState<PlantaObra | null>(null);
 
   const { data: plantas = [], isLoading } = useQuery({
