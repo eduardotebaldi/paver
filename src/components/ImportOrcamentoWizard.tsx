@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import {
   Upload,
   Loader2,
@@ -555,8 +555,18 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
       let ordem = 0;
       const eapItems: any[] = [];
 
+      // Build a set of enabled L1 codes including numeric variants
+      const enabledL1Numeric = new Set<number>();
+      for (const code of enabledSections) {
+        enabledL1Numeric.add(parseInt(code, 10));
+      }
+      const isGroupEnabled = (codigo: string) => {
+        const firstSeg = codigo.split('.')[0];
+        return enabledSections.has(firstSeg) || enabledL1Numeric.has(parseInt(firstSeg, 10));
+      };
+
       for (const g of groups) {
-        if (!enabledSections.has(g.codigo.split('.')[0])) continue;
+        if (!isGroupEnabled(g.codigo)) continue;
         const l3class = classifications.get(g.codigo);
         eapItems.push({
           obra_id: obraId,
@@ -985,12 +995,13 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
                       );
                       if (l3ForSection.length === 0 && orphanItems.length === 0) return null;
                       const sectionExpanded = expandedSections.has('classify_' + l1.codigo);
-                      const sectionTotal = l3ForSection.reduce((sum, g) => {
+                      const sectionChildItems = l3ForSection.reduce((acc, g) => {
                         const childItems = items.filter(
-                          i => i.grupo3Codigo === g.codigo && enabledSections.has(i.grupo1Codigo),
+                          i => i.grupo3Codigo === g.codigo && enabledSections.has(i.grupo1Codigo) && !disabledItems.has(i.codigo),
                         );
-                        return sum + childItems.reduce((s, i) => s + i.precoTotal, 0);
-                      }, 0) + orphanItems.reduce((s, i) => s + i.precoTotal, 0);
+                        return acc.concat(childItems);
+                      }, [] as OrcamentoItem[]);
+                      const sectionTotal = sectionChildItems.reduce((s, i) => s + i.precoTotal, 0) + orphanItems.reduce((s, i) => s + i.precoTotal, 0);
 
                       return (
                         <div key={l1.codigo} className="border border-border rounded-lg overflow-hidden">
@@ -1008,7 +1019,7 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
                               {l1.descricao}
                             </span>
                             <Badge variant="secondary" className="text-[10px] font-body">
-                              {l3ForSection.length} itens
+                              {sectionChildItems.length + orphanItems.length} itens · {l3ForSection.length} pacotes
                             </Badge>
                             <span className="text-xs font-body font-medium w-28 text-right">
                               {formatBRL(sectionTotal)}
@@ -1037,46 +1048,80 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
                                   );
                                   const total = childItems.reduce((s, i) => s + i.precoTotal, 0);
 
+                                  const l3IsExpanded = expandedSections.has('classify_l3_' + g.codigo);
+
                                   return (
-                                    <TableRow key={g.codigo}>
-                                      <TableCell className="text-xs font-mono py-1.5">{g.codigo}</TableCell>
-                                      <TableCell className="py-1.5">
-                                        {(() => {
-                                          const l2Code = g.codigo.split('.').slice(0, 2).join('.');
-                                          const l2Group = groupMap.get(l2Code);
-                                          const parentContext = l2Group ? l2Group.descricao : '';
-                                          return (
-                                            <CollapsibleDescription
-                                              cleanedName={removePrefixes(g.descricao)}
-                                              parentContext={parentContext}
-                                            />
-                                          );
-                                        })()}
-                                      </TableCell>
-                                      <TableCell className="text-xs text-right py-1.5">
-                                        {formatBRL(total)}
-                                      </TableCell>
-                                      <TableCell className="py-1.5">
-                                        <AutocompleteInput
-                                          value={cls.pacoteTrabalho}
-                                          onChange={v =>
-                                            updateClassification(g.codigo, 'pacoteTrabalho', v)
-                                          }
-                                          suggestions={allPacotes}
-                                          placeholder="Pacote..."
-                                        />
-                                      </TableCell>
-                                      <TableCell className="py-1.5">
-                                        <AutocompleteInput
-                                          value={cls.tipoServico}
-                                          onChange={v =>
-                                            updateClassification(g.codigo, 'tipoServico', v)
-                                          }
-                                          suggestions={allTipos}
-                                          placeholder="Tipo..."
-                                        />
-                                      </TableCell>
-                                    </TableRow>
+                                    <React.Fragment key={g.codigo}>
+                                      <TableRow className="hover:bg-muted/30">
+                                        <TableCell className="text-xs font-mono py-1.5">
+                                          <div className="flex items-center gap-1">
+                                            {childItems.length > 0 && (
+                                              <button
+                                                onClick={() => toggleExpanded('classify_l3_' + g.codigo)}
+                                                className="text-muted-foreground hover:text-foreground"
+                                              >
+                                                {l3IsExpanded ? (
+                                                  <ChevronDown className="h-3 w-3" />
+                                                ) : (
+                                                  <ChevronRight className="h-3 w-3" />
+                                                )}
+                                              </button>
+                                            )}
+                                            {g.codigo}
+                                          </div>
+                                        </TableCell>
+                                        <TableCell className="py-1.5">
+                                          <div className="flex items-center gap-2">
+                                            {(() => {
+                                              const l2Code = g.codigo.split('.').slice(0, 2).join('.');
+                                              const l2Group = groupMap.get(l2Code);
+                                              const parentContext = l2Group ? l2Group.descricao : '';
+                                              return (
+                                                <CollapsibleDescription
+                                                  cleanedName={removePrefixes(g.descricao)}
+                                                  parentContext={parentContext}
+                                                />
+                                              );
+                                            })()}
+                                            <Badge variant="outline" className="text-[8px] shrink-0">
+                                              {childItems.length} itens
+                                            </Badge>
+                                          </div>
+                                        </TableCell>
+                                        <TableCell className="text-xs text-right py-1.5">
+                                          {formatBRL(total)}
+                                        </TableCell>
+                                        <TableCell className="py-1.5">
+                                          <AutocompleteInput
+                                            value={cls.pacoteTrabalho}
+                                            onChange={v =>
+                                              updateClassification(g.codigo, 'pacoteTrabalho', v)
+                                            }
+                                            suggestions={allPacotes}
+                                            placeholder="Pacote..."
+                                          />
+                                        </TableCell>
+                                        <TableCell className="py-1.5">
+                                          <AutocompleteInput
+                                            value={cls.tipoServico}
+                                            onChange={v =>
+                                              updateClassification(g.codigo, 'tipoServico', v)
+                                            }
+                                            suggestions={allTipos}
+                                            placeholder="Tipo..."
+                                          />
+                                        </TableCell>
+                                      </TableRow>
+                                      {l3IsExpanded && childItems.map(ci => (
+                                        <TableRow key={ci.codigo} className="bg-muted/10">
+                                          <TableCell className="text-[10px] font-mono py-0.5 pl-10 text-muted-foreground">{ci.codigo}</TableCell>
+                                          <TableCell className="text-[10px] py-0.5 text-muted-foreground">{ci.descricao}</TableCell>
+                                          <TableCell className="text-[10px] text-right py-0.5 text-muted-foreground">{formatBRL(ci.precoTotal)}</TableCell>
+                                          <TableCell className="py-0.5" />
+                                          <TableCell className="py-0.5" />
+                                        </TableRow>
+                                      ))}
+                                    </React.Fragment>
                                   );
                                 })}
                                 {/* Orphan items with no L3 group */}
