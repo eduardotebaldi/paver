@@ -1,14 +1,13 @@
 import { useState, useMemo, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Loader2, Plus, Trash2, FolderTree, Layers, ArrowRight } from 'lucide-react';
+import { Loader2, Plus, Trash2, FolderTree, Layers, ArrowRight, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { fetchEapItems } from '@/services/api';
+import { fetchObras, fetchEapItems } from '@/services/api';
 import {
   fetchDependencyRules,
   createDependencyRule,
@@ -20,15 +19,21 @@ import {
 type TabType = 'servico_em_pacote' | 'pacote_em_servico';
 
 export default function Dependencias() {
-  const { id: obraId } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
+  const [selectedObraId, setSelectedObraId] = useState<string>('');
   const [activeTab, setActiveTab] = useState<TabType>('servico_em_pacote');
   const [newPred, setNewPred] = useState('');
   const [newSucc, setNewSucc] = useState('');
+
+  const { data: obras = [] } = useQuery({
+    queryKey: ['obras'],
+    queryFn: fetchObras,
+  });
+
+  const obraId = selectedObraId || undefined;
 
   const { data: eapItems = [], isLoading: loadingEap } = useQuery({
     queryKey: ['eap', obraId],
@@ -183,21 +188,38 @@ export default function Dependencias() {
 
   const isLoading = loadingEap || loadingRules;
 
-  if (!obraId) return null;
-
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate(`/obras/${obraId}`)}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
         <div className="flex-1">
-          <h1 className="text-2xl font-heading font-bold text-foreground">Painel de Dependências</h1>
+          <h1 className="text-2xl font-heading font-bold text-foreground">Dependências</h1>
           <p className="text-sm text-muted-foreground font-body">
             Gerencie as regras de sequenciamento entre pacotes e serviços
           </p>
         </div>
+        <Select value={selectedObraId} onValueChange={(v) => { setSelectedObraId(v); setNewPred(''); setNewSucc(''); }}>
+          <SelectTrigger className="w-64 font-body">
+            <Filter className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="Selecione uma obra..." />
+          </SelectTrigger>
+          <SelectContent>
+            {obras.map(o => (
+              <SelectItem key={o.id} value={o.id} className="font-body">{o.nome}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
+
+      {!obraId ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <Filter className="h-12 w-12 text-muted-foreground/40 mb-4" />
+            <h3 className="text-lg font-heading font-semibold text-muted-foreground">Selecione uma obra</h3>
+            <p className="text-sm text-muted-foreground/70 mt-1 font-body">Escolha uma obra para gerenciar suas dependências</p>
+          </CardContent>
+        </Card>
+      ) : (
+      <>
 
       {/* Tab toggle */}
       <div className="flex items-center gap-3">
@@ -416,7 +438,9 @@ export default function Dependencias() {
             </CardContent>
           </Card>
         </div>
-      </div>
+        </div>
+      </>
+      )}
     </div>
   );
 }

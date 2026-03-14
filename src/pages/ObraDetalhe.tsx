@@ -300,10 +300,6 @@ export default function ObraDetalhe() {
                       <Link2 className="h-4 w-4 mr-1.5" />
                       Recalcular
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => navigate(`/obras/${id}/dependencias`)} className="font-body">
-                      <GitBranch className="h-4 w-4 mr-1.5" />
-                      Dependências
-                    </Button>
                   </div>
                 )}
                 {isAdmin && (
