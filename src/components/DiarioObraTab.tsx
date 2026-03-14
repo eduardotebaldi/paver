@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
-import { Plus, Loader2, CloudSun, Cloud, CloudRain, Sun, Snowflake, Pencil, Trash2, ClipboardList } from 'lucide-react';
+import { Plus, Loader2, CloudSun, Cloud, CloudRain, Sun, Snowflake, Pencil, Trash2, ClipboardList, User, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchDiarios, createDiario, deleteDiario, DiarioObra } from '@/services/api';
+import { supabase } from '@/integrations/supabase/client';
 
 const climaOptions = [
   { value: 'ensolarado', label: 'Ensolarado', icon: Sun },
@@ -62,6 +63,31 @@ export default function DiarioObraTab({ obraId }: DiarioObraTabProps) {
     queryKey: ['diarios', obraId],
     queryFn: () => fetchDiarios(obraId),
   });
+
+  // Fetch profile names for created_by users
+  const userIds = [...new Set(diarios.map(d => d.created_by).filter(Boolean))];
+  const { data: profilesMap = {} } = useQuery({
+    queryKey: ['paver-profiles', userIds],
+    queryFn: async () => {
+      if (userIds.length === 0) return {};
+      const { data } = await supabase
+        .from('paver_profiles')
+        .select('id, full_name')
+        .in('id', userIds);
+      const map: Record<string, string> = {};
+      (data || []).forEach((p: any) => { map[p.id] = p.full_name || 'Sem nome'; });
+      return map;
+    },
+    enabled: userIds.length > 0,
+  });
+
+  const formatCreatedAt = (dateStr: string) => {
+    const d = new Date(dateStr);
+    return d.toLocaleString('pt-BR', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    });
+  };
 
   const createMutation = useMutation({
     mutationFn: (data: DiarioFormData) => createDiario({
@@ -230,6 +256,17 @@ export default function DiarioObraTab({ obraId }: DiarioObraTabProps) {
                 {diario.observacoes && (
                   <p className="text-xs text-muted-foreground font-body italic">{diario.observacoes}</p>
                 )}
+                {/* User and timestamp info */}
+                <div className="flex items-center gap-4 pt-1 border-t border-border/50">
+                  <span className="flex items-center gap-1 text-[11px] text-muted-foreground font-body">
+                    <User className="h-3 w-3" />
+                    {profilesMap[diario.created_by] || 'Usuário desconhecido'}
+                  </span>
+                  <span className="flex items-center gap-1 text-[11px] text-muted-foreground font-body">
+                    <Clock className="h-3 w-3" />
+                    {formatCreatedAt(diario.created_at)}
+                  </span>
+                </div>
               </div>
             ))}
           </div>

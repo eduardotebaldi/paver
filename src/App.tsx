@@ -13,6 +13,7 @@ import Relatorios from "./pages/Relatorios";
 import RelatorioFotografico from "./pages/RelatorioFotografico";
 import LinhaBalancoPage from "./pages/LinhaBalanco";
 import Dependencias from "./pages/Dependencias";
+import DiarioObra from "./pages/DiarioObra";
 import Usuarios from "./pages/Usuarios";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
@@ -35,6 +36,7 @@ const App = () => (
               <Route path="/obras" element={<Obras />} />
               <Route path="/obras/:id" element={<ObraDetalhe />} />
               <Route path="/dependencias" element={<Dependencias />} />
+              <Route path="/diario-obra" element={<DiarioObra />} />
               <Route path="/relatorios" element={<Relatorios />} />
               <Route path="/relatorio-fotografico" element={<RelatorioFotografico />} />
               <Route path="/linha-balanco" element={<LinhaBalancoPage />} />
