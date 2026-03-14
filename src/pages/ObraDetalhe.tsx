@@ -361,6 +361,10 @@ export default function ObraDetalhe() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="linha-balanco" className="mt-4">
+          <LinhaBalanco eapItems={eapItems} mode={groupMode} />
+        </TabsContent>
+
         <TabsContent value="diario" className="mt-4">
           <DiarioObraTab obraId={id!} />
         </TabsContent>
