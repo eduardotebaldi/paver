@@ -1,15 +1,16 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Users, Shield, ShieldOff, Loader2, UserPlus, Pencil, Check, X } from 'lucide-react';
+import { Users, Shield, ShieldOff, Loader2, UserPlus, Pencil, Check, X, UserX } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { fetchAllUsers, assignRole, removeRole, updateProfileName, UserWithRole } from '@/services/api';
+import { fetchAllUsers, assignRole, removeRole, updateProfileName, toggleUserAtivo, UserWithRole } from '@/services/api';
 import { supabase } from '@/integrations/supabase/client';
 
 const roleLabels: Record<string, string> = {
@@ -38,6 +39,9 @@ export default function Usuarios() {
     queryFn: fetchAllUsers,
   });
 
+  const activeUsers = useMemo(() => users.filter(u => u.ativo), [users]);
+  const inactiveUsers = useMemo(() => users.filter(u => !u.ativo), [users]);
+
   const toggleRoleMutation = useMutation({
     mutationFn: async ({ userId, role, has }: { userId: string; role: string; has: boolean }) => {
       if (has) {
@@ -51,6 +55,28 @@ export default function Usuarios() {
       toast({ title: 'Permissão atualizada!' });
     },
     onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
+  });
+
+  const toggleAtivoMutation = useMutation({
+    mutationFn: async ({ userId, ativo }: { userId: string; ativo: boolean }) => {
+      await toggleUserAtivo(userId, ativo);
+    },
+    onMutate: async ({ userId, ativo }) => {
+      await queryClient.cancelQueries({ queryKey: ['users'] });
+      const previous = queryClient.getQueryData<UserWithRole[]>(['users']);
+      queryClient.setQueryData<UserWithRole[]>(['users'], (old) =>
+        (old || []).map(u => u.id === userId ? { ...u, ativo } : u)
+      );
+      return { previous };
+    },
+    onSuccess: (_d, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      toast({ title: vars.ativo ? 'Usuário ativado!' : 'Usuário desativado!' });
+    },
+    onError: (err: any, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(['users'], context.previous);
+      toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+    },
   });
 
   const updateNameMutation = useMutation({
@@ -71,9 +97,7 @@ export default function Usuarios() {
       toast({ title: 'Nome atualizado!' });
     },
     onError: (err: any, _vars, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(['users'], context.previous);
-      }
+      if (context?.previous) queryClient.setQueryData(['users'], context.previous);
       toast({ title: 'Erro', description: err.message, variant: 'destructive' });
     },
   });
@@ -121,6 +145,81 @@ export default function Usuarios() {
     setNewRole('engenharia');
     setCreating(false);
   };
+
+  const renderUserCard = (u: UserWithRole) => (
+    <Card key={u.id} className={!u.ativo ? 'opacity-60' : ''}>
+      <CardContent className="flex items-center justify-between py-4">
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center">
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </div>
+          <div>
+            {editingNameId === u.id ? (
+              <div className="flex items-center gap-1.5">
+                <Input
+                  value={editNameValue}
+                  onChange={e => setEditNameValue(e.target.value)}
+                  className="h-7 text-sm font-body w-48"
+                  autoFocus
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') saveEditName();
+                    if (e.key === 'Escape') setEditingNameId(null);
+                  }}
+                />
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={saveEditName} disabled={updateNameMutation.isPending}>
+                  <Check className="h-3.5 w-3.5 text-green-600" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingNameId(null)}>
+                  <X className="h-3.5 w-3.5 text-muted-foreground" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 group">
+                <p className="text-sm font-medium font-body">{u.full_name || 'Sem nome'}</p>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={() => startEditName(u)}
+                >
+                  <Pencil className="h-3 w-3 text-muted-foreground" />
+                </Button>
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground font-body">{u.email || ''}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          {(['admin', 'engenharia'] as const).map((role) => {
+            const has = u.roles.includes(role);
+            return (
+              <Button
+                key={role}
+                size="sm"
+                variant="outline"
+                className={`h-7 text-xs font-body ${has ? roleBadgeColors[role] : 'text-muted-foreground'}`}
+                onClick={() => toggleRoleMutation.mutate({ userId: u.id, role, has })}
+                disabled={toggleRoleMutation.isPending}
+              >
+                {has ? <Shield className="h-3 w-3 mr-1" /> : <ShieldOff className="h-3 w-3 mr-1" />}
+                {roleLabels[role]}
+              </Button>
+            );
+          })}
+          <div className="flex items-center gap-1.5 ml-2 pl-2 border-l border-border">
+            <Switch
+              checked={u.ativo}
+              onCheckedChange={(checked) => toggleAtivoMutation.mutate({ userId: u.id, ativo: checked })}
+              disabled={toggleAtivoMutation.isPending}
+            />
+            <span className="text-[10px] text-muted-foreground font-body w-10">
+              {u.ativo ? 'Ativo' : 'Inativo'}
+            </span>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 
   return (
     <div className="space-y-6">
@@ -182,82 +281,24 @@ export default function Usuarios() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-3">
-          {users.map((u) => (
-            <Card key={u.id}>
-              <CardContent className="flex items-center justify-between py-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center">
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <div>
-                    {editingNameId === u.id ? (
-                      <div className="flex items-center gap-1.5">
-                        <Input
-                          value={editNameValue}
-                          onChange={e => setEditNameValue(e.target.value)}
-                          className="h-7 text-sm font-body w-48"
-                          autoFocus
-                          onKeyDown={e => {
-                            if (e.key === 'Enter') saveEditName();
-                            if (e.key === 'Escape') setEditingNameId(null);
-                          }}
-                        />
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={saveEditName}
-                          disabled={updateNameMutation.isPending}
-                        >
-                          <Check className="h-3.5 w-3.5 text-green-600" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() => setEditingNameId(null)}
-                        >
-                          <X className="h-3.5 w-3.5 text-muted-foreground" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1.5 group">
-                        <p className="text-sm font-medium font-body">{u.full_name || 'Sem nome'}</p>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => startEditName(u)}
-                        >
-                          <Pencil className="h-3 w-3 text-muted-foreground" />
-                        </Button>
-                      </div>
-                    )}
-                    <p className="text-xs text-muted-foreground font-body">{u.email || ''}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {(['admin', 'engenharia'] as const).map((role) => {
-                    const has = u.roles.includes(role);
-                    return (
-                      <Button
-                        key={role}
-                        size="sm"
-                        variant="outline"
-                        className={`h-7 text-xs font-body ${has ? roleBadgeColors[role] : 'text-muted-foreground'}`}
-                        onClick={() => toggleRoleMutation.mutate({ userId: u.id, role, has })}
-                        disabled={toggleRoleMutation.isPending}
-                      >
-                        {has ? <Shield className="h-3 w-3 mr-1" /> : <ShieldOff className="h-3 w-3 mr-1" />}
-                        {roleLabels[role]}
-                      </Button>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="space-y-6">
+          {/* Active users */}
+          <div className="space-y-3">
+            {activeUsers.map(renderUserCard)}
+          </div>
+
+          {/* Inactive users */}
+          {inactiveUsers.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 pt-2">
+                <UserX className="h-4 w-4 text-muted-foreground" />
+                <h2 className="text-sm font-heading font-semibold text-muted-foreground">
+                  Usuários desativados ({inactiveUsers.length})
+                </h2>
+              </div>
+              {inactiveUsers.map(renderUserCard)}
+            </div>
+          )}
         </div>
       )}
     </div>
