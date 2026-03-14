@@ -555,8 +555,18 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
       let ordem = 0;
       const eapItems: any[] = [];
 
+      // Build a set of enabled L1 codes including numeric variants
+      const enabledL1Numeric = new Set<number>();
+      for (const code of enabledSections) {
+        enabledL1Numeric.add(parseInt(code, 10));
+      }
+      const isGroupEnabled = (codigo: string) => {
+        const firstSeg = codigo.split('.')[0];
+        return enabledSections.has(firstSeg) || enabledL1Numeric.has(parseInt(firstSeg, 10));
+      };
+
       for (const g of groups) {
-        if (!enabledSections.has(g.codigo.split('.')[0])) continue;
+        if (!isGroupEnabled(g.codigo)) continue;
         const l3class = classifications.get(g.codigo);
         eapItems.push({
           obra_id: obraId,
