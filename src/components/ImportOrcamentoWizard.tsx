@@ -985,12 +985,13 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
                       );
                       if (l3ForSection.length === 0 && orphanItems.length === 0) return null;
                       const sectionExpanded = expandedSections.has('classify_' + l1.codigo);
-                      const sectionTotal = l3ForSection.reduce((sum, g) => {
+                      const sectionChildItems = l3ForSection.reduce((acc, g) => {
                         const childItems = items.filter(
-                          i => i.grupo3Codigo === g.codigo && enabledSections.has(i.grupo1Codigo),
+                          i => i.grupo3Codigo === g.codigo && enabledSections.has(i.grupo1Codigo) && !disabledItems.has(i.codigo),
                         );
-                        return sum + childItems.reduce((s, i) => s + i.precoTotal, 0);
-                      }, 0) + orphanItems.reduce((s, i) => s + i.precoTotal, 0);
+                        return acc.concat(childItems);
+                      }, [] as OrcamentoItem[]);
+                      const sectionTotal = sectionChildItems.reduce((s, i) => s + i.precoTotal, 0) + orphanItems.reduce((s, i) => s + i.precoTotal, 0);
 
                       return (
                         <div key={l1.codigo} className="border border-border rounded-lg overflow-hidden">
@@ -1008,7 +1009,7 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
                               {l1.descricao}
                             </span>
                             <Badge variant="secondary" className="text-[10px] font-body">
-                              {l3ForSection.length} itens
+                              {sectionChildItems.length + orphanItems.length} itens · {l3ForSection.length} pacotes
                             </Badge>
                             <span className="text-xs font-body font-medium w-28 text-right">
                               {formatBRL(sectionTotal)}
