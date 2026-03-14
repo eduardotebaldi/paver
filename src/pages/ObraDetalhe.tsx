@@ -365,8 +365,8 @@ export default function ObraDetalhe() {
       <ImportOrcamentoWizard
         open={importWizardOpen}
         onOpenChange={setImportWizardOpen}
-        onImport={(items) => csvImportMutation.mutate(items)}
-        importing={csvImportMutation.isPending}
+        obraId={id!}
+        onImportComplete={handleImportComplete}
       />
     </div>
   );
