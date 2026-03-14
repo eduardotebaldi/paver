@@ -505,12 +505,12 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
           <RotateCcw className="h-3.5 w-3.5" />
         </Button>
       </div>
-      <CardContent className="flex-1 min-h-0 p-4 pt-1">
+      <CardContent className="flex-1 min-h-0 p-2 pt-1">
         <ChartContainer config={chartConfig} className="h-full w-full">
           <ComposedChart
             data={chartData}
             layout="vertical"
-            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+            margin={{ top: 5, right: 15, left: 0, bottom: 5 }}
           >
             {/* Alternating week bands */}
             {weekBands.filter(w => w.odd).map((w, i) => (
@@ -535,7 +535,7 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
             <YAxis
               type="category"
               dataKey="name"
-              width={200}
+              width={150}
               fontSize={11}
               tick={{ fill: 'hsl(var(--foreground))' }}
             />
