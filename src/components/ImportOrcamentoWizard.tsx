@@ -333,7 +333,7 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
   const reviewByPacote = useMemo((): ReviewGroup[] => {
     const map = new Map<string, Map<string, OrcamentoItem[]>>();
     for (const item of activeItems) {
-      const l3 = classifications.get(item.grupo3Codigo);
+      const l3 = classifications.get(item.grupo3Codigo) || classifications.get(`orphan_${item.codigo}`);
       const pacote = l3?.pacoteTrabalho || 'Sem classificação';
       const tipo = l3?.tipoServico || 'Sem classificação';
       if (!map.has(pacote)) map.set(pacote, new Map());
@@ -360,7 +360,7 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
   const reviewByTipo = useMemo((): ReviewGroup[] => {
     const map = new Map<string, Map<string, OrcamentoItem[]>>();
     for (const item of activeItems) {
-      const l3 = classifications.get(item.grupo3Codigo);
+      const l3 = classifications.get(item.grupo3Codigo) || classifications.get(`orphan_${item.codigo}`);
       const tipo = l3?.tipoServico || 'Sem classificação';
       const pacote = l3?.pacoteTrabalho || 'Sem classificação';
       if (!map.has(tipo)) map.set(tipo, new Map());
@@ -456,7 +456,7 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
       // 3. Insert items in batches
       const batchSize = 200;
       const itemsToInsert = activeItems.map((item, idx) => {
-        const l3 = classifications.get(item.grupo3Codigo);
+        const l3 = classifications.get(item.grupo3Codigo) || classifications.get(`orphan_${item.codigo}`);
         return {
           orcamento_id: orcamentoId,
           obra_id: obraId,
@@ -505,7 +505,7 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
       }
 
       for (const item of activeItems) {
-        const l3 = classifications.get(item.grupo3Codigo);
+        const l3 = classifications.get(item.grupo3Codigo) || classifications.get(`orphan_${item.codigo}`);
         eapItems.push({
           obra_id: obraId,
           codigo: item.codigo,
@@ -887,14 +887,18 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
                       const l3ForSection = level3Groups.filter(
                         g => g.codigo.startsWith(l1.codigo + '.'),
                       );
-                      if (l3ForSection.length === 0) return null;
+                      // Also find orphan items (belonging to this L1 but with no L3 group)
+                      const orphanItems = activeItems.filter(
+                        i => i.grupo1Codigo === l1.codigo && (!i.grupo3Codigo || !level3Groups.some(g => g.codigo === i.grupo3Codigo)),
+                      );
+                      if (l3ForSection.length === 0 && orphanItems.length === 0) return null;
                       const sectionExpanded = expandedSections.has('classify_' + l1.codigo);
                       const sectionTotal = l3ForSection.reduce((sum, g) => {
                         const childItems = items.filter(
                           i => i.grupo3Codigo === g.codigo && enabledSections.has(i.grupo1Codigo),
                         );
                         return sum + childItems.reduce((s, i) => s + i.precoTotal, 0);
-                      }, 0);
+                      }, 0) + orphanItems.reduce((s, i) => s + i.precoTotal, 0);
 
                       return (
                         <div key={l1.codigo} className="border border-border rounded-lg overflow-hidden">
@@ -976,6 +980,41 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
                                           onChange={v =>
                                             updateClassification(g.codigo, 'tipoServico', v)
                                           }
+                                          suggestions={allTipos}
+                                          placeholder="Tipo..."
+                                        />
+                                      </TableCell>
+                                    </TableRow>
+                                  );
+                                })}
+                                {/* Orphan items with no L3 group */}
+                                {orphanItems.map(item => {
+                                  const virtualKey = `orphan_${item.codigo}`;
+                                  const cls = classifications.get(virtualKey) || {
+                                    pacoteTrabalho: '',
+                                    tipoServico: '',
+                                  };
+                                  return (
+                                    <TableRow key={item.codigo} className="bg-muted/20">
+                                      <TableCell className="text-xs font-mono py-1.5">{item.codigo}</TableCell>
+                                      <TableCell className="py-1.5">
+                                        <span className="text-xs">{item.descricao}</span>
+                                      </TableCell>
+                                      <TableCell className="text-xs text-right py-1.5">
+                                        {formatBRL(item.precoTotal)}
+                                      </TableCell>
+                                      <TableCell className="py-1.5">
+                                        <AutocompleteInput
+                                          value={cls.pacoteTrabalho}
+                                          onChange={v => updateClassification(virtualKey, 'pacoteTrabalho', v)}
+                                          suggestions={allPacotes}
+                                          placeholder="Pacote..."
+                                        />
+                                      </TableCell>
+                                      <TableCell className="py-1.5">
+                                        <AutocompleteInput
+                                          value={cls.tipoServico}
+                                          onChange={v => updateClassification(virtualKey, 'tipoServico', v)}
                                           suggestions={allTipos}
                                           placeholder="Tipo..."
                                         />
