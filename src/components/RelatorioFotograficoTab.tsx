@@ -212,6 +212,7 @@ function PlantaViewer({
   const [numPages, setNumPages] = useState<number>(1);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pdfContainerWidth, setPdfContainerWidth] = useState<number>(800);
+  const [zoom, setZoom] = useState<number>(1);
   const pdfContainerRef = useRef<HTMLDivElement>(null);
 
   const pdf = isPdf(planta.imagem_url);
