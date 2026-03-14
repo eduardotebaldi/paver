@@ -472,23 +472,35 @@ export default function DiarioObraNovoPage() {
                             }
                             // If only one sub-group (or all empty), render flat
                             if (subGroups.size <= 1) {
-                              return items.map(item => renderItemRow(item));
+                              return items.map(item => renderItemRow(item, true));
                             }
                             return [...subGroups.entries()]
                               .sort((a, b) => a[0].localeCompare(b[0]))
-                              .map(([subKey, subItems]) => (
-                                <div key={subKey || '__none__'} className="mt-1">
-                                  {subKey && (
-                                    <div className="flex items-center gap-1.5 px-3 py-1 ml-2">
-                                      <span className="text-[10px] font-body font-medium text-muted-foreground/70 italic">{subKey}</span>
-                                      <span className="text-[10px] text-muted-foreground/40 font-body">({subItems.length})</span>
-                                    </div>
-                                  )}
-                                  <div className={subKey ? 'border-l border-border/50 ml-5 space-y-0.5' : 'space-y-0.5'}>
-                                    {subItems.map(item => renderItemRow(item))}
-                                  </div>
-                                </div>
-                              ));
+                              .map(([subKey, subItems]) => {
+                                const subId = `${groupKey}::${subKey}`;
+                                const isSubExpanded = expandedSubGroups.has(subId);
+                                const selInSub = subItems.filter(i => atividades.has(i.id)).length;
+                                if (!subKey) {
+                                  return <div key="__none__" className="space-y-0.5">{subItems.map(item => renderItemRow(item, true))}</div>;
+                                }
+                                return (
+                                  <Collapsible key={subId} open={isSubExpanded} onOpenChange={() => toggleSubGroup(subId)}>
+                                    <CollapsibleTrigger asChild>
+                                      <button type="button" className="flex items-center gap-2 w-full px-3 py-1.5 ml-2 rounded-md hover:bg-muted/30 transition-colors text-left">
+                                        {isSubExpanded ? <ChevronDown className="h-3 w-3 text-muted-foreground/60 shrink-0" /> : <ChevronRight className="h-3 w-3 text-muted-foreground/60 shrink-0" />}
+                                        <span className="text-[11px] font-body font-medium text-muted-foreground/80 italic flex-1 truncate">{subKey}</span>
+                                        <Badge variant="outline" className="text-[9px] font-body shrink-0">{subItems.length}</Badge>
+                                        {selInSub > 0 && <Badge className="text-[9px] font-body bg-accent text-accent-foreground shrink-0">{selInSub}</Badge>}
+                                      </button>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent>
+                                      <div className="border-l border-border/50 ml-5 space-y-0.5">
+                                        {subItems.map(item => renderItemRow(item, true))}
+                                      </div>
+                                    </CollapsibleContent>
+                                  </Collapsible>
+                                );
+                              });
                           })()}
                         </div>
                       </CollapsibleContent>
