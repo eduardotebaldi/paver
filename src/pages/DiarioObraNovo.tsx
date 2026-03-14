@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchObras, fetchEapItems, createDiario, uploadFile, EapItem } from '@/services/api';
 import { supabase } from '@/integrations/supabase/client';
+import CollapsibleClassification from '@/components/CollapsibleClassification';
 
 const climaOptions = [
   { value: 'ensolarado', label: 'Ensolarado', icon: Sun },
