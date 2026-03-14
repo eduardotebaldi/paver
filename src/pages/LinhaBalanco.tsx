@@ -165,17 +165,45 @@ export default function LinhaBalancoPage() {
 
         <div className="space-y-1">
           <Label className="text-xs font-body text-muted-foreground">Pacote</Label>
-          <Select value={selectedPacote} onValueChange={setSelectedPacote}>
-            <SelectTrigger className="w-48 font-body">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all" className="font-body">Todos</SelectItem>
-              {uniquePacotes.map(p => (
-                <SelectItem key={p} value={p} className="font-body">{p}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Popover open={pacotePopoverOpen} onOpenChange={setPacotePopoverOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" role="combobox" className="w-48 justify-between font-body text-sm font-normal">
+                <span className="truncate">
+                  {selectedPacote === 'all' ? 'Todos' : selectedPacote}
+                </span>
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56 p-0" align="start">
+              <Command>
+                <CommandInput placeholder="Buscar pacote..." className="font-body" />
+                <CommandList>
+                  <CommandEmpty className="py-3 text-center text-xs font-body text-muted-foreground">Nenhum pacote encontrado</CommandEmpty>
+                  <CommandGroup>
+                    <CommandItem
+                      value="all"
+                      onSelect={() => { setSelectedPacote('all'); setPacotePopoverOpen(false); }}
+                      className="font-body"
+                    >
+                      <Check className={cn("mr-2 h-4 w-4", selectedPacote === 'all' ? "opacity-100" : "opacity-0")} />
+                      Todos
+                    </CommandItem>
+                    {uniquePacotes.map(p => (
+                      <CommandItem
+                        key={p}
+                        value={p}
+                        onSelect={() => { setSelectedPacote(p); setPacotePopoverOpen(false); }}
+                        className="font-body"
+                      >
+                        <Check className={cn("mr-2 h-4 w-4", selectedPacote === p ? "opacity-100" : "opacity-0")} />
+                        {p}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
         </div>
 
         <div className="space-y-1">
