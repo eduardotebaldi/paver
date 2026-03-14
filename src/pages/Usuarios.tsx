@@ -57,12 +57,25 @@ export default function Usuarios() {
     mutationFn: async ({ userId, name }: { userId: string; name: string }) => {
       await updateProfileName(userId, name);
     },
+    onMutate: async ({ userId, name }) => {
+      await queryClient.cancelQueries({ queryKey: ['users'] });
+      const previous = queryClient.getQueryData<UserWithRole[]>(['users']);
+      queryClient.setQueryData<UserWithRole[]>(['users'], (old) =>
+        (old || []).map(u => u.id === userId ? { ...u, full_name: name } : u)
+      );
+      setEditingNameId(null);
+      return { previous };
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      setEditingNameId(null);
       toast({ title: 'Nome atualizado!' });
     },
-    onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
+    onError: (err: any, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['users'], context.previous);
+      }
+      toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+    },
   });
 
   const startEditName = (user: UserWithRole) => {
