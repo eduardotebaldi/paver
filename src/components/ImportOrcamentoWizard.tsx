@@ -112,6 +112,41 @@ function AutocompleteInput({
   );
 }
 
+/** Collapsible description that shows the cleaned name + original full description */
+function CollapsibleDescription({
+  cleanedName,
+  originalDesc,
+}: {
+  cleanedName: string;
+  originalDesc: string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  // Only show the collapsible part if the original differs from the cleaned name
+  const hasExtra = originalDesc !== cleanedName && originalDesc.length > 0;
+
+  return (
+    <span className="text-xs">
+      <span>{cleanedName}</span>
+      {hasExtra && (
+        <>
+          {' '}
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+            title={expanded ? 'Recolher' : 'Ver descrição completa'}
+          >
+            {expanded ? (
+              <span className="italic text-muted-foreground/60">({originalDesc})</span>
+            ) : (
+              <span className="text-[10px]">(...)</span>
+            )}
+          </button>
+        </>
+      )}
+    </span>
+  );
+}
+
 export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onImportComplete }: Props) {
   const [step, setStep] = useState<Step>('upload');
   const [parsed, setParsed] = useState<ParsedOrcamento | null>(null);
@@ -210,6 +245,13 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
     },
     [processFile],
   );
+
+  // Group lookup map
+  const groupMap = useMemo(() => {
+    const m = new Map<string, OrcamentoGroup>();
+    groups.forEach(g => m.set(g.codigo, g));
+    return m;
+  }, [groups]);
 
   // Level 1 groups
   const level1Groups = useMemo(() => groups.filter(g => g.nivel === 1), [groups]);
@@ -819,7 +861,12 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
                                   return (
                                     <TableRow key={g.codigo}>
                                       <TableCell className="text-xs font-mono py-1.5">{g.codigo}</TableCell>
-                                      <TableCell className="text-xs py-1.5">{g.descricao}</TableCell>
+                                      <TableCell className="py-1.5">
+                                        <CollapsibleDescription
+                                          cleanedName={removePrefixes(g.descricao)}
+                                          originalDesc={g.descricao}
+                                        />
+                                      </TableCell>
                                       <TableCell className="text-xs text-right py-1.5">
                                         {formatBRL(total)}
                                       </TableCell>
