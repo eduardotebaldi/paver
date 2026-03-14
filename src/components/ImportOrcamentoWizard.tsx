@@ -389,10 +389,10 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
       .sort((a, b) => b.total - a.total);
   }, [activeItems, classifications]);
 
-  const updateClassification = (codigo: string, field: 'pacoteTrabalho' | 'tipoServico', value: string) => {
+  const updateClassification = (codigo: string, field: 'pacoteTrabalho' | 'tipoServico' | 'classificacaoAdicional', value: string) => {
     setClassifications(prev => {
       const next = new Map(prev);
-      const existing = next.get(codigo) || { pacoteTrabalho: '', tipoServico: '' };
+      const existing = next.get(codigo) || { pacoteTrabalho: '', tipoServico: '', classificacaoAdicional: '' };
       next.set(codigo, { ...existing, [field]: value });
       return next;
     });
