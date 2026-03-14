@@ -35,7 +35,16 @@ interface Props {
 export default function DxfPlantaViewer({ planta, obraId, canEdit, onClose, visibleFotoIds }: Props) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
+  const isAdmin = hasRole('admin');
+
+  const canModifyFoto = (foto: FotoLocalizada) => {
+    if (isAdmin) return true;
+    if (foto.created_by !== user?.id) return false;
+    const created = new Date(foto.created_at);
+    const now = new Date();
+    return (now.getTime() - created.getTime()) <= 2 * 24 * 60 * 60 * 1000;
+  };
   const fotoInputRef = useRef<HTMLInputElement>(null);
   const svgContainerRef = useRef<HTMLDivElement>(null);
 
