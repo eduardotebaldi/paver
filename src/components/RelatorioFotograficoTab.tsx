@@ -495,7 +495,7 @@ function PlantaViewer({
                       <SelectValue placeholder="Selecionar..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="" className="font-body">Nenhum</SelectItem>
+                      <SelectItem value="__none__" className="font-body">Nenhum</SelectItem>
                       {uniquePacotes.map(p => (
                         <SelectItem key={p} value={p} className="font-body">{p}</SelectItem>
                       ))}
