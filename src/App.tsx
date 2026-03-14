@@ -35,6 +35,7 @@ const App = () => (
               <Route path="/obras/:id" element={<ObraDetalhe />} />
               <Route path="/relatorios" element={<Relatorios />} />
               <Route path="/relatorio-fotografico" element={<RelatorioFotografico />} />
+              <Route path="/linha-balanco" element={<LinhaBalancoPage />} />
               <Route path="/usuarios" element={
                 <ProtectedRoute requiredRole="admin">
                   <Usuarios />

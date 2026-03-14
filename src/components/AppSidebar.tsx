@@ -20,6 +20,7 @@ const mainItems = [
   { title: "Obras", url: "/obras", icon: Building2 },
   { title: "Relatórios", url: "/relatorios", icon: FileBarChart },
   { title: "Rel. Fotográfico", url: "/relatorio-fotografico", icon: Camera },
+  { title: "Linha de Balanço", url: "/linha-balanco", icon: BarChart3 },
 ];
 
 const adminItems = [
