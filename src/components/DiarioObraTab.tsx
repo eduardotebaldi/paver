@@ -96,7 +96,7 @@ export default function DiarioObraTab({ obraId }: DiarioObraTabProps) {
       clima: data.clima,
       temperatura_min: data.temperatura_min ? Number(data.temperatura_min) : undefined,
       temperatura_max: data.temperatura_max ? Number(data.temperatura_max) : undefined,
-      mao_de_obra: Number(data.mao_de_obra) || 0,
+      mao_de_obra: data.mao_de_obra || '',
       atividades: data.atividades,
       observacoes: data.observacoes || undefined,
       created_by: user!.id,
