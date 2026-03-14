@@ -1221,16 +1221,57 @@ export type Database = {
           },
         ]
       }
+      paver_diario_atividades: {
+        Row: {
+          avanco_percentual: number
+          created_at: string | null
+          diario_id: string
+          eap_item_id: string
+          id: string
+        }
+        Insert: {
+          avanco_percentual?: number
+          created_at?: string | null
+          diario_id: string
+          eap_item_id: string
+          id?: string
+        }
+        Update: {
+          avanco_percentual?: number
+          created_at?: string | null
+          diario_id?: string
+          eap_item_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paver_diario_atividades_diario_id_fkey"
+            columns: ["diario_id"]
+            isOneToOne: false
+            referencedRelation: "paver_diarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "paver_diario_atividades_eap_item_id_fkey"
+            columns: ["eap_item_id"]
+            isOneToOne: false
+            referencedRelation: "paver_eap_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       paver_diarios: {
         Row: {
           atividades: string
           clima: string
+          clima_manha: string
+          clima_tarde: string
           created_at: string | null
           created_by: string
           data: string
           fotos: string[] | null
           id: string
-          mao_de_obra: number | null
+          mao_de_obra: string | null
           obra_id: string
           observacoes: string | null
           temperatura_max: number | null
@@ -1239,12 +1280,14 @@ export type Database = {
         Insert: {
           atividades: string
           clima?: string
+          clima_manha?: string
+          clima_tarde?: string
           created_at?: string | null
           created_by: string
           data: string
           fotos?: string[] | null
           id?: string
-          mao_de_obra?: number | null
+          mao_de_obra?: string | null
           obra_id: string
           observacoes?: string | null
           temperatura_max?: number | null
@@ -1253,12 +1296,14 @@ export type Database = {
         Update: {
           atividades?: string
           clima?: string
+          clima_manha?: string
+          clima_tarde?: string
           created_at?: string | null
           created_by?: string
           data?: string
           fotos?: string[] | null
           id?: string
-          mao_de_obra?: number | null
+          mao_de_obra?: string | null
           obra_id?: string
           observacoes?: string | null
           temperatura_max?: number | null

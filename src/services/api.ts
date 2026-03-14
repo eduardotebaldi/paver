@@ -44,9 +44,11 @@ export interface DiarioObra {
   obra_id: string;
   data: string;
   clima: string;
+  clima_manha: string;
+  clima_tarde: string;
   temperatura_min?: number;
   temperatura_max?: number;
-  mao_de_obra: number;
+  mao_de_obra: string;
   atividades: string;
   observacoes?: string;
   fotos?: string[];
