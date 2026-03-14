@@ -32,7 +32,7 @@ interface Props {
   visibleFotoIds?: Set<string>;
 }
 
-export default function DxfPlantaViewer({ planta, obraId, canEdit, onClose }: Props) {
+export default function DxfPlantaViewer({ planta, obraId, canEdit, onClose, visibleFotoIds }: Props) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
