@@ -125,6 +125,18 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
   const [importSuccess, setImportSuccess] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  const [parsed, setParsed] = useState<ParsedOrcamento | null>(null);
+  const [groups, setGroups] = useState<OrcamentoGroup[]>([]);
+  const [items, setItems] = useState<OrcamentoItem[]>([]);
+  const [parseError, setParseError] = useState<string | null>(null);
+  const [rawFile, setRawFile] = useState<File | null>(null);
+  const [previewLines, setPreviewLines] = useState<string[][]>([]);
+  const [headerLine, setHeaderLine] = useState<string[]>([]);
+  const [importing, setImporting] = useState(false);
+  const [importSuccess, setImportSuccess] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Section toggles (level 1 codes)
   const [enabledSections, setEnabledSections] = useState<Set<string>>(new Set());
