@@ -23,6 +23,7 @@ export interface EapItem {
   descricao: string;
   pacote?: string;
   lote?: string;
+  classificacao_adicional?: string;
   tipo: 'agrupador' | 'item';
   unidade?: string;
   quantidade?: number;
