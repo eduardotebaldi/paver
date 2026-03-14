@@ -283,6 +283,7 @@ import {
   CartesianGrid,
   Legend,
   ReferenceLine,
+  ReferenceArea,
   Tooltip,
   Rectangle,
 } from 'recharts';
@@ -294,6 +295,29 @@ const chartConfig: ChartConfig = {
 };
 
 const DAY_MS = 86400000;
+const WEEK_MS = DAY_MS * 7;
+
+/** Generate Monday-aligned week intervals covering the given domain */
+function getWeekBands(domainStart: number, domainEnd: number): { x1: number; x2: number; odd: boolean }[] {
+  // Find first Monday at or before domainStart
+  const startDate = new Date(domainStart);
+  const day = startDate.getUTCDay(); // 0=Sun
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  const firstMonday = new Date(domainStart);
+  firstMonday.setDate(firstMonday.getDate() + diffToMonday);
+  firstMonday.setHours(0, 0, 0, 0);
+
+  const bands: { x1: number; x2: number; odd: boolean }[] = [];
+  let current = firstMonday.getTime();
+  let idx = 0;
+  while (current < domainEnd) {
+    const next = current + WEEK_MS;
+    bands.push({ x1: current, x2: Math.min(next, domainEnd), odd: idx % 2 === 1 });
+    current = next;
+    idx++;
+  }
+  return bands;
+}
 
 function formatDateTick(ts: number) {
   const d = new Date(ts);
@@ -398,6 +422,7 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
   const [zoomDomain, setZoomDomain] = useState<[number, number] | null>(null);
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
   const activeDomain = zoomDomain || [domainMin, domainMax];
+  const weekBands = useMemo(() => getWeekBands(activeDomain[0], activeDomain[1]), [activeDomain]);
 
   const zoomIn = () => {
     const [l, r] = activeDomain;
@@ -487,13 +512,25 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
             layout="vertical"
             margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
           >
-            <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+            {/* Alternating week bands */}
+            {weekBands.filter(w => w.odd).map((w, i) => (
+              <ReferenceArea
+                key={`week-${i}`}
+                x1={w.x1}
+                x2={w.x2}
+                fill="hsl(var(--muted))"
+                fillOpacity={0.4}
+                ifOverflow="hidden"
+              />
+            ))}
+            <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
             <XAxis
               type="number"
               domain={activeDomain}
               tickFormatter={formatDateTick}
               fontSize={10}
               scale="time"
+              ticks={weekBands.map(w => w.x1)}
             />
             <YAxis
               type="category"
