@@ -22,6 +22,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { fetchObras, fetchEapItems, fetchPlantas, createDiario, createFotoLocalizada, uploadFile, EapItem, PlantaObra } from '@/services/api';
 import { supabase } from '@/integrations/supabase/client';
 import CollapsibleClassification from '@/components/CollapsibleClassification';
+import DxfParser from 'dxf-parser';
+import { parseDxfToSvg, DxfSvgData } from '@/lib/dxfRenderer';
 
 const climaOptions = [
   { value: 'ensolarado', label: 'Ensolarado', icon: Sun },
