@@ -14,6 +14,7 @@ import { parseEapExcel } from '@/lib/eapParser';
 import DiarioObraTab from '@/components/DiarioObraTab';
 import RelatorioFotograficoTab from '@/components/RelatorioFotograficoTab';
 import ImportOrcamentoWizard from '@/components/ImportOrcamentoWizard';
+import LinhaBalanco from '@/components/LinhaBalanco';
 
 type GroupMode = 'pacote' | 'servico';
 
