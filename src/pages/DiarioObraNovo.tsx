@@ -78,58 +78,59 @@ export default function DiarioObraNovoPage() {
 
   const eapItensOnly = useMemo(() => eapItems.filter(i => i.tipo === 'item'), [eapItems]);
 
-  // Build tree
-  const eapTree = useMemo(() => {
-    const nodeMap = new Map<string, EapNode>();
-    const roots: EapNode[] = [];
-    for (const item of eapItems) {
-      nodeMap.set(item.id, { item, children: [] });
-    }
-    for (const item of eapItems) {
-      const node = nodeMap.get(item.id)!;
-      if (item.parent_id && nodeMap.has(item.parent_id)) {
-        nodeMap.get(item.parent_id)!.children.push(node);
-      } else {
-        roots.push(node);
-      }
-    }
-    const sortChildren = (nodes: EapNode[]) => {
-      nodes.sort((a, b) => (a.item.ordem || 0) - (b.item.ordem || 0));
-      nodes.forEach(n => sortChildren(n.children));
-    };
-    sortChildren(roots);
-    return roots;
+  // Build parent map for hierarchy breadcrumb
+  const parentMap = useMemo(() => {
+    const map = new Map<string, EapItem>();
+    for (const item of eapItems) map.set(item.id, item);
+    return map;
   }, [eapItems]);
 
-  // Filter tree
-  const filteredTree = useMemo(() => {
-    if (!filterText.trim()) return eapTree;
-    const lower = filterText.toLowerCase();
-    const filterNode = (node: EapNode): EapNode | null => {
-      const groupValue = groupMode === 'pacote' ? (node.item.pacote || '') : (node.item.lote || '');
-      const descMatch = node.item.descricao.toLowerCase().includes(lower);
-      const groupMatch = groupValue.toLowerCase().includes(lower);
-      const codeMatch = (node.item.codigo || '').toLowerCase().includes(lower);
-      const filteredChildren = node.children.map(filterNode).filter(Boolean) as EapNode[];
-      if (descMatch || groupMatch || codeMatch || filteredChildren.length > 0) {
-        return { item: node.item, children: filteredChildren.length > 0 ? filteredChildren : node.children };
-      }
-      return null;
-    };
-    return eapTree.map(filterNode).filter(Boolean) as EapNode[];
-  }, [eapTree, filterText, groupMode]);
+  const getHierarchyPath = (item: EapItem): EapItem[] => {
+    const path: EapItem[] = [];
+    let current = item.parent_id ? parentMap.get(item.parent_id) : undefined;
+    while (current) {
+      path.unshift(current);
+      current = current.parent_id ? parentMap.get(current.parent_id) : undefined;
+    }
+    return path;
+  };
 
-  // Auto-expand
+  // Group items by pacote or servico (lote)
+  const groupedItems = useMemo(() => {
+    const groups = new Map<string, EapItem[]>();
+    for (const item of eapItensOnly) {
+      const key = groupMode === 'pacote' ? (item.pacote || 'Sem pacote') : (item.lote || 'Sem serviço');
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(item);
+    }
+    // Sort groups alphabetically
+    return [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  }, [eapItensOnly, groupMode]);
+
+  // Filter groups
+  const filteredGroups = useMemo(() => {
+    if (!filterText.trim()) return groupedItems;
+    const lower = filterText.toLowerCase();
+    return groupedItems
+      .map(([key, items]) => {
+        const keyMatch = key.toLowerCase().includes(lower);
+        const filteredItems = items.filter(item => {
+          const descMatch = item.descricao.toLowerCase().includes(lower);
+          const codeMatch = (item.codigo || '').toLowerCase().includes(lower);
+          const pathMatch = getHierarchyPath(item).some(p => p.descricao.toLowerCase().includes(lower));
+          return descMatch || codeMatch || pathMatch;
+        });
+        if (keyMatch) return [key, items] as [string, EapItem[]];
+        if (filteredItems.length > 0) return [key, filteredItems] as [string, EapItem[]];
+        return null;
+      })
+      .filter(Boolean) as [string, EapItem[]][];
+  }, [groupedItems, filterText]);
+
+  // Auto-expand all groups
   useMemo(() => {
-    const keys = new Set<string>();
-    const collect = (nodes: EapNode[]) => {
-      for (const n of nodes) {
-        if (n.children.length > 0) { keys.add(n.item.id); collect(n.children); }
-      }
-    };
-    collect(filteredTree);
-    setExpandedGroups(keys);
-  }, [filteredTree]);
+    setExpandedGroups(new Set(filteredGroups.map(([key]) => key)));
+  }, [filteredGroups]);
 
   const toggleGroup = (key: string) => {
     setExpandedGroups(prev => {
