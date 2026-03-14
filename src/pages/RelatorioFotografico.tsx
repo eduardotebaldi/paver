@@ -1,12 +1,15 @@
 import { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Camera, Loader2, FolderTree, Layers, Building2, MapPin, FileCode, Image as ImageIcon } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Camera, Loader2, FolderTree, Layers, Building2, MapPin, FileCode, Image as ImageIcon, Trash2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import { fetchObras, fetchAllFotosLocalizadas, fetchPlantas, FotoLocalizada, PlantaObra } from '@/services/api';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import { fetchObras, fetchAllFotosLocalizadas, fetchPlantas, deleteFotoLocalizada, FotoLocalizada, PlantaObra } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import DxfPlantaViewer from '@/components/DxfPlantaViewer';
 
@@ -239,6 +242,30 @@ function GaleriaView({
   selectedFoto: FotoLocalizada | null;
   onSelectFoto: (f: FotoLocalizada | null) => void;
 }) {
+  const { user, hasRole } = useAuth();
+  const isAdmin = hasRole('admin');
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const canDeleteFoto = (foto: FotoLocalizada) => {
+    if (isAdmin) return true;
+    if (foto.created_by !== user?.id) return false;
+    const created = new Date(foto.created_at);
+    return (Date.now() - created.getTime()) <= 2 * 24 * 60 * 60 * 1000;
+  };
+
+  const handleDelete = async (foto: FotoLocalizada) => {
+    try {
+      await deleteFotoLocalizada(foto.id);
+      queryClient.invalidateQueries({ queryKey: ['all-fotos-localizadas'] });
+      queryClient.invalidateQueries({ queryKey: ['fotos-localizadas'] });
+      if (selectedFoto?.id === foto.id) onSelectFoto(null);
+      toast({ title: 'Foto excluída' });
+    } catch (err: any) {
+      toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center py-12">
@@ -269,7 +296,7 @@ function GaleriaView({
         {fotos.map(foto => (
           <Card
             key={foto.id}
-            className="overflow-hidden cursor-pointer hover:border-accent/50 transition-colors group"
+            className="overflow-hidden cursor-pointer hover:border-accent/50 transition-colors group relative"
             onClick={() => onSelectFoto(foto)}
           >
             <div className="aspect-square bg-muted overflow-hidden">
@@ -280,6 +307,30 @@ function GaleriaView({
                 loading="lazy"
               />
             </div>
+            {canDeleteFoto(foto) && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={e => e.stopPropagation()}
+                    className="absolute top-2 right-2 h-7 w-7 bg-destructive/90 text-destructive-foreground rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    title="Excluir foto"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </AlertDialogTrigger>
+                <AlertDialogContent onClick={e => e.stopPropagation()}>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="font-heading">Excluir foto?</AlertDialogTitle>
+                    <AlertDialogDescription className="font-body">Essa ação é irreversível. A foto será removida permanentemente.</AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel className="font-body">Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => handleDelete(foto)} className="bg-destructive text-destructive-foreground font-body">Excluir</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
             <CardContent className="p-3 space-y-1.5">
               {foto.descricao && (
                 <p className="text-sm font-body text-foreground truncate">{foto.descricao}</p>
@@ -315,17 +366,40 @@ function GaleriaView({
               className="w-full rounded-lg"
             />
             <div className="mt-3 p-3 bg-card rounded-lg space-y-1">
-              {selectedFoto.descricao && (
-                <p className="font-body text-sm text-foreground">{selectedFoto.descricao}</p>
-              )}
-              <div className="flex gap-2 flex-wrap">
-                <Badge variant="secondary" className="text-[10px]">{obraMap[selectedFoto.obra_id]?.nome || ''}</Badge>
-                {selectedFoto.pacote && <Badge variant="outline" className="text-[10px]">{selectedFoto.pacote}</Badge>}
-                {selectedFoto.tipo_servico && <Badge variant="outline" className="text-[10px]">{selectedFoto.tipo_servico}</Badge>}
+              <div className="flex items-start justify-between">
+                <div className="space-y-1">
+                  {selectedFoto.descricao && (
+                    <p className="font-body text-sm text-foreground">{selectedFoto.descricao}</p>
+                  )}
+                  <div className="flex gap-2 flex-wrap">
+                    <Badge variant="secondary" className="text-[10px]">{obraMap[selectedFoto.obra_id]?.nome || ''}</Badge>
+                    {selectedFoto.pacote && <Badge variant="outline" className="text-[10px]">{selectedFoto.pacote}</Badge>}
+                    {selectedFoto.tipo_servico && <Badge variant="outline" className="text-[10px]">{selectedFoto.tipo_servico}</Badge>}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground font-body">
+                    {new Date(selectedFoto.created_at).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
+                  </p>
+                </div>
+                {canDeleteFoto(selectedFoto) && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="icon" className="text-destructive shrink-0">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="font-heading">Excluir foto?</AlertDialogTitle>
+                        <AlertDialogDescription className="font-body">Essa ação é irreversível.</AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel className="font-body">Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleDelete(selectedFoto)} className="bg-destructive text-destructive-foreground font-body">Excluir</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
               </div>
-              <p className="text-[10px] text-muted-foreground font-body">
-                {new Date(selectedFoto.created_at).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
-              </p>
             </div>
           </div>
         </div>
