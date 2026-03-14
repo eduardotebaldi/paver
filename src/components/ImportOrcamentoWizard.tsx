@@ -246,6 +246,13 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
     [processFile],
   );
 
+  // Group lookup map
+  const groupMap = useMemo(() => {
+    const m = new Map<string, OrcamentoGroup>();
+    groups.forEach(g => m.set(g.codigo, g));
+    return m;
+  }, [groups]);
+
   // Level 1 groups
   const level1Groups = useMemo(() => groups.filter(g => g.nivel === 1), [groups]);
 
