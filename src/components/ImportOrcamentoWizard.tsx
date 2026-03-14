@@ -112,31 +112,30 @@ function AutocompleteInput({
   );
 }
 
-/** Collapsible description that shows the cleaned name + original full description */
+/** Collapsible description: shows cleaned name + parent context in muted italic parentheses */
 function CollapsibleDescription({
   cleanedName,
-  originalDesc,
+  parentContext,
 }: {
   cleanedName: string;
-  originalDesc: string;
+  parentContext: string;
 }) {
   const [expanded, setExpanded] = useState(false);
-  // Only show the collapsible part if the original differs from the cleaned name
-  const hasExtra = originalDesc !== cleanedName && originalDesc.length > 0;
+  const hasContext = parentContext.length > 0;
 
   return (
     <span className="text-xs">
       <span>{cleanedName}</span>
-      {hasExtra && (
+      {hasContext && (
         <>
           {' '}
           <button
             onClick={() => setExpanded(!expanded)}
-            className="text-muted-foreground/50 hover:text-muted-foreground transition-colors"
-            title={expanded ? 'Recolher' : 'Ver descrição completa'}
+            className="text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors inline"
+            title={expanded ? 'Recolher' : 'Ver contexto'}
           >
             {expanded ? (
-              <span className="italic text-muted-foreground/60">({originalDesc})</span>
+              <span className="italic text-muted-foreground/50 text-[10px]">({parentContext})</span>
             ) : (
               <span className="text-[10px]">(...)</span>
             )}
