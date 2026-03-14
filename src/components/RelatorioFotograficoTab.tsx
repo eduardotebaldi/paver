@@ -83,7 +83,12 @@ export default function RelatorioFotograficoTab({ obraId }: Props) {
             >
               <CardContent className="p-3">
                 <div className="aspect-video bg-muted rounded overflow-hidden mb-2 flex items-center justify-center">
-                  {isPdf(planta.imagem_url) ? (
+                  {isDxf(planta.imagem_url) ? (
+                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                      <FileCode className="h-10 w-10" />
+                      <span className="text-xs font-body">DXF</span>
+                    </div>
+                  ) : isPdf(planta.imagem_url) ? (
                     <div className="flex flex-col items-center gap-2 text-muted-foreground">
                       <FileText className="h-10 w-10" />
                       <span className="text-xs font-body">PDF</span>
