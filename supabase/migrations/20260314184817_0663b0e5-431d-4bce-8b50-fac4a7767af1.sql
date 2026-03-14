@@ -1,0 +1,1 @@
+ALTER TABLE public.paver_eap_items ADD COLUMN classificacao_adicional TEXT;
