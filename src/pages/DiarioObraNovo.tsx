@@ -569,7 +569,20 @@ export default function DiarioObraNovoPage() {
         })));
         if (error) throw error;
         for (const a of atividadesArr) {
-          const { error: updErr } = await supabase.from('paver_eap_items').update({ avanco_realizado: a.avanco_percentual }).eq('id', a.eap_item_id);
+          const item = eapItensOnly.find(i => i.id === a.eap_item_id);
+          const updateFields: Record<string, any> = { avanco_realizado: a.avanco_percentual };
+
+          // Auto-set data_inicio_real on first measurement
+          if (item && !item.data_inicio_real && a.avanco_percentual > 0) {
+            updateFields.data_inicio_real = data;
+          }
+
+          // Auto-set data_fim_real when reaching 100%
+          if (a.avanco_percentual >= 100) {
+            updateFields.data_fim_real = data;
+          }
+
+          const { error: updErr } = await supabase.from('paver_eap_items').update(updateFields).eq('id', a.eap_item_id);
           if (updErr) console.error('Failed to update EAP item:', updErr);
         }
       }
@@ -579,6 +592,7 @@ export default function DiarioObraNovoPage() {
       queryClient.invalidateQueries({ queryKey: ['diarios'] });
       queryClient.invalidateQueries({ queryKey: ['diario-atividades'] });
       queryClient.invalidateQueries({ queryKey: ['eap'] });
+      queryClient.invalidateQueries({ queryKey: ['eap-items-balance'] });
       queryClient.invalidateQueries({ queryKey: ['fotos-localizadas'] });
       toast({ title: 'Diário registrado com sucesso!' });
       navigate('/diario-obra');
