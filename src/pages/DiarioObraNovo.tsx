@@ -65,6 +65,7 @@ export default function DiarioObraNovoPage() {
   const [observacoes, setObservacoes] = useState('');
   const [atividades, setAtividades] = useState<Map<string, AtividadeEntry>>(new Map());
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [expandedSubGroups, setExpandedSubGroups] = useState<Set<string>>(new Set());
   const [groupMode, setGroupMode] = useState<GroupMode>('pacote');
   const [filterText, setFilterText] = useState('');
   const [fotos, setFotos] = useState<FotoDiario[]>([]);
@@ -128,13 +129,18 @@ export default function DiarioObraNovoPage() {
       .filter(Boolean) as [string, EapItem[]][];
   }, [groupedItems, filterText]);
 
-  // Auto-expand all groups
-  useMemo(() => {
-    setExpandedGroups(new Set(filteredGroups.map(([key]) => key)));
-  }, [filteredGroups]);
+  // Start with all groups collapsed (no auto-expand)
 
   const toggleGroup = (key: string) => {
     setExpandedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+
+  const toggleSubGroup = (key: string) => {
+    setExpandedSubGroups(prev => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key); else next.add(key);
       return next;
@@ -243,7 +249,7 @@ export default function DiarioObraNovoPage() {
   const handleSubmit = () => saveMutation.mutate();
 
   // Render a single EAP item row with hierarchy breadcrumb
-  const renderItemRow = (item: EapItem) => {
+  const renderItemRow = (item: EapItem, hideClassification = false) => {
     const selected = atividades.get(item.id);
     const currentPercent = item.avanco_realizado || 0;
     const totalQtd = item.quantidade || 0;
@@ -273,7 +279,7 @@ export default function DiarioObraNovoPage() {
               {item.codigo && <span className="text-xs text-muted-foreground font-mono shrink-0">{item.codigo}</span>}
               <span className="text-sm font-body text-foreground truncate">
                 {item.descricao}
-                {item.classificacao_adicional && <CollapsibleClassification text={item.classificacao_adicional} />}
+                {!hideClassification && item.classificacao_adicional && <CollapsibleClassification text={item.classificacao_adicional} />}
               </span>
             </div>
           </div>
@@ -466,23 +472,35 @@ export default function DiarioObraNovoPage() {
                             }
                             // If only one sub-group (or all empty), render flat
                             if (subGroups.size <= 1) {
-                              return items.map(item => renderItemRow(item));
+                              return items.map(item => renderItemRow(item, true));
                             }
                             return [...subGroups.entries()]
                               .sort((a, b) => a[0].localeCompare(b[0]))
-                              .map(([subKey, subItems]) => (
-                                <div key={subKey || '__none__'} className="mt-1">
-                                  {subKey && (
-                                    <div className="flex items-center gap-1.5 px-3 py-1 ml-2">
-                                      <span className="text-[10px] font-body font-medium text-muted-foreground/70 italic">{subKey}</span>
-                                      <span className="text-[10px] text-muted-foreground/40 font-body">({subItems.length})</span>
-                                    </div>
-                                  )}
-                                  <div className={subKey ? 'border-l border-border/50 ml-5 space-y-0.5' : 'space-y-0.5'}>
-                                    {subItems.map(item => renderItemRow(item))}
-                                  </div>
-                                </div>
-                              ));
+                              .map(([subKey, subItems]) => {
+                                const subId = `${groupKey}::${subKey}`;
+                                const isSubExpanded = expandedSubGroups.has(subId);
+                                const selInSub = subItems.filter(i => atividades.has(i.id)).length;
+                                if (!subKey) {
+                                  return <div key="__none__" className="space-y-0.5">{subItems.map(item => renderItemRow(item, true))}</div>;
+                                }
+                                return (
+                                  <Collapsible key={subId} open={isSubExpanded} onOpenChange={() => toggleSubGroup(subId)}>
+                                    <CollapsibleTrigger asChild>
+                                      <button type="button" className="flex items-center gap-2 w-full px-3 py-1.5 ml-2 rounded-md hover:bg-muted/30 transition-colors text-left">
+                                        {isSubExpanded ? <ChevronDown className="h-3 w-3 text-muted-foreground/60 shrink-0" /> : <ChevronRight className="h-3 w-3 text-muted-foreground/60 shrink-0" />}
+                                        <span className="text-[11px] font-body font-medium text-muted-foreground/80 italic flex-1 truncate">{subKey}</span>
+                                        <Badge variant="outline" className="text-[9px] font-body shrink-0">{subItems.length}</Badge>
+                                        {selInSub > 0 && <Badge className="text-[9px] font-body bg-accent text-accent-foreground shrink-0">{selInSub}</Badge>}
+                                      </button>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent>
+                                      <div className="border-l border-border/50 ml-5 space-y-0.5">
+                                        {subItems.map(item => renderItemRow(item, true))}
+                                      </div>
+                                    </CollapsibleContent>
+                                  </Collapsible>
+                                );
+                              });
                           })()}
                         </div>
                       </CollapsibleContent>
