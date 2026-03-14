@@ -421,8 +421,25 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
 
   const [zoomDomain, setZoomDomain] = useState<[number, number] | null>(null);
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
   const activeDomain = zoomDomain || [domainMin, domainMax];
   const weekBands = useMemo(() => getWeekBands(activeDomain[0], activeDomain[1]), [activeDomain]);
+
+  const toggleFullscreen = useCallback(() => {
+    if (!cardRef.current) return;
+    if (!document.fullscreenElement) {
+      cardRef.current.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
+    } else {
+      document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
+    }
+  }, []);
+
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', handler);
+    return () => document.removeEventListener('fullscreenchange', handler);
+  }, []);
 
   const zoomIn = () => {
     const [l, r] = activeDomain;
