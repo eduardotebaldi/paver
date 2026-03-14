@@ -520,6 +520,7 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
           quantidade: item.quantidade,
           pacote: l3?.pacoteTrabalho || undefined,
           lote: l3?.tipoServico || undefined,
+          classificacao_adicional: l3?.classificacaoAdicional || undefined,
           ordem: ordem++,
         });
       }
