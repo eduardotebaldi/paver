@@ -1,0 +1,1 @@
+ALTER TABLE public.paver_profiles ADD COLUMN ativo boolean NOT NULL DEFAULT true;
