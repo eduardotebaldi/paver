@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { FileBarChart, Loader2, Download, Filter, FolderTree, Layers } from 'lucide-react';
+import { FileBarChart, Loader2, Download, Filter, FolderTree, Layers, ChevronDown, ChevronRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +16,7 @@ export default function Relatorios() {
   const [groupMode, setGroupMode] = useState<GroupMode>('pacote');
   const [selectedPacote, setSelectedPacote] = useState<string>('all');
   const [selectedServico, setSelectedServico] = useState<string>('all');
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
   const { data: obras = [], isLoading: loadingObras } = useQuery({
     queryKey: ['obras'],
@@ -27,12 +28,10 @@ export default function Relatorios() {
     queryFn: fetchAllEapItems,
   });
 
-  // Filter by obra
   const obraFiltered = selectedObra === 'all'
     ? allEapItems
     : allEapItems.filter(i => i.obra_id === selectedObra);
 
-  // Get unique pacotes and servicos from obra-filtered items
   const uniquePacotes = useMemo(() => {
     const set = new Set<string>();
     obraFiltered.forEach(i => { if (i.pacote) set.add(i.pacote); });
@@ -45,7 +44,6 @@ export default function Relatorios() {
     return Array.from(set).sort();
   }, [obraFiltered]);
 
-  // Apply pacote/servico filters
   const filteredItems = useMemo(() => {
     let items = obraFiltered;
     if (selectedPacote !== 'all') items = items.filter(i => i.pacote === selectedPacote);
@@ -55,7 +53,6 @@ export default function Relatorios() {
 
   const obraMap = Object.fromEntries(obras.map(o => [o.id, o]));
 
-  // Group items based on mode
   const grouped = useMemo(() => {
     const map = new Map<string, { label: string; items: EapItem[] }>();
     for (const item of filteredItems) {
@@ -72,6 +69,15 @@ export default function Relatorios() {
   const avgBase = totalItems > 0 ? filteredItems.reduce((s, i) => s + (i.avanco_base || 0), 0) / totalItems : 0;
   const avgPrevisto = totalItems > 0 ? filteredItems.reduce((s, i) => s + (i.avanco_previsto || 0), 0) / totalItems : 0;
   const avgRealizado = totalItems > 0 ? filteredItems.reduce((s, i) => s + (i.avanco_realizado || 0), 0) / totalItems : 0;
+
+  const toggleGroup = (key: string) => {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
 
   const handleExportCSV = () => {
     const headers = ['Obra', 'Código', 'Descrição', 'Pacote', 'Tipo Serviço', 'Unidade', 'Qtd', 'Base %', 'Previsto %', 'Realizado %'];
@@ -161,7 +167,7 @@ export default function Relatorios() {
         {/* Group mode toggle */}
         <div className="flex items-center rounded-md border border-border overflow-hidden ml-auto">
           <button
-            onClick={() => setGroupMode('pacote')}
+            onClick={() => { setGroupMode('pacote'); setCollapsedGroups(new Set()); }}
             className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-body transition-colors ${
               groupMode === 'pacote'
                 ? 'bg-primary text-primary-foreground'
@@ -172,7 +178,7 @@ export default function Relatorios() {
             Pacote
           </button>
           <button
-            onClick={() => setGroupMode('servico')}
+            onClick={() => { setGroupMode('servico'); setCollapsedGroups(new Set()); }}
             className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-body transition-colors ${
               groupMode === 'servico'
                 ? 'bg-primary text-primary-foreground'
@@ -245,11 +251,20 @@ export default function Relatorios() {
             const groupAvg = group.items.length > 0
               ? group.items.reduce((s, i) => s + (i.avanco_realizado || 0), 0) / group.items.length
               : 0;
+            const isCollapsed = collapsedGroups.has(group.label);
             return (
               <Card key={group.label}>
                 <CardContent className="p-0">
-                  <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                  <button
+                    onClick={() => toggleGroup(group.label)}
+                    className="w-full flex items-center justify-between px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors"
+                  >
                     <div className="flex items-center gap-2">
+                      {isCollapsed ? (
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                      )}
                       {groupMode === 'pacote' ? (
                         <FolderTree className="h-4 w-4 text-accent" />
                       ) : (
@@ -262,43 +277,45 @@ export default function Relatorios() {
                       <Progress value={groupAvg} className="w-20 h-1.5" />
                       <span className="text-xs font-body text-muted-foreground">{groupAvg.toFixed(1)}%</span>
                     </div>
-                  </div>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="font-heading">Obra</TableHead>
-                        <TableHead className="font-heading">Descrição</TableHead>
-                        <TableHead className="font-heading">
-                          {groupMode === 'pacote' ? 'Tipo Serviço' : 'Pacote'}
-                        </TableHead>
-                        <TableHead className="font-heading text-right">Base</TableHead>
-                        <TableHead className="font-heading text-right">Previsto</TableHead>
-                        <TableHead className="font-heading text-right">Realizado</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {group.items.map(item => (
-                        <TableRow key={item.id}>
-                          <TableCell className="font-body text-xs">{obraMap[item.obra_id]?.nome || '—'}</TableCell>
-                          <TableCell className="font-body text-sm">{item.descricao}</TableCell>
-                          <TableCell>
-                            {groupMode === 'pacote'
-                              ? (item.lote ? <Badge variant="outline" className="text-[10px]">{item.lote}</Badge> : '—')
-                              : (item.pacote ? <Badge variant="outline" className="text-[10px]">{item.pacote}</Badge> : '—')
-                            }
-                          </TableCell>
-                          <TableCell className="text-right font-body text-sm">{(item.avanco_base || 0).toFixed(1)}%</TableCell>
-                          <TableCell className="text-right font-body text-sm">{(item.avanco_previsto || 0).toFixed(1)}%</TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <Progress value={item.avanco_realizado || 0} className="w-16 h-1.5" />
-                              <span className="font-body text-sm font-medium">{(item.avanco_realizado || 0).toFixed(1)}%</span>
-                            </div>
-                          </TableCell>
+                  </button>
+                  {!isCollapsed && (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="font-heading">Obra</TableHead>
+                          <TableHead className="font-heading">Descrição</TableHead>
+                          <TableHead className="font-heading">
+                            {groupMode === 'pacote' ? 'Tipo Serviço' : 'Pacote'}
+                          </TableHead>
+                          <TableHead className="font-heading text-right">Base</TableHead>
+                          <TableHead className="font-heading text-right">Previsto</TableHead>
+                          <TableHead className="font-heading text-right">Realizado</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {group.items.map(item => (
+                          <TableRow key={item.id}>
+                            <TableCell className="font-body text-xs">{obraMap[item.obra_id]?.nome || '—'}</TableCell>
+                            <TableCell className="font-body text-sm">{item.descricao}</TableCell>
+                            <TableCell>
+                              {groupMode === 'pacote'
+                                ? (item.lote ? <Badge variant="outline" className="text-[10px]">{item.lote}</Badge> : '—')
+                                : (item.pacote ? <Badge variant="outline" className="text-[10px]">{item.pacote}</Badge> : '—')
+                              }
+                            </TableCell>
+                            <TableCell className="text-right font-body text-sm">{(item.avanco_base || 0).toFixed(1)}%</TableCell>
+                            <TableCell className="text-right font-body text-sm">{(item.avanco_previsto || 0).toFixed(1)}%</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <Progress value={item.avanco_realizado || 0} className="w-16 h-1.5" />
+                                <span className="font-body text-sm font-medium">{(item.avanco_realizado || 0).toFixed(1)}%</span>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
                 </CardContent>
               </Card>
             );

@@ -210,11 +210,30 @@ export async function fetchAllUsers(): Promise<UserWithRole[]> {
     .select('user_id, role');
   if (rErr) throw rErr;
 
+  // Fetch emails via RPC
+  const userIds = (profiles || []).map((p: any) => p.id);
+  let emailMap: Record<string, string> = {};
+  if (userIds.length > 0) {
+    const { data: emailData } = await supabase.rpc('get_user_emails', { user_ids: userIds });
+    if (emailData) {
+      emailMap = Object.fromEntries((emailData as any[]).map(e => [e.id, e.email]));
+    }
+  }
+
   return (profiles || []).map((p: any) => ({
     id: p.id,
     full_name: p.full_name,
+    email: emailMap[p.id] || '',
     roles: (roles || []).filter((r: any) => r.user_id === p.id).map((r: any) => r.role),
   }));
+}
+
+export async function updateProfileName(userId: string, name: string) {
+  const { error } = await supabase
+    .from('paver_profiles')
+    .update({ full_name: name } as any)
+    .eq('id', userId);
+  if (error) throw error;
 }
 
 export async function assignRole(userId: string, role: string) {

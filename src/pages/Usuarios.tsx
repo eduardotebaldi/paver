@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Users, Shield, ShieldOff, Loader2, UserPlus } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Users, Shield, ShieldOff, Loader2, UserPlus, Pencil, Check, X } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { fetchAllUsers, assignRole, removeRole, UserWithRole } from '@/services/api';
+import { fetchAllUsers, assignRole, removeRole, updateProfileName, UserWithRole } from '@/services/api';
 import { supabase } from '@/integrations/supabase/client';
 
 const roleLabels: Record<string, string> = {
@@ -30,6 +30,8 @@ export default function Usuarios() {
   const [newPassword, setNewPassword] = useState('');
   const [newRole, setNewRole] = useState('engenharia');
   const [creating, setCreating] = useState(false);
+  const [editingNameId, setEditingNameId] = useState<string | null>(null);
+  const [editNameValue, setEditNameValue] = useState('');
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['users'],
@@ -51,12 +53,33 @@ export default function Usuarios() {
     onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
   });
 
+  const updateNameMutation = useMutation({
+    mutationFn: async ({ userId, name }: { userId: string; name: string }) => {
+      await updateProfileName(userId, name);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      setEditingNameId(null);
+      toast({ title: 'Nome atualizado!' });
+    },
+    onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
+  });
+
+  const startEditName = (user: UserWithRole) => {
+    setEditingNameId(user.id);
+    setEditNameValue(user.full_name || '');
+  };
+
+  const saveEditName = () => {
+    if (editingNameId) {
+      updateNameMutation.mutate({ userId: editingNameId, name: editNameValue });
+    }
+  };
+
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreating(true);
 
-    // Create user via Supabase Auth admin (note: requires service_role for production)
-    // For now, we use signUp which works with anon key
     const { data, error } = await supabase.auth.signUp({
       email: newEmail,
       password: newPassword,
@@ -155,8 +178,50 @@ export default function Usuarios() {
                     <Users className="h-4 w-4 text-muted-foreground" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium font-body">{u.full_name || 'Sem nome'}</p>
-                    <p className="text-xs text-muted-foreground font-body">{u.id.slice(0, 8)}...</p>
+                    {editingNameId === u.id ? (
+                      <div className="flex items-center gap-1.5">
+                        <Input
+                          value={editNameValue}
+                          onChange={e => setEditNameValue(e.target.value)}
+                          className="h-7 text-sm font-body w-48"
+                          autoFocus
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') saveEditName();
+                            if (e.key === 'Escape') setEditingNameId(null);
+                          }}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={saveEditName}
+                          disabled={updateNameMutation.isPending}
+                        >
+                          <Check className="h-3.5 w-3.5 text-green-600" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => setEditingNameId(null)}
+                        >
+                          <X className="h-3.5 w-3.5 text-muted-foreground" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 group">
+                        <p className="text-sm font-medium font-body">{u.full_name || 'Sem nome'}</p>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => startEditName(u)}
+                        >
+                          <Pencil className="h-3 w-3 text-muted-foreground" />
+                        </Button>
+                      </div>
+                    )}
+                    <p className="text-xs text-muted-foreground font-body">{u.email || ''}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
