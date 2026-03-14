@@ -371,6 +371,13 @@ export default function ObraDetalhe() {
           <RelatorioFotograficoTab obraId={id!} />
         </TabsContent>
       </Tabs>
+
+      <ImportOrcamentoWizard
+        open={importWizardOpen}
+        onOpenChange={setImportWizardOpen}
+        onImport={(items) => csvImportMutation.mutate(items)}
+        importing={csvImportMutation.isPending}
+      />
     </div>
   );
 }
