@@ -861,10 +861,17 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
                                     <TableRow key={g.codigo}>
                                       <TableCell className="text-xs font-mono py-1.5">{g.codigo}</TableCell>
                                       <TableCell className="py-1.5">
-                                        <CollapsibleDescription
-                                          cleanedName={removePrefixes(g.descricao)}
-                                          originalDesc={g.descricao}
-                                        />
+                                        {(() => {
+                                          const l2Code = g.codigo.split('.').slice(0, 2).join('.');
+                                          const l2Group = groupMap.get(l2Code);
+                                          const parentContext = l2Group ? l2Group.descricao : '';
+                                          return (
+                                            <CollapsibleDescription
+                                              cleanedName={removePrefixes(g.descricao)}
+                                              parentContext={parentContext}
+                                            />
+                                          );
+                                        })()}
                                       </TableCell>
                                       <TableCell className="text-xs text-right py-1.5">
                                         {formatBRL(total)}
