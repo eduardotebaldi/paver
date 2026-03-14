@@ -277,7 +277,9 @@ export default function ObraDetalhe() {
                 </div>
               ) : (
                 <div className="space-y-1">
-                  {groupedView.map((group) => (
+                  {groupedView.map((group) => {
+                    const totalItems = group.subGroups.reduce((s, sg) => s + sg.items.length, 0);
+                    return (
                     <div key={group.key}>
                       {/* Level 1: main group */}
                       <button
@@ -290,9 +292,9 @@ export default function ObraDetalhe() {
                           <ChevronDown className="h-4 w-4 text-muted-foreground" />
                         )}
                         <span>{group.label}</span>
-                        <span className="ml-auto text-xs text-muted-foreground font-body">
-                          {group.subGroups.reduce((s, sg) => s + sg.items.length, 0)} item(s)
-                        </span>
+                        <Badge variant="secondary" className="text-[10px] font-body ml-2">
+                          {totalItems}
+                        </Badge>
                       </button>
 
                       {/* Level 2: sub-groups */}
@@ -310,9 +312,9 @@ export default function ObraDetalhe() {
                                   <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
                                 )}
                                 <span className="font-medium">{sub.label}</span>
-                                <span className="ml-auto text-xs text-muted-foreground">
+                                <Badge variant="outline" className="text-[10px] font-body ml-1">
                                   {sub.items.length}
-                                </span>
+                                </Badge>
                               </button>
 
                               {/* Level 3: items */}
@@ -324,13 +326,16 @@ export default function ObraDetalhe() {
                                       className="flex items-center gap-3 px-3 py-1.5 pl-14 text-sm font-body"
                                     >
                                       <span className="flex-1 text-muted-foreground">
-                                        {item.lote && (
-                                          <Badge variant="outline" className="text-[10px] mr-2 font-normal">
-                                            {item.lote}
-                                          </Badge>
-                                        )}
                                         {item.descricao}
                                       </span>
+                                      {item.unidade && (
+                                        <Badge variant="outline" className="text-[9px] shrink-0">{item.unidade}</Badge>
+                                      )}
+                                      {item.quantidade ? (
+                                        <span className="text-[10px] text-muted-foreground w-12 text-right">
+                                          {item.quantidade.toLocaleString('pt-BR')}
+                                        </span>
+                                      ) : null}
                                       <div className="flex items-center gap-2 shrink-0 w-32">
                                         <Progress value={item.avanco_realizado || 0} className="h-1.5" />
                                         <span className="text-[10px] text-muted-foreground w-8 text-right">
@@ -346,7 +351,8 @@ export default function ObraDetalhe() {
                         </div>
                       )}
                     </div>
-                  ))}
+                  );
+                  })}
                 </div>
               )}
             </CardContent>
