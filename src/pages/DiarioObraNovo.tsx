@@ -568,17 +568,32 @@ export default function DiarioObraNovoPage() {
           diario_id: diario.id, eap_item_id: a.eap_item_id, avanco_percentual: a.avanco_percentual, quantidade_dia: a.quantidade_dia,
         })));
         if (error) throw error;
+
+        // Recalculate avanco_realizado from sum of ALL measurements for each item
         for (const a of atividadesArr) {
           const item = eapItensOnly.find(i => i.id === a.eap_item_id);
-          const updateFields: Record<string, any> = { avanco_realizado: a.avanco_percentual };
+          const totalQtd = item?.quantidade || 0;
+
+          // Sum all quantidade_dia from all diários for this item
+          const { data: allMeasurements } = await supabase
+            .from('paver_diario_atividades')
+            .select('quantidade_dia')
+            .eq('eap_item_id', a.eap_item_id);
+
+          const sumQtdDia = (allMeasurements || []).reduce((sum: number, m: any) => sum + (m.quantidade_dia || 0), 0);
+          const newAvanco = totalQtd > 0
+            ? Math.min(100, Math.round((sumQtdDia / totalQtd) * 10000) / 100)
+            : a.avanco_percentual;
+
+          const updateFields: Record<string, any> = { avanco_realizado: newAvanco };
 
           // Auto-set data_inicio_real on first measurement
-          if (item && !item.data_inicio_real && a.avanco_percentual > 0) {
+          if (item && !item.data_inicio_real && newAvanco > 0) {
             updateFields.data_inicio_real = data;
           }
 
           // Auto-set data_fim_real when reaching 100%
-          if (a.avanco_percentual >= 100) {
+          if (newAvanco >= 100) {
             updateFields.data_fim_real = data;
           }
 
