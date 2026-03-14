@@ -1,4 +1,4 @@
-import { LayoutDashboard, Building2, FileBarChart, Users, LogOut, Camera, BarChart3 } from "lucide-react";
+import { LayoutDashboard, Building2, FileBarChart, Users, LogOut, Camera, BarChart3, GitBranch } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
 import {
