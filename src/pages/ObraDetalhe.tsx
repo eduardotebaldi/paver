@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Upload, Loader2, FileSpreadsheet, ChevronRight, ChevronDown, Layers, FolderTree, Calendar, History, Link2, Pencil } from 'lucide-react';
+import { ArrowLeft, Upload, Loader2, FileSpreadsheet, ChevronRight, ChevronDown, Layers, FolderTree, Calendar, History, Link2, Pencil, GitBranch } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -299,6 +299,10 @@ export default function ObraDetalhe() {
                     <Button variant="outline" size="sm" onClick={handleRecalcDeps} className="font-body">
                       <Link2 className="h-4 w-4 mr-1.5" />
                       Recalcular
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => navigate(`/obras/${id}/dependencias`)} className="font-body">
+                      <GitBranch className="h-4 w-4 mr-1.5" />
+                      Dependências
                     </Button>
                   </div>
                 )}

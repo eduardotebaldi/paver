@@ -12,6 +12,7 @@ import ObraDetalhe from "./pages/ObraDetalhe";
 import Relatorios from "./pages/Relatorios";
 import RelatorioFotografico from "./pages/RelatorioFotografico";
 import LinhaBalancoPage from "./pages/LinhaBalanco";
+import Dependencias from "./pages/Dependencias";
 import Usuarios from "./pages/Usuarios";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
@@ -33,6 +34,7 @@ const App = () => (
               <Route path="/" element={<Dashboard />} />
               <Route path="/obras" element={<Obras />} />
               <Route path="/obras/:id" element={<ObraDetalhe />} />
+              <Route path="/obras/:id/dependencias" element={<Dependencias />} />
               <Route path="/relatorios" element={<Relatorios />} />
               <Route path="/relatorio-fotografico" element={<RelatorioFotografico />} />
               <Route path="/linha-balanco" element={<LinhaBalancoPage />} />

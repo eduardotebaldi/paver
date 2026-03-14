@@ -1183,6 +1183,44 @@ export type Database = {
         }
         Relationships: []
       }
+      paver_dependency_rules: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          obra_id: string
+          predecessor: string
+          successor: string
+          tipo: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          obra_id: string
+          predecessor: string
+          successor: string
+          tipo: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          obra_id?: string
+          predecessor?: string
+          successor?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paver_dependency_rules_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "paver_obras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       paver_diarios: {
         Row: {
           atividades: string
