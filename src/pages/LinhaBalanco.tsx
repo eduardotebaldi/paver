@@ -337,6 +337,17 @@ function formatDateFull(ts: number) {
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 }
 
+interface SubBarItem {
+  id: string;
+  descricao: string;
+  classificacao_adicional?: string;
+  quantidade?: number;
+  avanco_realizado?: number;
+  data_inicio_prevista?: string;
+  data_fim_prevista?: string;
+  unidade?: string;
+}
+
 interface SubBarMeta {
   name: string;
   start: number | null;
@@ -345,18 +356,25 @@ interface SubBarMeta {
   qtdTotal: number;
   qtdRealizada: number;
   itemCount: number;
+  items: SubBarItem[];
 }
 
 function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem[]; mode: GroupMode; obraName?: string }) {
   const items = eapItems.filter(i => i.tipo === 'item');
   const todayTs = useMemo(() => new Date().setHours(0, 0, 0, 0), []);
 
+  // Detail dialog state
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailGroup, setDetailGroup] = useState<string>('');
+  const [detailSubs, setDetailSubs] = useState<SubBarMeta[]>([]);
+  const [detailColorMap, setDetailColorMap] = useState<Record<string, string>>({});
+
   const { chartData, subCategories, colorMap, lastMeasurementTs, domainMin, domainMax } = useMemo(() => {
-    // Group by primary axis, sub-group by secondary axis
     const groupMap = new Map<string, Map<string, {
       starts: number[]; ends: number[];
       avancos: number[]; qtds: number[]; qtdsRealizadas: number[];
       itemCount: number;
+      items: SubBarItem[];
     }>>();
     let lastMeasurement = 0;
     const allSubs = new Set<string>();
@@ -368,10 +386,20 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
 
       if (!groupMap.has(groupKey)) groupMap.set(groupKey, new Map());
       const group = groupMap.get(groupKey)!;
-      if (!group.has(subKey)) group.set(subKey, { starts: [], ends: [], avancos: [], qtds: [], qtdsRealizadas: [], itemCount: 0 });
+      if (!group.has(subKey)) group.set(subKey, { starts: [], ends: [], avancos: [], qtds: [], qtdsRealizadas: [], itemCount: 0, items: [] });
       const entry = group.get(subKey)!;
       entry.itemCount++;
       entry.avancos.push(item.avanco_realizado || 0);
+      entry.items.push({
+        id: item.id,
+        descricao: item.descricao,
+        classificacao_adicional: item.classificacao_adicional || undefined,
+        quantidade: item.quantidade || undefined,
+        avanco_realizado: item.avanco_realizado || 0,
+        data_inicio_prevista: item.data_inicio_prevista || undefined,
+        data_fim_prevista: item.data_fim_prevista || undefined,
+        unidade: item.unidade || undefined,
+      });
       if (item.quantidade != null) {
         entry.qtds.push(item.quantidade);
         entry.qtdsRealizadas.push(item.quantidade * ((item.avanco_realizado || 0) / 100));
@@ -419,6 +447,7 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
           qtdTotal: Number(sum(d.qtds).toFixed(2)),
           qtdRealizada: Number(sum(d.qtdsRealizadas).toFixed(2)),
           itemCount: d.itemCount,
+          items: d.items,
         });
       }
       return row;
@@ -473,6 +502,15 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
   };
   const resetZoom = () => setZoomDomain(null);
 
+  // Handle bar click to open detail dialog
+  const handleBarClick = useCallback((data: any) => {
+    if (!data || !data._subBars) return;
+    setDetailGroup(data.fullName);
+    setDetailSubs(data._subBars);
+    setDetailColorMap(colorMap);
+    setDetailOpen(true);
+  }, [colorMap]);
+
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full">
@@ -502,7 +540,7 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
     const label = dataKey.length > maxChars ? dataKey.substring(0, maxChars - 1) + '…' : dataKey;
 
     return (
-      <g>
+      <g style={{ cursor: 'pointer' }} onClick={() => handleBarClick(payload)}>
         {/* Background */}
         <rect x={barX} y={y} width={barW} height={height} rx={rx} ry={rx}
           fill={fillColor} opacity={0.3} />
@@ -523,147 +561,165 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
     );
   };
 
-  // Dynamic chart config for legend
+  // Dynamic chart config
   const dynamicConfig: ChartConfig = {};
   subCategories.forEach(sub => {
     dynamicConfig[sub] = { label: sub, color: colorMap[sub] };
   });
 
-  const subLabel = mode === 'pacote' ? 'Tipo de Serviço' : 'Pacote';
-
   return (
-    <Card ref={cardRef} className={`flex flex-col ${isFullscreen ? 'h-screen bg-background' : 'h-full'}`}>
-      <div className="flex items-center justify-end gap-1 px-4 pt-3">
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={zoomIn} title="Zoom in">
-          <ZoomIn className="h-4 w-4" />
-        </Button>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={zoomOut} title="Zoom out">
-          <ZoomOut className="h-4 w-4" />
-        </Button>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={resetZoom} title="Resetar zoom">
-          <RotateCcw className="h-3.5 w-3.5" />
-        </Button>
-        <div className="w-px h-4 bg-border mx-1" />
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={toggleFullscreen} title={isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}>
-          {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
-        </Button>
-      </div>
-      <CardContent className="flex-1 min-h-0 p-2 pt-1">
-        <ChartContainer config={dynamicConfig} className="h-full w-full">
-          <ComposedChart
-            data={chartData}
-            layout="vertical"
-            margin={{ top: 5, right: 15, left: 0, bottom: 5 }}
-          >
-            {/* Alternating week bands */}
-            {weekBands.filter(w => w.odd).map((w, i) => (
-              <ReferenceArea
-                key={`week-${i}`}
-                x1={w.x1}
-                x2={w.x2}
-                fill="hsl(var(--muted))"
-                fillOpacity={0.4}
-                ifOverflow="hidden"
+    <>
+      <Card ref={cardRef} className={`flex flex-col ${isFullscreen ? 'h-screen bg-background' : 'h-full'}`}>
+        <div className="flex items-center justify-end gap-1 px-4 pt-3">
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={zoomIn} title="Zoom in">
+            <ZoomIn className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={zoomOut} title="Zoom out">
+            <ZoomOut className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={resetZoom} title="Resetar zoom">
+            <RotateCcw className="h-3.5 w-3.5" />
+          </Button>
+          <div className="w-px h-4 bg-border mx-1" />
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={toggleFullscreen} title={isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}>
+            {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+          </Button>
+        </div>
+        <CardContent className="flex-1 min-h-0 p-2 pt-1">
+          <ChartContainer config={dynamicConfig} className="h-full w-full">
+            <ComposedChart
+              data={chartData}
+              layout="vertical"
+              margin={{ top: 5, right: 15, left: 0, bottom: 5 }}
+            >
+              {/* Alternating week bands */}
+              {weekBands.filter(w => w.odd).map((w, i) => (
+                <ReferenceArea
+                  key={`week-${i}`}
+                  x1={w.x1}
+                  x2={w.x2}
+                  fill="hsl(var(--muted))"
+                  fillOpacity={0.4}
+                  ifOverflow="hidden"
+                />
+              ))}
+              <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+              <XAxis
+                type="number"
+                domain={activeDomain}
+                tickFormatter={formatDateTick}
+                fontSize={10}
+                scale="time"
+                ticks={weekBands.map(w => w.x1)}
               />
-            ))}
-            <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
-            <XAxis
-              type="number"
-              domain={activeDomain}
-              tickFormatter={formatDateTick}
-              fontSize={10}
-              scale="time"
-              ticks={weekBands.map(w => w.x1)}
-            />
-            <YAxis
-              type="category"
-              dataKey="name"
-              width={150}
-              fontSize={11}
-              tick={{ fill: 'hsl(var(--foreground))' }}
-            />
-            <Tooltip
-              content={({ payload }) => {
-                if (!payload || payload.length === 0) return null;
-                const row = payload[0]?.payload;
-                if (!row || !row._subBars) return null;
-                const subs: SubBarMeta[] = row._subBars;
-                return (
-                  <div className="rounded-lg border bg-popover px-4 py-3 shadow-lg text-xs font-body space-y-2 max-w-sm">
-                    <p className="font-heading font-semibold text-sm">{row.fullName}</p>
-                    <div className="space-y-2">
-                      {subs.map((sub: SubBarMeta) => (
-                        <div key={sub.name} className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0"
-                              style={{ backgroundColor: colorMap[sub.name] }} />
-                            <span className="font-medium text-foreground">{sub.name}</span>
-                          </div>
-                          <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 pl-4 text-muted-foreground">
-                            {sub.start && sub.end && (
-                              <>
-                                <span>Período:</span>
-                                <span className="text-foreground">{formatDateFull(sub.start)} → {formatDateFull(sub.end)}</span>
-                              </>
-                            )}
-                            <span>Avanço:</span>
-                            <span className="text-foreground font-medium">{sub.avanco}%</span>
-                            {sub.qtdTotal > 0 && (
-                              <>
-                                <span>Qtd:</span>
-                                <span className="text-foreground">{sub.qtdRealizada.toLocaleString('pt-BR')} / {sub.qtdTotal.toLocaleString('pt-BR')}</span>
-                              </>
-                            )}
-                            <span>Itens:</span>
-                            <span className="text-foreground">{sub.itemCount}</span>
-                          </div>
-                          {/* Mini progress */}
-                          <div className="h-1 w-full rounded-full bg-muted overflow-hidden ml-4" style={{ maxWidth: '120px' }}>
-                            <div className="h-full rounded-full transition-all"
-                              style={{ width: `${Math.min(sub.avanco, 100)}%`, backgroundColor: colorMap[sub.name] }} />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              }}
-            />
-            <Legend
-              formatter={(value) => dynamicConfig[value]?.label || value}
-              wrapperStyle={{ fontSize: 10 }}
-            />
+              <YAxis
+                type="category"
+                dataKey="name"
+                width={150}
+                fontSize={11}
+                tick={{ fill: 'hsl(var(--foreground))' }}
+              />
+              {/* Disable hover tooltip */}
+              <Tooltip content={() => null} />
 
-            {/* Today reference line */}
-            <ReferenceLine
-              x={todayTs}
-              stroke="hsl(var(--destructive))"
-              strokeWidth={2}
-              strokeDasharray="4 4"
-              label={{ value: 'Hoje', position: 'top', fill: 'hsl(var(--destructive))', fontSize: 10 }}
-            />
-
-            {/* Last measurement reference line */}
-            {lastMeasurementTs && (
+              {/* Today reference line */}
               <ReferenceLine
-                x={lastMeasurementTs}
-                stroke="hsl(var(--chart-4, 43 74% 66%))"
+                x={todayTs}
+                stroke="hsl(var(--destructive))"
                 strokeWidth={2}
-                strokeDasharray="6 3"
-                label={{ value: 'Últ. medição', position: 'top', fill: 'hsl(var(--chart-4, 43 74% 66%))', fontSize: 10 }}
+                strokeDasharray="4 4"
+                label={{ value: 'Hoje', position: 'top', fill: 'hsl(var(--destructive))', fontSize: 10 }}
               />
-            )}
 
-            {/* One Bar per sub-category */}
-            {subCategories.map(sub => (
-              <Bar key={sub} dataKey={sub} barSize={14}
-                shape={<SubBarShape dataKey={sub} />}
-                hide={false}
-              />
-            ))}
-          </ComposedChart>
-        </ChartContainer>
-      </CardContent>
-    </Card>
+              {/* Last measurement reference line */}
+              {lastMeasurementTs && (
+                <ReferenceLine
+                  x={lastMeasurementTs}
+                  stroke="hsl(var(--chart-4, 43 74% 66%))"
+                  strokeWidth={2}
+                  strokeDasharray="6 3"
+                  label={{ value: 'Últ. medição', position: 'top', fill: 'hsl(var(--chart-4, 43 74% 66%))', fontSize: 10 }}
+                />
+              )}
+
+              {/* One Bar per sub-category */}
+              {subCategories.map(sub => (
+                <Bar key={sub} dataKey={sub} barSize={14}
+                  shape={<SubBarShape dataKey={sub} />}
+                  hide={false}
+                />
+              ))}
+            </ComposedChart>
+          </ChartContainer>
+        </CardContent>
+      </Card>
+
+      {/* Detail dialog - click on bar to open */}
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="font-heading text-base">{detailGroup}</DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="flex-1 -mx-6 px-6">
+            <div className="space-y-4 pb-4">
+              {detailSubs.map((sub) => (
+                <div key={sub.name} className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-block w-3 h-3 rounded-sm shrink-0"
+                      style={{ backgroundColor: detailColorMap[sub.name] }} />
+                    <span className="font-heading font-semibold text-sm text-foreground">{sub.name}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 pl-5 text-xs">
+                    {sub.start && sub.end && (
+                      <>
+                        <span className="text-muted-foreground">Período:</span>
+                        <span className="text-foreground">{formatDateFull(sub.start)} → {formatDateFull(sub.end)}</span>
+                      </>
+                    )}
+                    <span className="text-muted-foreground">Avanço:</span>
+                    <span className="text-foreground font-medium">{sub.avanco}%</span>
+                    {sub.qtdTotal > 0 && (
+                      <>
+                        <span className="text-muted-foreground">Qtd:</span>
+                        <span className="text-foreground">{sub.qtdRealizada.toLocaleString('pt-BR')} / {sub.qtdTotal.toLocaleString('pt-BR')}</span>
+                      </>
+                    )}
+                    <span className="text-muted-foreground">Itens:</span>
+                    <span className="text-foreground">{sub.itemCount}</span>
+                  </div>
+                  {/* Progress bar */}
+                  <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden ml-5" style={{ maxWidth: '200px' }}>
+                    <div className="h-full rounded-full transition-all"
+                      style={{ width: `${Math.min(sub.avanco, 100)}%`, backgroundColor: detailColorMap[sub.name] }} />
+                  </div>
+                  {/* Individual items */}
+                  <div className="pl-5 space-y-1">
+                    {sub.items.map((item) => (
+                      <div key={item.id} className="border border-border/50 rounded px-3 py-1.5 text-xs">
+                        <div className="flex items-baseline gap-1">
+                          <span className="font-body text-foreground">{item.descricao}</span>
+                          {item.classificacao_adicional && (
+                            <span className="text-muted-foreground italic text-[10px]">({item.classificacao_adicional})</span>
+                          )}
+                        </div>
+                        <div className="flex gap-3 text-muted-foreground mt-0.5">
+                          <span>{item.avanco_realizado || 0}%</span>
+                          {item.quantidade != null && item.unidade && (
+                            <span>{((item.quantidade * ((item.avanco_realizado || 0) / 100))).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} / {item.quantidade.toLocaleString('pt-BR')} {item.unidade}</span>
+                          )}
+                          {item.data_inicio_prevista && item.data_fim_prevista && (
+                            <span>{item.data_inicio_prevista.split('-').reverse().join('/')} → {item.data_fim_prevista.split('-').reverse().join('/')}</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
