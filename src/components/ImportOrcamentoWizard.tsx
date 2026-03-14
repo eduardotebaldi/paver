@@ -274,10 +274,10 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
     [groups, enabledSections],
   );
 
-  // Active items (belonging to enabled sections)
+  // Active items (belonging to enabled sections AND not individually disabled)
   const activeItems = useMemo(
-    () => items.filter(i => enabledSections.has(i.grupo1Codigo)),
-    [items, enabledSections],
+    () => items.filter(i => enabledSections.has(i.grupo1Codigo) && !disabledItems.has(i.codigo)),
+    [items, enabledSections, disabledItems],
   );
 
   // Total of enabled sections
