@@ -13,6 +13,7 @@ import { fetchObra, fetchEapItems, insertEapItems, deleteEapItemsByObra, EapItem
 import { parseEapExcel } from '@/lib/eapParser';
 import DiarioObraTab from '@/components/DiarioObraTab';
 import RelatorioFotograficoTab from '@/components/RelatorioFotograficoTab';
+import ImportOrcamentoWizard from '@/components/ImportOrcamentoWizard';
 
 type GroupMode = 'pacote' | 'servico';
 
@@ -78,6 +79,7 @@ export default function ObraDetalhe() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [groupMode, setGroupMode] = useState<GroupMode>('pacote');
+  const [importWizardOpen, setImportWizardOpen] = useState(false);
 
   const { data: obra, isLoading: loadingObra } = useQuery({
     queryKey: ['obra', id],
@@ -91,6 +93,7 @@ export default function ObraDetalhe() {
     enabled: !!id,
   });
 
+  // Legacy Excel import
   const importMutation = useMutation({
     mutationFn: async (file: File) => {
       const parsed = await parseEapExcel(file);
@@ -112,6 +115,21 @@ export default function ObraDetalhe() {
       e.target.value = '';
     }
   };
+
+  // CSV budget import via wizard
+  const csvImportMutation = useMutation({
+    mutationFn: async (items: Omit<EapItem, 'id' | 'created_at' | 'obra_id'>[]) => {
+      await deleteEapItemsByObra(id!);
+      const withObra = items.map(item => ({ ...item, obra_id: id! }));
+      return insertEapItems(withObra);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['eap', id] });
+      setImportWizardOpen(false);
+      toast({ title: 'Orçamento importado com sucesso!' });
+    },
+    onError: (err: any) => toast({ title: 'Erro na importação', description: err.message, variant: 'destructive' }),
+  });
 
   const toggleGroup = (key: string) => {
     setCollapsedGroups(prev => {
@@ -226,7 +244,16 @@ export default function ObraDetalhe() {
                 </div>
 
                 {canEdit && (
-                  <div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => setImportWizardOpen(true)}
+                      className="font-body"
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      Importar Orçamento
+                    </Button>
                     <input ref={fileRef} type="file" accept=".xlsx,.xls" onChange={handleFileUpload} className="hidden" />
                     <Button
                       variant="outline"
@@ -238,7 +265,7 @@ export default function ObraDetalhe() {
                       {importMutation.isPending ? (
                         <Loader2 className="h-4 w-4 animate-spin mr-2" />
                       ) : (
-                        <Upload className="h-4 w-4 mr-2" />
+                        <FileSpreadsheet className="h-4 w-4 mr-2" />
                       )}
                       Importar Excel
                     </Button>
@@ -344,6 +371,13 @@ export default function ObraDetalhe() {
           <RelatorioFotograficoTab obraId={id!} />
         </TabsContent>
       </Tabs>
+
+      <ImportOrcamentoWizard
+        open={importWizardOpen}
+        onOpenChange={setImportWizardOpen}
+        onImport={(items) => csvImportMutation.mutate(items)}
+        importing={csvImportMutation.isPending}
+      />
     </div>
   );
 }
