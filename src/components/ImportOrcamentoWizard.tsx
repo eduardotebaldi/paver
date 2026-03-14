@@ -995,7 +995,7 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
                                     tipoServico: '',
                                   };
                                   return (
-                                    <TableRow key={item.codigo} className="bg-amber-50/30">
+                                    <TableRow key={item.codigo} className="bg-muted/20">
                                       <TableCell className="text-xs font-mono py-1.5">{item.codigo}</TableCell>
                                       <TableCell className="py-1.5">
                                         <span className="text-xs">{item.descricao}</span>
