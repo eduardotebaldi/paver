@@ -283,6 +283,7 @@ import {
   CartesianGrid,
   Legend,
   ReferenceLine,
+  ReferenceArea,
   Tooltip,
   Rectangle,
 } from 'recharts';
