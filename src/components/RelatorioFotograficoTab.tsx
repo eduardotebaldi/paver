@@ -334,58 +334,74 @@ function PlantaViewer({
         <div className="relative" ref={containerRef}>
           {pdf ? (
             <div ref={measureWidth}>
-              {/* PDF navigation */}
-              {numPages > 1 && (
-                <div className="flex items-center justify-center gap-3 mb-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    disabled={currentPage <= 1}
-                    onClick={() => setCurrentPage(p => p - 1)}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
+              {/* PDF controls: zoom + navigation */}
+              <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="icon" onClick={() => setZoom(z => Math.max(0.5, z - 0.25))}>
+                    <ZoomOut className="h-4 w-4" />
                   </Button>
-                  <span className="text-sm font-body text-muted-foreground">
-                    Página {currentPage} de {numPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    disabled={currentPage >= numPages}
-                    onClick={() => setCurrentPage(p => p + 1)}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-              <div className="relative inline-block w-full">
-                <Document
-                  file={planta.imagem_url}
-                  onLoadSuccess={({ numPages: n }) => setNumPages(n)}
-                  loading={
-                    <div className="flex justify-center py-12">
-                      <Loader2 className="h-8 w-8 animate-spin text-accent" />
-                    </div>
-                  }
-                  error={
-                    <div className="text-center py-12 text-destructive font-body text-sm">
-                      Erro ao carregar PDF. Verifique se o arquivo é válido.
-                    </div>
-                  }
-                >
-                  <Page
-                    pageNumber={currentPage}
-                    width={pdfContainerWidth}
-                    renderTextLayer={false}
-                    renderAnnotationLayer={false}
+                  <Slider
+                    className="w-28"
+                    min={50}
+                    max={300}
+                    step={25}
+                    value={[zoom * 100]}
+                    onValueChange={([v]) => setZoom(v / 100)}
                   />
-                </Document>
-                {/* Clickable overlay for pins */}
-                <div
-                  className={`absolute inset-0 ${canEdit ? 'cursor-crosshair' : ''}`}
-                  onClick={handleOverlayClick}
-                >
-                  {PinsOverlay}
+                  <Button variant="outline" size="icon" onClick={() => setZoom(z => Math.min(3, z + 0.25))}>
+                    <ZoomIn className="h-4 w-4" />
+                  </Button>
+                  <span className="text-xs font-body text-muted-foreground w-12 text-center">{Math.round(zoom * 100)}%</span>
+                  {zoom !== 1 && (
+                    <Button variant="ghost" size="icon" onClick={() => setZoom(1)}>
+                      <RotateCcw className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                {numPages > 1 && (
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="icon" disabled={currentPage <= 1} onClick={() => setCurrentPage(p => p - 1)}>
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="text-sm font-body text-muted-foreground">
+                      {currentPage} / {numPages}
+                    </span>
+                    <Button variant="outline" size="icon" disabled={currentPage >= numPages} onClick={() => setCurrentPage(p => p + 1)}>
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+              <div className="overflow-auto max-h-[60vh] border border-border rounded-lg">
+                <div className="relative inline-block" style={{ width: pdfContainerWidth * zoom }}>
+                  <Document
+                    file={planta.imagem_url}
+                    onLoadSuccess={({ numPages: n }) => setNumPages(n)}
+                    loading={
+                      <div className="flex justify-center py-12">
+                        <Loader2 className="h-8 w-8 animate-spin text-accent" />
+                      </div>
+                    }
+                    error={
+                      <div className="text-center py-12 text-destructive font-body text-sm">
+                        Erro ao carregar PDF. Verifique se o arquivo é válido.
+                      </div>
+                    }
+                  >
+                    <Page
+                      pageNumber={currentPage}
+                      width={pdfContainerWidth * zoom}
+                      renderTextLayer={false}
+                      renderAnnotationLayer={false}
+                    />
+                  </Document>
+                  {/* Clickable overlay for pins */}
+                  <div
+                    className={`absolute inset-0 ${canEdit ? 'cursor-crosshair' : ''}`}
+                    onClick={handleOverlayClick}
+                  >
+                    {PinsOverlay}
+                  </div>
                 </div>
               </div>
             </div>
