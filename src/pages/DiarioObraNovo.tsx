@@ -243,6 +243,10 @@ export default function DiarioObraNovoPage() {
   // Pin placement handler
   const handlePinPlace = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (pinQueue.length === 0) return;
+    // Cancel any active skip confirmation
+    setSkipConfirming(false);
+    if (skipTimerRef.current) clearInterval(skipTimerRef.current);
+
     const fotoIndex = pinQueue[currentPinIndex];
     const rect = e.currentTarget.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
