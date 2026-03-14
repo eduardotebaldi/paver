@@ -1,9 +1,12 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { BarChart3, Building2, Loader2, FolderTree, Layers, Calendar, History, Link2 } from 'lucide-react';
+import { BarChart3, Building2, Loader2, FolderTree, Layers, Calendar, History, Link2, Check, ChevronsUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -23,6 +26,7 @@ export default function LinhaBalancoPage() {
   const [selectedServico, setSelectedServico] = useState<string>('all');
   const [massDateOpen, setMassDateOpen] = useState(false);
   const [baselineOpen, setBaselineOpen] = useState(false);
+  const [pacotePopoverOpen, setPacotePopoverOpen] = useState(false);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -161,17 +165,45 @@ export default function LinhaBalancoPage() {
 
         <div className="space-y-1">
           <Label className="text-xs font-body text-muted-foreground">Pacote</Label>
-          <Select value={selectedPacote} onValueChange={setSelectedPacote}>
-            <SelectTrigger className="w-48 font-body">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all" className="font-body">Todos</SelectItem>
-              {uniquePacotes.map(p => (
-                <SelectItem key={p} value={p} className="font-body">{p}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Popover open={pacotePopoverOpen} onOpenChange={setPacotePopoverOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" role="combobox" className="w-48 justify-between font-body text-sm font-normal">
+                <span className="truncate">
+                  {selectedPacote === 'all' ? 'Todos' : selectedPacote}
+                </span>
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56 p-0" align="start">
+              <Command>
+                <CommandInput placeholder="Buscar pacote..." className="font-body" />
+                <CommandList>
+                  <CommandEmpty className="py-3 text-center text-xs font-body text-muted-foreground">Nenhum pacote encontrado</CommandEmpty>
+                  <CommandGroup>
+                    <CommandItem
+                      value="all"
+                      onSelect={() => { setSelectedPacote('all'); setPacotePopoverOpen(false); }}
+                      className="font-body"
+                    >
+                      <Check className={cn("mr-2 h-4 w-4", selectedPacote === 'all' ? "opacity-100" : "opacity-0")} />
+                      Todos
+                    </CommandItem>
+                    {uniquePacotes.map(p => (
+                      <CommandItem
+                        key={p}
+                        value={p}
+                        onSelect={() => { setSelectedPacote(p); setPacotePopoverOpen(false); }}
+                        className="font-body"
+                      >
+                        <Check className={cn("mr-2 h-4 w-4", selectedPacote === p ? "opacity-100" : "opacity-0")} />
+                        {p}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
         </div>
 
         <div className="space-y-1">
