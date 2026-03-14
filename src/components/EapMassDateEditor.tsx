@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Calendar, ChevronDown, ChevronRight, FolderTree, Layers, ChevronsUpDown } from 'lucide-react';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import type { EapItem } from '@/services/api';
+import CollapsibleClassification from '@/components/CollapsibleClassification';
 
 interface DateChange {
   id: string;
