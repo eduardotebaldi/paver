@@ -815,28 +815,51 @@ export default function DiarioObraNovoPage() {
                     <MapPin className="h-3 w-3" />
                     Clique na planta para marcar a localização
                   </p>
-                  <div className="relative inline-block w-full border border-border rounded-lg overflow-hidden">
-                    <img
-                      src={currentPlanta.imagem_url}
-                      alt={currentPlanta.nome}
-                      className="w-full cursor-crosshair"
-                      draggable={false}
-                      onClick={handlePinPlace}
-                    />
-                    {/* Show pin if already placed for current file */}
-                    {fotos[pinQueue[currentPinIndex]]?.pinned &&
-                     fotos[pinQueue[currentPinIndex]]?.plantaId === selectedPlantaId && (
-                      <div
-                        className="absolute w-6 h-6 -ml-3 -mt-6 z-20"
-                        style={{
-                          left: `${fotos[pinQueue[currentPinIndex]].posX}%`,
-                          top: `${fotos[pinQueue[currentPinIndex]].posY}%`,
-                        }}
+                  {currentPlanta.imagem_url.match(/\.(pdf|dxf)(\?|$)/i) ? (
+                    <div className="bg-muted/50 rounded-lg p-8 text-center">
+                      <p className="text-sm text-muted-foreground font-body">
+                        Esta planta é um arquivo {currentPlanta.imagem_url.match(/\.dxf/i) ? 'DXF' : 'PDF'}.
+                      </p>
+                      <p className="text-xs text-muted-foreground/70 font-body mt-1">
+                        A marcação de localização está disponível apenas para plantas em formato de imagem (JPG, PNG).
+                      </p>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleSkipPin}
+                        className="font-body text-xs mt-3"
                       >
-                        <MapPin className="h-6 w-6 text-accent drop-shadow-md fill-accent/30" />
-                      </div>
-                    )}
-                  </div>
+                        <SkipForward className="h-3.5 w-3.5 mr-1" />
+                        Continuar sem localização
+                      </Button>
+                    </div>
+                  ) : (
+                    <div
+                      className="relative w-full border border-border rounded-lg overflow-hidden cursor-crosshair"
+                      onClick={handlePinPlace}
+                    >
+                      <img
+                        src={currentPlanta.imagem_url}
+                        alt={currentPlanta.nome}
+                        className="w-full block"
+                        draggable={false}
+                      />
+                      {/* Show pin if already placed for current file */}
+                      {fotos[pinQueue[currentPinIndex]]?.pinned &&
+                       fotos[pinQueue[currentPinIndex]]?.plantaId === selectedPlantaId && (
+                        <div
+                          className="absolute w-6 h-6 -ml-3 -mt-6 z-20 pointer-events-none"
+                          style={{
+                            left: `${fotos[pinQueue[currentPinIndex]].posX}%`,
+                            top: `${fotos[pinQueue[currentPinIndex]].posY}%`,
+                          }}
+                        >
+                          <MapPin className="h-6 w-6 text-accent drop-shadow-md fill-accent/30" />
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
