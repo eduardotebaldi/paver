@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft, ArrowRight, Loader2, Sun, Cloud, CloudSun, CloudRain, Snowflake,
   ChevronDown, ChevronRight, Check, Package, Layers, Search, Camera, Upload, X, Trash2,
-  MapPin, Video, SkipForward,
+  MapPin, Video, SkipForward, ZoomIn, ZoomOut, RotateCcw, Eye, EyeOff,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
