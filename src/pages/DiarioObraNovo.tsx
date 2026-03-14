@@ -279,7 +279,7 @@ export default function DiarioObraNovoPage() {
               {item.codigo && <span className="text-xs text-muted-foreground font-mono shrink-0">{item.codigo}</span>}
               <span className="text-sm font-body text-foreground truncate">
                 {item.descricao}
-                {item.classificacao_adicional && <CollapsibleClassification text={item.classificacao_adicional} />}
+                {!hideClassification && item.classificacao_adicional && <CollapsibleClassification text={item.classificacao_adicional} />}
               </span>
             </div>
           </div>
