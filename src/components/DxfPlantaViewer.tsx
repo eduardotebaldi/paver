@@ -27,7 +27,9 @@ interface Props {
   planta: PlantaObra;
   obraId: string;
   canEdit: boolean;
-  onClose: () => void;
+  onClose?: () => void;
+  /** If provided, only show pins whose IDs are in this set */
+  visibleFotoIds?: Set<string>;
 }
 
 export default function DxfPlantaViewer({ planta, obraId, canEdit, onClose }: Props) {
