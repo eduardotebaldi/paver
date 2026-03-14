@@ -206,20 +206,19 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
       const l1Codes = new Set(result.groups.filter(g => g.nivel === 1).map(g => g.codigo));
       setEnabledSections(l1Codes);
 
-      // Pre-populate classifications for level 3 groups
+      // Pre-populate classifications at item level (heuristic from L3/L1 parents)
       const classMap = new Map<string, { pacoteTrabalho: string; tipoServico: string; classificacaoAdicional: string }>();
-      const groupMap = new Map<string, OrcamentoGroup>();
-      result.groups.forEach(g => groupMap.set(g.codigo, g));
+      const gMap = new Map<string, OrcamentoGroup>();
+      result.groups.forEach(g => gMap.set(g.codigo, g));
 
+      // Build L3 heuristics first
+      const l3Heuristics = new Map<string, { pacoteTrabalho: string; tipoServico: string; classificacaoAdicional: string }>();
       for (const g of result.groups) {
         if (g.nivel === 3) {
-          // Tipo de Serviço = level 1 parent description
-          // Try direct first segment, then padded version (e.g. "1" -> "01")
           const firstSeg = g.codigo.split('.')[0];
-          let l1 = groupMap.get(firstSeg);
+          let l1 = gMap.get(firstSeg);
           if (!l1) {
-            // Try finding L1 by numeric match (e.g. code "1" matches group "01")
-            for (const [, gg] of groupMap) {
+            for (const [, gg] of gMap) {
               if (gg.nivel === 1 && parseInt(gg.codigo, 10) === parseInt(firstSeg, 10)) {
                 l1 = gg;
                 break;
@@ -227,16 +226,30 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
             }
           }
           const tipoServico = l1 ? l1.descricao.replace(/^\d+\s*[-–]\s*/, '').trim() : '';
-
-          // Classificação Adicional = level 2 parent description
           const l2Code = g.codigo.split('.').slice(0, 2).join('.');
-          const l2 = groupMap.get(l2Code);
+          const l2 = gMap.get(l2Code);
           const classificacaoAdicional = l2 ? l2.descricao.replace(/^\d+[\.\d]*\s*[-–]\s*/, '').trim() : '';
-
-          // Pacote de Trabalho = own description with prefixes removed
           const pacoteTrabalho = removePrefixes(g.descricao);
+          l3Heuristics.set(g.codigo, { pacoteTrabalho, tipoServico, classificacaoAdicional });
+        }
+      }
 
-          classMap.set(g.codigo, { pacoteTrabalho, tipoServico, classificacaoAdicional });
+      // Apply heuristics to each item
+      for (const item of result.items) {
+        const l3h = l3Heuristics.get(item.grupo3Codigo);
+        if (l3h) {
+          classMap.set(item.codigo, { ...l3h });
+        } else {
+          // Orphan: derive from L1
+          const firstSeg = item.codigo.split('.')[0];
+          let l1 = gMap.get(firstSeg);
+          if (!l1) {
+            for (const [, gg] of gMap) {
+              if (gg.nivel === 1 && parseInt(gg.codigo, 10) === parseInt(firstSeg, 10)) { l1 = gg; break; }
+            }
+          }
+          const tipoServico = l1 ? l1.descricao.replace(/^\d+\s*[-–]\s*/, '').trim() : '';
+          classMap.set(item.codigo, { pacoteTrabalho: removePrefixes(item.descricao), tipoServico, classificacaoAdicional: '' });
         }
       }
       setClassifications(classMap);
