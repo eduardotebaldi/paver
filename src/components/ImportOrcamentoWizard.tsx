@@ -207,7 +207,7 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
       setEnabledSections(l1Codes);
 
       // Pre-populate classifications for level 3 groups
-      const classMap = new Map<string, { pacoteTrabalho: string; tipoServico: string }>();
+      const classMap = new Map<string, { pacoteTrabalho: string; tipoServico: string; classificacaoAdicional: string }>();
       const groupMap = new Map<string, OrcamentoGroup>();
       result.groups.forEach(g => groupMap.set(g.codigo, g));
 
@@ -218,10 +218,15 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
           const l1 = groupMap.get(l1Code);
           const tipoServico = l1 ? l1.descricao.replace(/^\d+\s*[-–]\s*/, '').trim() : '';
 
+          // Classificação Adicional = level 2 parent description
+          const l2Code = g.codigo.split('.').slice(0, 2).join('.');
+          const l2 = groupMap.get(l2Code);
+          const classificacaoAdicional = l2 ? l2.descricao.replace(/^\d+[\.\d]*\s*[-–]\s*/, '').trim() : '';
+
           // Pacote de Trabalho = own description with prefixes removed
           const pacoteTrabalho = removePrefixes(g.descricao);
 
-          classMap.set(g.codigo, { pacoteTrabalho, tipoServico });
+          classMap.set(g.codigo, { pacoteTrabalho, tipoServico, classificacaoAdicional });
         }
       }
       setClassifications(classMap);
