@@ -199,7 +199,6 @@ export default function ObraDetalhe() {
       <Tabs defaultValue="eap">
         <TabsList>
           <TabsTrigger value="eap" className="font-body">EAP</TabsTrigger>
-          <TabsTrigger value="linha-balanco" className="font-body">Linha de Balanço</TabsTrigger>
           <TabsTrigger value="diario" className="font-body">Diário de Obra</TabsTrigger>
           <TabsTrigger value="fotos" className="font-body">Relatório Fotográfico</TabsTrigger>
         </TabsList>
@@ -359,10 +358,6 @@ export default function ObraDetalhe() {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
-
-        <TabsContent value="linha-balanco" className="mt-4">
-          <LinhaBalanco eapItems={eapItems} mode={groupMode} />
         </TabsContent>
 
         <TabsContent value="diario" className="mt-4">
