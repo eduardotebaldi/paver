@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { MapPin, Upload, Loader2, Image, Trash2, X, Plus, Camera, FileText, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { MapPin, Upload, Loader2, Image, Trash2, X, Plus, Camera, FileText, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCcw, FileCode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -23,11 +23,16 @@ import {
   PlantaObra,
   FotoLocalizada,
 } from '@/services/api';
+import DxfPlantaViewer from '@/components/DxfPlantaViewer';
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 function isPdf(url: string): boolean {
   return url.toLowerCase().includes('.pdf');
+}
+
+function isDxf(url: string): boolean {
+  return url.toLowerCase().includes('.dxf');
 }
 
 interface Props {
@@ -64,7 +69,7 @@ export default function RelatorioFotograficoTab({ obraId }: Props) {
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
             <Image className="h-10 w-10 text-muted-foreground/40 mb-3" />
             <p className="text-sm text-muted-foreground font-body">
-              Nenhuma planta cadastrada. Faça upload de uma planta (imagem ou PDF) para começar.
+              Nenhuma planta cadastrada. Faça upload de uma planta (imagem, PDF ou DXF) para começar.
             </p>
           </CardContent>
         </Card>
@@ -78,7 +83,12 @@ export default function RelatorioFotograficoTab({ obraId }: Props) {
             >
               <CardContent className="p-3">
                 <div className="aspect-video bg-muted rounded overflow-hidden mb-2 flex items-center justify-center">
-                  {isPdf(planta.imagem_url) ? (
+                  {isDxf(planta.imagem_url) ? (
+                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                      <FileCode className="h-10 w-10" />
+                      <span className="text-xs font-body">DXF</span>
+                    </div>
+                  ) : isPdf(planta.imagem_url) ? (
                     <div className="flex flex-col items-center gap-2 text-muted-foreground">
                       <FileText className="h-10 w-10" />
                       <span className="text-xs font-body">PDF</span>
@@ -99,12 +109,32 @@ export default function RelatorioFotograficoTab({ obraId }: Props) {
       )}
 
       {selectedPlanta && (
-        <PlantaViewer
-          planta={selectedPlanta}
-          obraId={obraId}
-          canEdit={canEdit}
-          onClose={() => setSelectedPlanta(null)}
-        />
+        isDxf(selectedPlanta.imagem_url) ? (
+          <Dialog open onOpenChange={(v) => !v && setSelectedPlanta(null)}>
+            <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="font-heading flex items-center gap-2">
+                  <FileCode className="h-5 w-5 text-accent" />
+                  {selectedPlanta.nome}
+                  <span className="text-xs font-body text-muted-foreground ml-2">DXF</span>
+                </DialogTitle>
+              </DialogHeader>
+              <DxfPlantaViewer
+                planta={selectedPlanta}
+                obraId={obraId}
+                canEdit={canEdit}
+                onClose={() => setSelectedPlanta(null)}
+              />
+            </DialogContent>
+          </Dialog>
+        ) : (
+          <PlantaViewer
+            planta={selectedPlanta}
+            obraId={obraId}
+            canEdit={canEdit}
+            onClose={() => setSelectedPlanta(null)}
+          />
+        )
       )}
     </div>
   );
@@ -162,7 +192,7 @@ function UploadPlantaButton({ obraId }: { obraId: string }) {
             <input
               ref={fileRef}
               type="file"
-              accept="image/*,.pdf"
+              accept="image/*,.pdf,.dxf"
               className="hidden"
               onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
             />
@@ -172,7 +202,7 @@ function UploadPlantaButton({ obraId }: { obraId: string }) {
               onClick={() => fileRef.current?.click()}
             >
               <Upload className="h-4 w-4 mr-2" />
-              {selectedFile ? selectedFile.name : 'Selecionar imagem ou PDF'}
+              {selectedFile ? selectedFile.name : 'Selecionar imagem, PDF ou DXF'}
             </Button>
           </div>
           <Button
