@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Upload, Loader2, FileSpreadsheet, ChevronRight, ChevronDown, Layers, FolderTree, BarChart3 } from 'lucide-react';
+import { ArrowLeft, Upload, Loader2, FileSpreadsheet, ChevronRight, ChevronDown, Layers, FolderTree, Calendar, History, Link2, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -10,11 +10,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchObra, fetchEapItems, insertEapItems, deleteEapItemsByObra, EapItem } from '@/services/api';
+import { updateEapItem, bulkUpdateEapItems, calculateDependencyDates } from '@/services/eapApi';
 import { parseEapExcel } from '@/lib/eapParser';
 import DiarioObraTab from '@/components/DiarioObraTab';
 import RelatorioFotograficoTab from '@/components/RelatorioFotograficoTab';
 import ImportOrcamentoWizard from '@/components/ImportOrcamentoWizard';
 import LinhaBalanco from '@/components/LinhaBalanco';
+import EapItemEditModal from '@/components/EapItemEditModal';
+import EapMassDateEditor from '@/components/EapMassDateEditor';
+import BaselineManager from '@/components/BaselineManager';
 
 type GroupMode = 'pacote' | 'servico';
 
@@ -28,7 +32,6 @@ function buildGroupedView(eapItems: EapItem[], mode: GroupMode): GroupedView[] {
   const items = eapItems.filter(i => i.tipo === 'item');
 
   if (mode === 'pacote') {
-    // Group by pacote → sub-group by lote (tipo de serviço)
     const pacoteMap = new Map<string, Map<string, EapItem[]>>();
     for (const item of items) {
       const pacote = item.pacote || 'Sem pacote';
@@ -48,7 +51,6 @@ function buildGroupedView(eapItems: EapItem[], mode: GroupMode): GroupedView[] {
       })),
     }));
   } else {
-    // Group by lote (tipo de serviço) → sub-group by pacote
     const servicoMap = new Map<string, Map<string, EapItem[]>>();
     for (const item of items) {
       const servico = item.lote || 'Sem classificação';
@@ -82,6 +84,11 @@ export default function ObraDetalhe() {
   const [groupMode, setGroupMode] = useState<GroupMode>('pacote');
   const [importWizardOpen, setImportWizardOpen] = useState(false);
 
+  // New modals
+  const [editingItem, setEditingItem] = useState<EapItem | null>(null);
+  const [massDateOpen, setMassDateOpen] = useState(false);
+  const [baselineOpen, setBaselineOpen] = useState(false);
+
   const { data: obra, isLoading: loadingObra } = useQuery({
     queryKey: ['obra', id],
     queryFn: () => fetchObra(id!),
@@ -94,7 +101,6 @@ export default function ObraDetalhe() {
     enabled: !!id,
   });
 
-  // Legacy Excel import
   const importMutation = useMutation({
     mutationFn: async (file: File) => {
       const parsed = await parseEapExcel(file);
@@ -131,6 +137,42 @@ export default function ObraDetalhe() {
     });
   };
 
+  // Save single item
+  const handleSaveItem = async (itemId: string, updates: Partial<EapItem>) => {
+    await updateEapItem(itemId, updates);
+    queryClient.invalidateQueries({ queryKey: ['eap', id] });
+    toast({ title: 'Item atualizado!' });
+  };
+
+  // Save bulk
+  const handleBulkSave = async (changes: { id: string; updates: Partial<EapItem> }[]) => {
+    await bulkUpdateEapItems(changes);
+    queryClient.invalidateQueries({ queryKey: ['eap', id] });
+    toast({ title: `${changes.length} itens atualizados!` });
+  };
+
+  // Recalculate dependencies
+  const handleRecalcDeps = async () => {
+    const calculated = calculateDependencyDates(eapItems);
+    const changes: { id: string; updates: Partial<EapItem> }[] = [];
+    calculated.forEach((dates, itemId) => {
+      changes.push({
+        id: itemId,
+        updates: {
+          data_inicio_prevista: dates.inicio,
+          data_fim_prevista: dates.fim,
+        },
+      });
+    });
+    if (changes.length > 0) {
+      await bulkUpdateEapItems(changes);
+      queryClient.invalidateQueries({ queryKey: ['eap', id] });
+      toast({ title: `Datas recalculadas para ${changes.length} itens!` });
+    } else {
+      toast({ title: 'Nenhum item com dependências para recalcular', variant: 'destructive' });
+    }
+  };
+
   const groupedView = useMemo(
     () => buildGroupedView(eapItems, groupMode),
     [eapItems, groupMode]
@@ -140,6 +182,9 @@ export default function ObraDetalhe() {
   const avgRealizado = itens.length > 0
     ? itens.reduce((sum, i) => sum + (i.avanco_realizado || 0), 0) / itens.length
     : 0;
+
+  const itemsWithDates = itens.filter(i => i.data_inicio_prevista || i.data_fim_prevista).length;
+  const itemsWithDeps = itens.filter(i => i.predecessoras && i.predecessoras.length > 0).length;
 
   if (loadingObra) {
     return (
@@ -172,7 +217,7 @@ export default function ObraDetalhe() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground font-body">Itens da EAP</p>
@@ -181,8 +226,14 @@ export default function ObraDetalhe() {
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground font-body">Grupos</p>
-            <p className="text-2xl font-bold font-heading">{groupedView.length}</p>
+            <p className="text-sm text-muted-foreground font-body">Com Datas</p>
+            <p className="text-2xl font-bold font-heading">{itemsWithDates}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground font-body">Dependências</p>
+            <p className="text-2xl font-bold font-heading">{itemsWithDeps}</p>
           </CardContent>
         </Card>
         <Card>
@@ -207,7 +258,7 @@ export default function ObraDetalhe() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
               <CardTitle className="font-heading">Estrutura Analítica (EAP)</CardTitle>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 {/* Group mode toggle */}
                 <div className="flex items-center rounded-md border border-border overflow-hidden">
                   <button
@@ -236,6 +287,18 @@ export default function ObraDetalhe() {
 
                 {canEdit && (
                   <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setMassDateOpen(true)} className="font-body">
+                      <Calendar className="h-4 w-4 mr-1.5" />
+                      Datas
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => setBaselineOpen(true)} className="font-body">
+                      <History className="h-4 w-4 mr-1.5" />
+                      Baselines
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleRecalcDeps} className="font-body">
+                      <Link2 className="h-4 w-4 mr-1.5" />
+                      Recalcular
+                    </Button>
                     <Button
                       variant="default"
                       size="sm"
@@ -282,7 +345,6 @@ export default function ObraDetalhe() {
                     const totalItems = group.subGroups.reduce((s, sg) => s + sg.items.length, 0);
                     return (
                     <div key={group.key}>
-                      {/* Level 1: main group */}
                       <button
                         onClick={() => toggleGroup(group.key)}
                         className="w-full flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 hover:bg-muted text-sm font-medium font-heading transition-colors"
@@ -298,7 +360,6 @@ export default function ObraDetalhe() {
                         </Badge>
                       </button>
 
-                      {/* Level 2: sub-groups */}
                       {!collapsedGroups.has(group.key) && (
                         <div className="ml-4 border-l-2 border-border space-y-0.5">
                           {group.subGroups.map((sub) => (
@@ -318,17 +379,29 @@ export default function ObraDetalhe() {
                                 </Badge>
                               </button>
 
-                              {/* Level 3: items */}
                               {!collapsedGroups.has(sub.key) && (
                                 <div className="space-y-0.5">
                                   {sub.items.map((item) => (
                                     <div
                                       key={item.id}
-                                      className="flex items-center gap-3 px-3 py-1.5 pl-14 text-sm font-body"
+                                      className="flex items-center gap-3 px-3 py-1.5 pl-14 text-sm font-body group hover:bg-muted/20 rounded-md transition-colors"
                                     >
                                       <span className="flex-1 text-muted-foreground">
                                         {item.descricao}
                                       </span>
+                                      {/* Date indicators */}
+                                      {item.data_inicio_prevista && (
+                                        <span className="text-[9px] text-muted-foreground">
+                                          {new Date(item.data_inicio_prevista + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                                        </span>
+                                      )}
+                                      {/* Dependencies indicator */}
+                                      {item.predecessoras && item.predecessoras.length > 0 && (
+                                        <Badge variant="outline" className="text-[8px] px-1">
+                                          <Link2 className="h-2.5 w-2.5 mr-0.5" />
+                                          {item.predecessoras.length}
+                                        </Badge>
+                                      )}
                                       {item.unidade && (
                                         <Badge variant="outline" className="text-[9px] shrink-0">{item.unidade}</Badge>
                                       )}
@@ -343,6 +416,16 @@ export default function ObraDetalhe() {
                                           {(item.avanco_realizado || 0).toFixed(0)}%
                                         </span>
                                       </div>
+                                      {canEdit && (
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                          onClick={() => setEditingItem(item)}
+                                        >
+                                          <Pencil className="h-3 w-3" />
+                                        </Button>
+                                      )}
                                     </div>
                                   ))}
                                 </div>
@@ -374,6 +457,31 @@ export default function ObraDetalhe() {
         onOpenChange={setImportWizardOpen}
         obraId={id!}
         onImportComplete={handleImportComplete}
+      />
+
+      {/* Edit item modal */}
+      <EapItemEditModal
+        open={!!editingItem}
+        onOpenChange={(open) => { if (!open) setEditingItem(null); }}
+        item={editingItem}
+        allItems={eapItems}
+        onSave={handleSaveItem}
+      />
+
+      {/* Mass date editor */}
+      <EapMassDateEditor
+        open={massDateOpen}
+        onOpenChange={setMassDateOpen}
+        items={eapItems}
+        onSave={handleBulkSave}
+      />
+
+      {/* Baseline manager */}
+      <BaselineManager
+        open={baselineOpen}
+        onOpenChange={setBaselineOpen}
+        obraId={id!}
+        eapItems={eapItems}
       />
     </div>
   );

@@ -1236,6 +1236,83 @@ export type Database = {
           },
         ]
       }
+      paver_eap_baseline_items: {
+        Row: {
+          avanco_previsto: number | null
+          baseline_id: string
+          created_at: string | null
+          data_fim_prevista: string | null
+          data_inicio_prevista: string | null
+          eap_item_id: string
+          id: string
+        }
+        Insert: {
+          avanco_previsto?: number | null
+          baseline_id: string
+          created_at?: string | null
+          data_fim_prevista?: string | null
+          data_inicio_prevista?: string | null
+          eap_item_id: string
+          id?: string
+        }
+        Update: {
+          avanco_previsto?: number | null
+          baseline_id?: string
+          created_at?: string | null
+          data_fim_prevista?: string | null
+          data_inicio_prevista?: string | null
+          eap_item_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paver_eap_baseline_items_baseline_id_fkey"
+            columns: ["baseline_id"]
+            isOneToOne: false
+            referencedRelation: "paver_eap_baselines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "paver_eap_baseline_items_eap_item_id_fkey"
+            columns: ["eap_item_id"]
+            isOneToOne: false
+            referencedRelation: "paver_eap_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      paver_eap_baselines: {
+        Row: {
+          created_at: string | null
+          created_by: string
+          id: string
+          nome: string
+          obra_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by: string
+          id?: string
+          nome: string
+          obra_id: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string
+          id?: string
+          nome?: string
+          obra_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paver_eap_baselines_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "paver_obras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       paver_eap_items: {
         Row: {
           avanco_base: number | null
