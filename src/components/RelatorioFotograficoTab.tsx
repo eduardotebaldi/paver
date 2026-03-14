@@ -487,6 +487,36 @@ function PlantaViewer({
                 className="font-body"
                 rows={2}
               />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs font-body text-muted-foreground">Pacote de Trabalho</Label>
+                  <Select value={fotoPacote} onValueChange={setFotoPacote}>
+                    <SelectTrigger className="font-body text-xs">
+                      <SelectValue placeholder="Selecionar..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="" className="font-body">Nenhum</SelectItem>
+                      {uniquePacotes.map(p => (
+                        <SelectItem key={p} value={p} className="font-body">{p}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-body text-muted-foreground">Tipo de Serviço</Label>
+                  <Select value={fotoTipoServico} onValueChange={setFotoTipoServico}>
+                    <SelectTrigger className="font-body text-xs">
+                      <SelectValue placeholder="Selecionar..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="" className="font-body">Nenhum</SelectItem>
+                      {uniqueServicos.map(s => (
+                        <SelectItem key={s} value={s} className="font-body">{s}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
               <div className="flex gap-2">
                 <input
                   ref={fotoInputRef}
