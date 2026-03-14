@@ -535,7 +535,7 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
             <YAxis
               type="category"
               dataKey="name"
-              width={200}
+              width={150}
               fontSize={11}
               tick={{ fill: 'hsl(var(--foreground))' }}
             />
