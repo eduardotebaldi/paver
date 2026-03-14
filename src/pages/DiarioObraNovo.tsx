@@ -886,7 +886,7 @@ export default function DiarioObraNovoPage() {
                 <Upload className="h-8 w-8 text-muted-foreground/50 mb-2" />
                 <p className="text-sm font-body text-muted-foreground">Clique para adicionar fotos e vídeos</p>
                 <p className="text-xs font-body text-muted-foreground/60 mt-1">JPG, PNG, WEBP, MP4, MOV</p>
-                <input ref={fileInputRef} type="file" accept="image/*,video/*" multiple className="hidden" onChange={e => handleAddFotos(e.target.files)} />
+                <input ref={fileInputRef} type="file" accept="image/*,video/*" multiple className="hidden" onChange={e => { handleAddFotos(e.target.files); e.target.value = ''; }} />
               </div>
               {fotos.length > 0 && (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
