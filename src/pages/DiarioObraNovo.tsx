@@ -58,6 +58,92 @@ interface EapNode {
   children: EapNode[];
 }
 
+function DxfPinCanvas({
+  plantaUrl, dxfData, dxfLoading, setDxfData, setDxfLoading, onPinPlace, pinned, pinX, pinY,
+}: {
+  plantaUrl: string;
+  dxfData: DxfSvgData | null;
+  dxfLoading: boolean;
+  setDxfData: (d: DxfSvgData | null) => void;
+  setDxfLoading: (b: boolean) => void;
+  onPinPlace: (e: React.MouseEvent<HTMLDivElement>) => void;
+  pinned?: boolean;
+  pinX?: number;
+  pinY?: number;
+}) {
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setDxfLoading(true);
+      try {
+        const res = await fetch(plantaUrl);
+        const text = await res.text();
+        const parser = new DxfParser();
+        const dxf = parser.parseSync(text);
+        if (cancelled || !dxf) return;
+        setDxfData(parseDxfToSvg(dxf));
+      } catch {
+        // silently fail
+      } finally {
+        if (!cancelled) setDxfLoading(false);
+      }
+    }
+    if (!dxfData) load();
+    return () => { cancelled = true; };
+  }, [plantaUrl, dxfData]);
+
+  if (dxfLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-6 w-6 animate-spin text-accent" />
+        <span className="ml-2 text-xs text-muted-foreground font-body">Carregando DXF...</span>
+      </div>
+    );
+  }
+
+  if (!dxfData) {
+    return <p className="text-xs text-destructive font-body text-center py-4">Erro ao carregar DXF</p>;
+  }
+
+  const { viewBox, pathsByLayer, layers } = dxfData;
+  const visibleLayers = new Set(layers.filter(l => l.visible).map(l => l.name));
+
+  return (
+    <div
+      className="relative w-full border border-border rounded-lg overflow-hidden cursor-crosshair bg-muted/20"
+      style={{ height: '45vh' }}
+      onClick={onPinPlace}
+    >
+      <svg
+        viewBox={`${viewBox.minX} ${viewBox.minY} ${viewBox.width} ${viewBox.height}`}
+        className="w-full h-full"
+        preserveAspectRatio="xMidYMid meet"
+      >
+        {Array.from(pathsByLayer.entries()).map(([layerName, paths]) => {
+          if (!visibleLayers.has(layerName)) return null;
+          const layerInfo = layers.find(l => l.name === layerName);
+          const color = layerInfo?.color || '#888';
+          return (
+            <g key={layerName}>
+              {paths.map((d, i) => (
+                <path key={i} d={d} fill="none" stroke={color} strokeWidth={viewBox.width * 0.001} vectorEffect="non-scaling-stroke" />
+              ))}
+            </g>
+          );
+        })}
+      </svg>
+      {pinned && pinX != null && pinY != null && (
+        <div
+          className="absolute w-6 h-6 -ml-3 -mt-6 z-20 pointer-events-none"
+          style={{ left: `${pinX}%`, top: `${pinY}%` }}
+        >
+          <MapPin className="h-6 w-6 text-accent drop-shadow-md fill-accent/30" />
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function DiarioObraNovoPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
