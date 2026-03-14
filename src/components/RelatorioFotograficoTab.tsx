@@ -599,11 +599,19 @@ function PlantaViewer({
                   </Button>
                 </div>
               </div>
-              <img
-                src={selectedFoto.foto_url}
-                alt={selectedFoto.descricao || 'Foto'}
-                className="w-full max-h-96 object-contain rounded-lg border border-border"
-              />
+              {selectedFoto.foto_url.match(/\.(mp4|mov|webm|avi)(\?|$)/i) ? (
+                <video
+                  src={selectedFoto.foto_url}
+                  controls
+                  className="w-full max-h-96 rounded-lg border border-border"
+                />
+              ) : (
+                <img
+                  src={selectedFoto.foto_url}
+                  alt={selectedFoto.descricao || 'Foto'}
+                  className="w-full max-h-96 object-contain rounded-lg border border-border"
+                />
+              )}
             </CardContent>
           </Card>
         )}
