@@ -129,10 +129,7 @@ export default function DiarioObraNovoPage() {
       .filter(Boolean) as [string, EapItem[]][];
   }, [groupedItems, filterText]);
 
-  // Auto-expand all groups
-  useMemo(() => {
-    setExpandedGroups(new Set(filteredGroups.map(([key]) => key)));
-  }, [filteredGroups]);
+  // Start with all groups collapsed (no auto-expand)
 
   const toggleGroup = (key: string) => {
     setExpandedGroups(prev => {
