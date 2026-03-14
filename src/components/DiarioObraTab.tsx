@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchDiarios, createDiario, deleteDiario, DiarioObra } from '@/services/api';
+import { supabase } from '@/integrations/supabase/client';
 
 const climaOptions = [
   { value: 'ensolarado', label: 'Ensolarado', icon: Sun },
