@@ -407,7 +407,7 @@ export default function ObraDetalhe() {
                                           {(item.avanco_realizado || 0).toFixed(0)}%
                                         </span>
                                       </div>
-                                      {canEdit && (
+                                      {isAdmin && (
                                         <Button
                                           variant="ghost"
                                           size="icon"
