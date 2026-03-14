@@ -417,15 +417,47 @@ export default function DiarioObraNovoPage() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="space-y-1">
+            <CardContent className="space-y-2">
               {!selectedObraId ? (
                 <p className="text-sm text-muted-foreground font-body italic py-4 text-center">Selecione uma obra para ver os itens da EAP.</p>
               ) : eapItems.length === 0 ? (
                 <p className="text-sm text-muted-foreground font-body italic py-4 text-center">Nenhum item de EAP cadastrado para esta obra.</p>
-              ) : filteredTree.length === 0 ? (
+              ) : filteredGroups.length === 0 ? (
                 <p className="text-sm text-muted-foreground font-body italic py-4 text-center">Nenhum resultado para "{filterText}".</p>
               ) : (
-                filteredTree.map(node => renderNode(node, 0))
+                filteredGroups.map(([groupKey, items]) => {
+                  const isExpanded = expandedGroups.has(groupKey);
+                  const selInGroup = items.filter(i => atividades.has(i.id)).length;
+                  return (
+                    <Collapsible key={groupKey} open={isExpanded} onOpenChange={() => toggleGroup(groupKey)}>
+                      <CollapsibleTrigger asChild>
+                        <button
+                          type="button"
+                          className="flex items-center gap-2 w-full px-3 py-2 rounded-md bg-muted/50 hover:bg-muted transition-colors text-left"
+                        >
+                          {isExpanded
+                            ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                            : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                          }
+                          {groupMode === 'pacote'
+                            ? <Package className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            : <Layers className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          }
+                          <span className="flex-1 text-sm font-heading font-semibold truncate">{groupKey}</span>
+                          <Badge variant="outline" className="text-[10px] font-body shrink-0">{items.length} itens</Badge>
+                          {selInGroup > 0 && (
+                            <Badge className="text-[10px] font-body bg-accent text-accent-foreground shrink-0">{selInGroup} sel.</Badge>
+                          )}
+                        </button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="border-l-2 border-border ml-4 space-y-0.5 mt-0.5">
+                          {items.map(item => renderItemRow(item))}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  );
+                })
               )}
             </CardContent>
           </Card>
