@@ -269,15 +269,45 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
   // Level 1 groups
   const level1Groups = useMemo(() => groups.filter(g => g.nivel === 1), [groups]);
 
+  const itemHierarchyMap = useMemo(() => {
+    const l2ByL1 = new Map<string, Set<string>>();
+    const l3ByL1 = new Map<string, Set<string>>();
+    const l3ByL2 = new Map<string, Set<string>>();
+
+    const addToMap = (map: Map<string, Set<string>>, key: string, value: string) => {
+      if (!key || !value) return;
+      const bucket = map.get(key);
+      if (bucket) bucket.add(value);
+      else map.set(key, new Set([value]));
+    };
+
+    for (const item of items) {
+      addToMap(l2ByL1, item.grupo1Codigo, item.grupo2Codigo);
+      addToMap(l3ByL1, item.grupo1Codigo, item.grupo3Codigo);
+      addToMap(l3ByL2, item.grupo2Codigo, item.grupo3Codigo);
+    }
+
+    return { l2ByL1, l3ByL1, l3ByL2 };
+  }, [items]);
+
+  const enabledLevel3Codes = useMemo(() => {
+    const codes = new Set<string>();
+    for (const l1Code of enabledSections) {
+      itemHierarchyMap.l3ByL1.get(l1Code)?.forEach(code => codes.add(code));
+    }
+    return codes;
+  }, [enabledSections, itemHierarchyMap]);
+
   // Level 3 groups, filtered by enabled sections
   const level3Groups = useMemo(
     () =>
       groups.filter(g => {
         if (g.nivel !== 3) return false;
+        if (enabledLevel3Codes.has(g.codigo)) return true;
         const l1Code = g.codigo.split('.')[0];
         return enabledSections.has(l1Code);
       }),
-    [groups, enabledSections],
+    [groups, enabledSections, enabledLevel3Codes],
   );
 
   // Active items (belonging to enabled sections AND not individually disabled)
@@ -295,8 +325,14 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
   // Child groups helper
   const getChildGroups = useCallback(
     (parentCodigo: string, targetNivel: number) =>
-      groups.filter(g => g.nivel === targetNivel && g.codigo.startsWith(parentCodigo + '.')),
-    [groups],
+      groups.filter(g => {
+        if (g.nivel !== targetNivel) return false;
+        if (g.codigo.startsWith(parentCodigo + '.')) return true;
+        if (targetNivel === 2) return itemHierarchyMap.l2ByL1.get(parentCodigo)?.has(g.codigo) ?? false;
+        if (targetNivel === 3) return itemHierarchyMap.l3ByL2.get(parentCodigo)?.has(g.codigo) ?? false;
+        return false;
+      }),
+    [groups, itemHierarchyMap],
   );
 
   // Items for a group
@@ -891,7 +927,9 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
                     .filter(l1 => enabledSections.has(l1.codigo))
                     .map(l1 => {
                       const l3ForSection = level3Groups.filter(
-                        g => g.codigo.startsWith(l1.codigo + '.'),
+                        g =>
+                          g.codigo.startsWith(l1.codigo + '.') ||
+                          (itemHierarchyMap.l3ByL1.get(l1.codigo)?.has(g.codigo) ?? false),
                       );
                       // Also find orphan items (belonging to this L1 but with no L3 group)
                       const orphanItems = activeItems.filter(
