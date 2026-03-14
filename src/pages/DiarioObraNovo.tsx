@@ -893,18 +893,63 @@ export default function DiarioObraNovoPage() {
                 </div>
               )}
 
+              {/* Skip confirmation annoy box */}
+              {skipConfirming && (
+                <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-4 space-y-3">
+                  <p className="text-sm font-body font-medium text-foreground">
+                    Tem certeza que não quer marcar a localização?
+                  </p>
+                  <p className="text-xs text-muted-foreground font-body">
+                    Fotos com localização são muito mais úteis para o acompanhamento da obra.
+                  </p>
+                  <div className="space-y-1.5">
+                    <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                      <div
+                        className="h-full bg-destructive/50 transition-all duration-1000 ease-linear rounded-full"
+                        style={{ width: `${(skipCountdown / 10) * 100}%` }}
+                      />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground/70 font-body text-center">
+                      {skipCountdown > 0 ? `${skipCountdown}s` : 'Pronto'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={cancelSkipConfirmation}
+                      className="bg-accent text-accent-foreground hover:bg-accent/90 font-body text-xs flex-1"
+                    >
+                      <MapPin className="h-3.5 w-3.5 mr-1" />Voltar e marcar localização
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleSkipPin}
+                      disabled={skipCountdown > 0}
+                      className="font-body text-muted-foreground text-xs"
+                    >
+                      <SkipForward className="h-3.5 w-3.5 mr-1" />Pular
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               {/* Actions */}
               <div className="flex items-center justify-between pt-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleSkipPin}
-                  className="font-body text-muted-foreground text-xs"
-                >
-                  <SkipForward className="h-3.5 w-3.5 mr-1" />
-                  Pular — sem localização
-                </Button>
+                {!skipConfirming ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={startSkipConfirmation}
+                    className="font-body text-muted-foreground text-xs"
+                  >
+                    <SkipForward className="h-3.5 w-3.5 mr-1" />
+                    Pular — sem localização
+                  </Button>
+                ) : <div />}
                 <div className="flex items-center gap-2">
                   {currentPinIndex > 0 && (
                     <Button
