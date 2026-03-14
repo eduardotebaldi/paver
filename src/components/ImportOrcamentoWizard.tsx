@@ -1048,6 +1048,9 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
                                       <TableCell className="text-[10px] font-mono py-1.5">{item.codigo}</TableCell>
                                       <TableCell className="py-1.5">
                                         <span className="text-xs">{item.descricao}</span>
+                                        {cls.classificacaoAdicional && (
+                                          <CollapsibleClassification text={cls.classificacaoAdicional} />
+                                        )}
                                       </TableCell>
                                       <TableCell className="text-xs text-right py-1.5">
                                         {formatBRL(item.precoTotal)}
