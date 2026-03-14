@@ -335,7 +335,7 @@ export default function DxfPlantaViewer({ planta, obraId, canEdit, onClose, visi
               </svg>
 
               {/* Pins overlay */}
-              {fotos.map(foto => (
+              {fotos.filter(f => !visibleFotoIds || visibleFotoIds.has(f.id)).map(foto => (
                 <button
                   key={foto.id}
                   className={`absolute w-6 h-6 -ml-3 -mt-6 transition-transform hover:scale-125 ${
