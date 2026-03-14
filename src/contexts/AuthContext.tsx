@@ -21,7 +21,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [roles, setRoles] = useState<AppRole[]>([]);
+  const [userName, setUserName] = useState<string | null>(null);
 
+  const fetchProfile = async (userId: string) => {
+    const { data } = await supabase
+      .from('paver_profiles')
+      .select('full_name')
+      .eq('id', userId)
+      .single();
+    if (data?.full_name) setUserName(data.full_name);
+  };
   const fetchRoles = async (userId: string) => {
     const { data } = await supabase
       .from('paver_user_roles')
