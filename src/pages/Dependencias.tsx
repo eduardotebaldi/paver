@@ -188,21 +188,38 @@ export default function Dependencias() {
 
   const isLoading = loadingEap || loadingRules;
 
-  if (!obraId) return null;
-
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate(`/obras/${obraId}`)}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
         <div className="flex-1">
-          <h1 className="text-2xl font-heading font-bold text-foreground">Painel de Dependências</h1>
+          <h1 className="text-2xl font-heading font-bold text-foreground">Dependências</h1>
           <p className="text-sm text-muted-foreground font-body">
             Gerencie as regras de sequenciamento entre pacotes e serviços
           </p>
         </div>
+        <Select value={selectedObraId} onValueChange={(v) => { setSelectedObraId(v); setNewPred(''); setNewSucc(''); }}>
+          <SelectTrigger className="w-64 font-body">
+            <Filter className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="Selecione uma obra..." />
+          </SelectTrigger>
+          <SelectContent>
+            {obras.map(o => (
+              <SelectItem key={o.id} value={o.id} className="font-body">{o.nome}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
+
+      {!obraId ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <Filter className="h-12 w-12 text-muted-foreground/40 mb-4" />
+            <h3 className="text-lg font-heading font-semibold text-muted-foreground">Selecione uma obra</h3>
+            <p className="text-sm text-muted-foreground/70 mt-1 font-body">Escolha uma obra para gerenciar suas dependências</p>
+          </CardContent>
+        </Card>
+      ) : (
+      <>
 
       {/* Tab toggle */}
       <div className="flex items-center gap-3">
