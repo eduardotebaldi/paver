@@ -887,7 +887,11 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
                       const l3ForSection = level3Groups.filter(
                         g => g.codigo.startsWith(l1.codigo + '.'),
                       );
-                      if (l3ForSection.length === 0) return null;
+                      // Also find orphan items (belonging to this L1 but with no L3 group)
+                      const orphanItems = activeItems.filter(
+                        i => i.grupo1Codigo === l1.codigo && (!i.grupo3Codigo || !level3Groups.some(g => g.codigo === i.grupo3Codigo)),
+                      );
+                      if (l3ForSection.length === 0 && orphanItems.length === 0) return null;
                       const sectionExpanded = expandedSections.has('classify_' + l1.codigo);
                       const sectionTotal = l3ForSection.reduce((sum, g) => {
                         const childItems = items.filter(
