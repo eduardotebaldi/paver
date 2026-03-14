@@ -41,6 +41,7 @@ import {
   GrupoTipo,
 } from '@/lib/csvOrcamentoParser';
 import { EapItem } from '@/services/api';
+import ConfirmOrcamentoStep from '@/components/ConfirmOrcamentoStep';
 
 interface Props {
   open: boolean;
