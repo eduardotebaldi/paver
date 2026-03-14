@@ -4,10 +4,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft, ArrowRight, Loader2, Sun, Cloud, CloudSun, CloudRain, Snowflake,
   ChevronDown, ChevronRight, Check, Package, Layers, Search, Camera, Upload, X, Trash2,
-  MapPin, Video, SkipForward,
+  MapPin, Video, SkipForward, ZoomIn, ZoomOut, RotateCcw, Eye, EyeOff,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Slider } from '@/components/ui/slider';
+import { Checkbox as UiCheckbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -71,6 +74,13 @@ function DxfPinCanvas({
   pinX?: number;
   pinY?: number;
 }) {
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const [layerVisibility, setLayerVisibility] = useState<Record<string, boolean>>({});
+  const [showLayers, setShowLayers] = useState(false);
+
   useEffect(() => {
     let cancelled = false;
     async function load() {
@@ -81,7 +91,11 @@ function DxfPinCanvas({
         const parser = new DxfParser();
         const dxf = parser.parseSync(text);
         if (cancelled || !dxf) return;
-        setDxfData(parseDxfToSvg(dxf));
+        const parsed = parseDxfToSvg(dxf);
+        setDxfData(parsed);
+        const vis: Record<string, boolean> = {};
+        parsed.layers.forEach(l => { vis[l.name] = l.visible; });
+        setLayerVisibility(vis);
       } catch {
         // silently fail
       } finally {
@@ -89,8 +103,38 @@ function DxfPinCanvas({
       }
     }
     if (!dxfData) load();
+    else if (Object.keys(layerVisibility).length === 0) {
+      const vis: Record<string, boolean> = {};
+      dxfData.layers.forEach(l => { vis[l.name] = l.visible; });
+      setLayerVisibility(vis);
+    }
     return () => { cancelled = true; };
   }, [plantaUrl, dxfData]);
+
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    setZoom(z => Math.min(10, Math.max(0.1, z * delta)));
+  }, []);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (e.button === 1 || e.button === 2 || e.altKey) {
+      e.preventDefault();
+      setIsPanning(true);
+      setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+    }
+  }, [pan]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (isPanning) setPan({ x: e.clientX - panStart.x, y: e.clientY - panStart.y });
+  }, [isPanning, panStart]);
+
+  const handleMouseUp = useCallback(() => setIsPanning(false), []);
+
+  const handleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (isPanning) return;
+    onPinPlace(e);
+  }, [isPanning, onPinPlace]);
 
   if (dxfLoading) {
     return (
@@ -106,40 +150,124 @@ function DxfPinCanvas({
   }
 
   const { viewBox, pathsByLayer, layers } = dxfData;
-  const visibleLayers = new Set(layers.filter(l => l.visible).map(l => l.name));
+  const visibleCount = layers.filter(l => layerVisibility[l.name] !== false).length;
 
   return (
-    <div
-      className="relative w-full border border-border rounded-lg overflow-hidden cursor-crosshair bg-muted/20"
-      style={{ height: '45vh' }}
-      onClick={onPinPlace}
-    >
-      <svg
-        viewBox={`${viewBox.minX} ${viewBox.minY} ${viewBox.width} ${viewBox.height}`}
-        className="w-full h-full"
-        preserveAspectRatio="xMidYMid meet"
-      >
-        {Array.from(pathsByLayer.entries()).map(([layerName, paths]) => {
-          if (!visibleLayers.has(layerName)) return null;
-          const layerInfo = layers.find(l => l.name === layerName);
-          const color = layerInfo?.color || '#888';
-          return (
-            <g key={layerName}>
-              {paths.map((d, i) => (
-                <path key={i} d={d} fill="none" stroke={color} strokeWidth={viewBox.width * 0.001} vectorEffect="non-scaling-stroke" />
-              ))}
-            </g>
-          );
-        })}
-      </svg>
-      {pinned && pinX != null && pinY != null && (
-        <div
-          className="absolute w-6 h-6 -ml-3 -mt-6 z-20 pointer-events-none"
-          style={{ left: `${pinX}%`, top: `${pinY}%` }}
+    <div className="space-y-2">
+      {/* Zoom toolbar */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <Button type="button" variant="outline" size="icon" className="h-7 w-7" onClick={() => setZoom(z => Math.max(0.1, z / 1.25))}>
+          <ZoomOut className="h-3.5 w-3.5" />
+        </Button>
+        <Slider className="w-24" min={10} max={500} step={10} value={[zoom * 100]} onValueChange={([v]) => setZoom(v / 100)} />
+        <Button type="button" variant="outline" size="icon" className="h-7 w-7" onClick={() => setZoom(z => Math.min(10, z * 1.25))}>
+          <ZoomIn className="h-3.5 w-3.5" />
+        </Button>
+        <span className="text-[10px] font-body text-muted-foreground w-10 text-center">{Math.round(zoom * 100)}%</span>
+        {(zoom !== 1 || pan.x !== 0 || pan.y !== 0) && (
+          <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}>
+            <RotateCcw className="h-3.5 w-3.5" />
+          </Button>
+        )}
+        <Button
+          type="button"
+          variant={showLayers ? 'default' : 'outline'}
+          size="sm"
+          className="h-7 font-body text-[10px] ml-auto"
+          onClick={() => setShowLayers(!showLayers)}
         >
-          <MapPin className="h-6 w-6 text-accent drop-shadow-md fill-accent/30" />
+          <Layers className="h-3 w-3 mr-1" />
+          Layers ({visibleCount}/{layers.length})
+        </Button>
+      </div>
+
+      <div className="flex gap-2">
+        {/* Layer panel */}
+        {showLayers && (
+          <div className="shrink-0 w-44 border border-border rounded-lg p-2 space-y-1.5 bg-background">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-heading font-semibold">Layers</span>
+              <div className="flex gap-1">
+                <Button type="button" variant="ghost" size="sm" className="h-5 px-1 text-[9px]"
+                  onClick={() => setLayerVisibility(Object.fromEntries(layers.map(l => [l.name, true])))}>
+                  <Eye className="h-2.5 w-2.5 mr-0.5" />Todas
+                </Button>
+                <Button type="button" variant="ghost" size="sm" className="h-5 px-1 text-[9px]"
+                  onClick={() => setLayerVisibility(Object.fromEntries(layers.map(l => [l.name, false])))}>
+                  <EyeOff className="h-2.5 w-2.5 mr-0.5" />Nenhuma
+                </Button>
+              </div>
+            </div>
+            <ScrollArea className="h-[35vh]">
+              <div className="space-y-0.5 pr-2">
+                {layers.map(layer => (
+                  <label key={layer.name} className="flex items-center gap-1.5 px-1 py-0.5 rounded hover:bg-muted/50 cursor-pointer">
+                    <UiCheckbox
+                      checked={layerVisibility[layer.name] !== false}
+                      onCheckedChange={() => setLayerVisibility(prev => ({ ...prev, [layer.name]: !prev[layer.name] }))}
+                      className="h-3 w-3"
+                    />
+                    <span className="w-2 h-2 rounded-full shrink-0 border border-border" style={{ backgroundColor: layer.color }} />
+                    <span className="text-[10px] font-body truncate flex-1">{layer.name}</span>
+                  </label>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
+        )}
+
+        {/* DXF canvas */}
+        <div
+          className="flex-1 relative border border-border rounded-lg overflow-hidden bg-muted/20"
+          style={{ height: '40vh' }}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          onWheel={handleWheel}
+          onContextMenu={e => e.preventDefault()}
+        >
+          <div style={{
+            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+            transformOrigin: 'center center',
+            width: '100%', height: '100%', position: 'relative',
+          }}>
+            <div
+              className={`w-full h-full ${!isPanning ? 'cursor-crosshair' : 'cursor-grabbing'}`}
+              onClick={handleClick}
+              style={{ position: 'relative' }}
+            >
+              <svg
+                viewBox={`${viewBox.minX} ${viewBox.minY} ${viewBox.width} ${viewBox.height}`}
+                className="w-full h-full"
+                preserveAspectRatio="xMidYMid meet"
+              >
+                {Array.from(pathsByLayer.entries()).map(([layerName, paths]) => {
+                  if (layerVisibility[layerName] === false) return null;
+                  const layerInfo = layers.find(l => l.name === layerName);
+                  const color = layerInfo?.color || '#888';
+                  return (
+                    <g key={layerName}>
+                      {paths.map((d, i) => (
+                        <path key={i} d={d} fill="none" stroke={color} strokeWidth={viewBox.width * 0.001} vectorEffect="non-scaling-stroke" />
+                      ))}
+                    </g>
+                  );
+                })}
+              </svg>
+              {pinned && pinX != null && pinY != null && (
+                <div
+                  className="absolute w-6 h-6 -ml-3 -mt-6 z-20 pointer-events-none"
+                  style={{ left: `${pinX}%`, top: `${pinY}%`, transform: `scale(${1 / zoom})` }}
+                >
+                  <MapPin className="h-6 w-6 text-accent drop-shadow-md fill-accent/30" />
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-      )}
+      </div>
+      <p className="text-[10px] text-muted-foreground font-body">Alt+arrastar para mover · Scroll para zoom</p>
     </div>
   );
 }
@@ -758,7 +886,7 @@ export default function DiarioObraNovoPage() {
                 <Upload className="h-8 w-8 text-muted-foreground/50 mb-2" />
                 <p className="text-sm font-body text-muted-foreground">Clique para adicionar fotos e vídeos</p>
                 <p className="text-xs font-body text-muted-foreground/60 mt-1">JPG, PNG, WEBP, MP4, MOV</p>
-                <input ref={fileInputRef} type="file" accept="image/*,video/*" multiple className="hidden" onChange={e => handleAddFotos(e.target.files)} />
+                <input ref={fileInputRef} type="file" accept="image/*,video/*" multiple className="hidden" onChange={e => { handleAddFotos(e.target.files); e.target.value = ''; }} />
               </div>
               {fotos.length > 0 && (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -875,8 +1003,8 @@ export default function DiarioObraNovoPage() {
       )}
 
       {/* ═══ PIN MODAL ═══ */}
-      <Dialog open={pinModalOpen} onOpenChange={v => { if (!v) { setPinModalOpen(false); setPinQueue([]); setCurrentPinIndex(0); } }}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <Dialog open={pinModalOpen} onOpenChange={() => { /* prevent close by clicking outside */ }}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto [&>button:last-child]:hidden" onPointerDownOutside={e => e.preventDefault()} onEscapeKeyDown={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle className="font-heading flex items-center gap-2">
               <MapPin className="h-5 w-5 text-accent" />
