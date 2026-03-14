@@ -11,6 +11,7 @@ import Obras from "./pages/Obras";
 import ObraDetalhe from "./pages/ObraDetalhe";
 import Relatorios from "./pages/Relatorios";
 import RelatorioFotografico from "./pages/RelatorioFotografico";
+import LinhaBalancoPage from "./pages/LinhaBalanco";
 import Usuarios from "./pages/Usuarios";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
