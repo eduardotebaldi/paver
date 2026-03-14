@@ -277,10 +277,18 @@ export default function DiarioObraNovoPage() {
             )}
             <div className="flex items-center gap-2">
               {item.codigo && <span className="text-xs text-muted-foreground font-mono shrink-0">{item.codigo}</span>}
-              <span className="text-sm font-body text-foreground truncate">
-                {item.descricao}
-                {!hideClassification && item.classificacao_adicional && <CollapsibleClassification text={item.classificacao_adicional} />}
-              </span>
+              <div className="min-w-0">
+                <span className="text-sm font-body text-foreground truncate block">
+                  {item.descricao}
+                  {!hideClassification && item.classificacao_adicional && <CollapsibleClassification text={item.classificacao_adicional} />}
+                </span>
+                {groupMode === 'pacote' && item.lote && (
+                  <span className="text-[10px] font-body italic text-muted-foreground/60 truncate block">{item.lote}</span>
+                )}
+                {groupMode === 'servico' && item.pacote && (
+                  <span className="text-[10px] font-body italic text-muted-foreground/60 truncate block">{item.pacote}</span>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-3 shrink-0">
