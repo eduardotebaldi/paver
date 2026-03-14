@@ -286,7 +286,8 @@ function PlantaViewer({
   // Measure PDF container width for responsive rendering
   const measureWidth = useCallback((node: HTMLDivElement | null) => {
     if (node) {
-      setPdfContainerWidth(node.getBoundingClientRect().width);
+      const w = node.getBoundingClientRect().width;
+      setPdfContainerWidth(prev => prev === w ? prev : w);
     }
   }, []);
 
