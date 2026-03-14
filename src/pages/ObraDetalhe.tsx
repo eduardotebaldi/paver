@@ -79,6 +79,7 @@ export default function ObraDetalhe() {
   const queryClient = useQueryClient();
   const { hasRole } = useAuth();
   const canEdit = hasRole('admin') || hasRole('engenharia');
+  const isAdmin = hasRole('admin');
   const fileRef = useRef<HTMLInputElement>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [groupMode, setGroupMode] = useState<GroupMode>('pacote');
