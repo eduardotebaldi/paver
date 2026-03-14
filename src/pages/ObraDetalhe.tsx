@@ -79,6 +79,7 @@ export default function ObraDetalhe() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [groupMode, setGroupMode] = useState<GroupMode>('pacote');
+  const [importWizardOpen, setImportWizardOpen] = useState(false);
 
   const { data: obra, isLoading: loadingObra } = useQuery({
     queryKey: ['obra', id],
