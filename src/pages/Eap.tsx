@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2, FileSpreadsheet, ChevronRight, ChevronDown, Layers, FolderTree, Link2, Building2 } from 'lucide-react';
+import CollapsibleClassification from '@/components/CollapsibleClassification';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -231,6 +232,9 @@ export default function EapPage() {
                                   >
                                     <span className="flex-1 text-muted-foreground">
                                       {item.descricao}
+                                      {item.classificacao_adicional && (
+                                        <CollapsibleClassification text={item.classificacao_adicional} />
+                                      )}
                                     </span>
                                     {item.data_inicio_prevista && (
                                       <span className="text-[9px] text-muted-foreground">

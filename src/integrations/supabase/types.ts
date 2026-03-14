@@ -1404,6 +1404,7 @@ export type Database = {
           avanco_base: number | null
           avanco_previsto: number | null
           avanco_realizado: number | null
+          classificacao_adicional: string | null
           codigo: string | null
           created_at: string | null
           data_fim_prevista: string | null
@@ -1427,6 +1428,7 @@ export type Database = {
           avanco_base?: number | null
           avanco_previsto?: number | null
           avanco_realizado?: number | null
+          classificacao_adicional?: string | null
           codigo?: string | null
           created_at?: string | null
           data_fim_prevista?: string | null
@@ -1450,6 +1452,7 @@ export type Database = {
           avanco_base?: number | null
           avanco_previsto?: number | null
           avanco_realizado?: number | null
+          classificacao_adicional?: string | null
           codigo?: string | null
           created_at?: string | null
           data_fim_prevista?: string | null

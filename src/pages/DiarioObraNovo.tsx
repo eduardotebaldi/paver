@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchObras, fetchEapItems, createDiario, uploadFile, EapItem } from '@/services/api';
 import { supabase } from '@/integrations/supabase/client';
+import CollapsibleClassification from '@/components/CollapsibleClassification';
 
 const climaOptions = [
   { value: 'ensolarado', label: 'Ensolarado', icon: Sun },
@@ -270,7 +271,10 @@ export default function DiarioObraNovoPage() {
             )}
             <div className="flex items-center gap-2">
               {item.codigo && <span className="text-xs text-muted-foreground font-mono shrink-0">{item.codigo}</span>}
-              <span className="text-sm font-body text-foreground truncate">{item.descricao}</span>
+              <span className="text-sm font-body text-foreground truncate">
+                {item.descricao}
+                {item.classificacao_adicional && <CollapsibleClassification text={item.classificacao_adicional} />}
+              </span>
             </div>
           </div>
           <div className="flex items-center gap-3 shrink-0">
@@ -522,6 +526,7 @@ export default function DiarioObraNovoPage() {
                           <span className="truncate text-foreground">
                             {item?.codigo && <span className="font-mono text-muted-foreground mr-1">{item.codigo}</span>}
                             {item?.descricao || 'Item'}
+                            {item?.classificacao_adicional && <CollapsibleClassification text={item.classificacao_adicional} />}
                           </span>
                           <div className="flex items-center gap-2 shrink-0">
                             {a.quantidade_dia > 0 && <span className="text-muted-foreground">+{a.quantidade_dia} {item?.unidade || 'un'}</span>}
