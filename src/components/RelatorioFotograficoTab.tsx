@@ -47,7 +47,16 @@ export default function RelatorioFotograficoTab({ obraId }: Props) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user, hasRole } = useAuth();
-  const canEdit = hasRole('admin') || hasRole('engenharia');
+  const isAdmin = hasRole('admin');
+  const canEdit = isAdmin || hasRole('engenharia');
+
+  const canModifyFoto = (foto: FotoLocalizada) => {
+    if (isAdmin) return true;
+    if (foto.created_by !== user?.id) return false;
+    const created = new Date(foto.created_at);
+    const now = new Date();
+    return (now.getTime() - created.getTime()) <= 2 * 24 * 60 * 60 * 1000;
+  };
   const [selectedPlanta, setSelectedPlanta] = useState<PlantaObra | null>(null);
 
   const { data: plantas = [], isLoading } = useQuery({
@@ -236,7 +245,16 @@ function PlantaViewer({
 }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
+  const isAdmin = hasRole('admin');
+
+  const canModifyFoto = (foto: FotoLocalizada) => {
+    if (isAdmin) return true;
+    if (foto.created_by !== user?.id) return false;
+    const created = new Date(foto.created_at);
+    const now = new Date();
+    return (now.getTime() - created.getTime()) <= 2 * 24 * 60 * 60 * 1000;
+  };
   const containerRef = useRef<HTMLDivElement>(null);
   const fotoInputRef = useRef<HTMLInputElement>(null);
   const [pendingPin, setPendingPin] = useState<{ x: number; y: number } | null>(null);
@@ -567,7 +585,7 @@ function PlantaViewer({
                   </p>
                 </div>
                 <div className="flex gap-1">
-                  {canEdit && (
+                  {canModifyFoto(selectedFoto) && (
                     <Button
                       variant="ghost"
                       size="icon"

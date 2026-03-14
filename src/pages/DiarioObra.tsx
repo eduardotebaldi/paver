@@ -53,7 +53,17 @@ export default function DiarioObraPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user, hasRole } = useAuth();
-  const canEdit = hasRole('admin') || hasRole('engenharia');
+  const isAdmin = hasRole('admin');
+  const canEdit = isAdmin || hasRole('engenharia');
+
+  const canModifyDiario = (diario: DiarioObra) => {
+    if (isAdmin) return true;
+    if (diario.created_by !== user?.id) return false;
+    const created = new Date(diario.created_at);
+    const now = new Date();
+    const diffMs = now.getTime() - created.getTime();
+    return diffMs <= 2 * 24 * 60 * 60 * 1000; // 2 days
+  };
 
   const [selectedObraId, setSelectedObraId] = useState<string>('');
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -387,7 +397,7 @@ export default function DiarioObraPage() {
                           </Badge>
                         </div>
                         <div className="flex items-center gap-2">
-                          {hasRole('admin') && (
+                          {canModifyDiario(diario) && (
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive">
