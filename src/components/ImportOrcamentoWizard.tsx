@@ -333,7 +333,7 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
   const reviewByPacote = useMemo((): ReviewGroup[] => {
     const map = new Map<string, Map<string, OrcamentoItem[]>>();
     for (const item of activeItems) {
-      const l3 = classifications.get(item.grupo3Codigo);
+      const l3 = classifications.get(item.grupo3Codigo) || classifications.get(`orphan_${item.codigo}`);
       const pacote = l3?.pacoteTrabalho || 'Sem classificação';
       const tipo = l3?.tipoServico || 'Sem classificação';
       if (!map.has(pacote)) map.set(pacote, new Map());
