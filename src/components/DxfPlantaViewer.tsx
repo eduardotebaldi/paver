@@ -27,10 +27,12 @@ interface Props {
   planta: PlantaObra;
   obraId: string;
   canEdit: boolean;
-  onClose: () => void;
+  onClose?: () => void;
+  /** If provided, only show pins whose IDs are in this set */
+  visibleFotoIds?: Set<string>;
 }
 
-export default function DxfPlantaViewer({ planta, obraId, canEdit, onClose }: Props) {
+export default function DxfPlantaViewer({ planta, obraId, canEdit, onClose, visibleFotoIds }: Props) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -192,7 +194,7 @@ export default function DxfPlantaViewer({ planta, obraId, canEdit, onClose }: Pr
     return (
       <div className="text-center py-12">
         <p className="text-sm text-destructive font-body">{error || 'Erro ao carregar DXF'}</p>
-        <Button variant="link" onClick={onClose} className="mt-2">Voltar</Button>
+        {onClose && <Button variant="link" onClick={onClose} className="mt-2">Voltar</Button>}
       </div>
     );
   }
@@ -333,7 +335,7 @@ export default function DxfPlantaViewer({ planta, obraId, canEdit, onClose }: Pr
               </svg>
 
               {/* Pins overlay */}
-              {fotos.map(foto => (
+              {fotos.filter(f => !visibleFotoIds || visibleFotoIds.has(f.id)).map(foto => (
                 <button
                   key={foto.id}
                   className={`absolute w-6 h-6 -ml-3 -mt-6 transition-transform hover:scale-125 ${
