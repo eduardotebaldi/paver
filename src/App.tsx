@@ -7,13 +7,13 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Layout } from "@/components/Layout";
 import Dashboard from "./pages/Dashboard";
-import Obras from "./pages/Obras";
-import ObraDetalhe from "./pages/ObraDetalhe";
+import Eap from "./pages/Eap";
 import Relatorios from "./pages/Relatorios";
 import RelatorioFotografico from "./pages/RelatorioFotografico";
 import LinhaBalancoPage from "./pages/LinhaBalanco";
 import Dependencias from "./pages/Dependencias";
 import DiarioObra from "./pages/DiarioObra";
+import AdminObras from "./pages/AdminObras";
 import Usuarios from "./pages/Usuarios";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
@@ -33,13 +33,17 @@ const App = () => (
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
               <Route path="/" element={<Dashboard />} />
-              <Route path="/obras" element={<Obras />} />
-              <Route path="/obras/:id" element={<ObraDetalhe />} />
-              <Route path="/dependencias" element={<Dependencias />} />
+              <Route path="/eap" element={<Eap />} />
               <Route path="/diario-obra" element={<DiarioObra />} />
+              <Route path="/dependencias" element={<Dependencias />} />
               <Route path="/relatorios" element={<Relatorios />} />
               <Route path="/relatorio-fotografico" element={<RelatorioFotografico />} />
               <Route path="/linha-balanco" element={<LinhaBalancoPage />} />
+              <Route path="/admin/obras" element={
+                <ProtectedRoute requiredRole="admin">
+                  <AdminObras />
+                </ProtectedRoute>
+              } />
               <Route path="/usuarios" element={
                 <ProtectedRoute requiredRole="admin">
                   <Usuarios />
