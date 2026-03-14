@@ -21,6 +21,7 @@ const mainItems = [
   { title: "Relatórios", url: "/relatorios", icon: FileBarChart },
   { title: "Rel. Fotográfico", url: "/relatorio-fotografico", icon: Camera },
   { title: "Linha de Balanço", url: "/linha-balanco", icon: BarChart3 },
+  { title: "Dependências", url: "/dependencias", icon: GitBranch },
 ];
 
 const adminItems = [

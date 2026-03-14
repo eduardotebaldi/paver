@@ -438,7 +438,9 @@ export default function Dependencias() {
             </CardContent>
           </Card>
         </div>
-      </div>
+        </div>
+      </>
+      )}
     </div>
   );
 }
