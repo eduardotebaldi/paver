@@ -69,7 +69,7 @@ export default function RelatorioFotograficoTab({ obraId }: Props) {
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
             <Image className="h-10 w-10 text-muted-foreground/40 mb-3" />
             <p className="text-sm text-muted-foreground font-body">
-              Nenhuma planta cadastrada. Faça upload de uma planta (imagem ou PDF) para começar.
+              Nenhuma planta cadastrada. Faça upload de uma planta (imagem, PDF ou DXF) para começar.
             </p>
           </CardContent>
         </Card>
