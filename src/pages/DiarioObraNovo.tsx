@@ -81,9 +81,12 @@ export default function DiarioObraNovoPage() {
 
   // Pin modal state
   const [pinModalOpen, setPinModalOpen] = useState(false);
-  const [pinQueue, setPinQueue] = useState<number[]>([]); // indices of fotos awaiting pinning
+  const [pinQueue, setPinQueue] = useState<number[]>([]);
   const [currentPinIndex, setCurrentPinIndex] = useState(0);
   const [selectedPlantaId, setSelectedPlantaId] = useState<string>('');
+  const [skipConfirming, setSkipConfirming] = useState(false);
+  const [skipCountdown, setSkipCountdown] = useState(10);
+  const skipTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const { data: obras = [] } = useQuery({ queryKey: ['obras'], queryFn: fetchObras });
   const { data: eapItems = [] } = useQuery({
@@ -240,6 +243,10 @@ export default function DiarioObraNovoPage() {
   // Pin placement handler
   const handlePinPlace = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (pinQueue.length === 0) return;
+    // Cancel any active skip confirmation
+    setSkipConfirming(false);
+    if (skipTimerRef.current) clearInterval(skipTimerRef.current);
+
     const fotoIndex = pinQueue[currentPinIndex];
     const rect = e.currentTarget.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
@@ -259,7 +266,29 @@ export default function DiarioObraNovoPage() {
     }
   }, [pinQueue, currentPinIndex, selectedPlantaId]);
 
+  const startSkipConfirmation = () => {
+    setSkipConfirming(true);
+    setSkipCountdown(10);
+    if (skipTimerRef.current) clearInterval(skipTimerRef.current);
+    skipTimerRef.current = setInterval(() => {
+      setSkipCountdown(prev => {
+        if (prev <= 1) {
+          if (skipTimerRef.current) clearInterval(skipTimerRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const cancelSkipConfirmation = () => {
+    setSkipConfirming(false);
+    if (skipTimerRef.current) clearInterval(skipTimerRef.current);
+  };
+
   const handleSkipPin = () => {
+    setSkipConfirming(false);
+    if (skipTimerRef.current) clearInterval(skipTimerRef.current);
     if (currentPinIndex < pinQueue.length - 1) {
       setCurrentPinIndex(prev => prev + 1);
     } else {
@@ -268,6 +297,11 @@ export default function DiarioObraNovoPage() {
       setCurrentPinIndex(0);
     }
   };
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => { if (skipTimerRef.current) clearInterval(skipTimerRef.current); };
+  }, []);
 
   const selectedCount = atividades.size;
 
@@ -863,18 +897,63 @@ export default function DiarioObraNovoPage() {
                 </div>
               )}
 
+              {/* Skip confirmation annoy box */}
+              {skipConfirming && (
+                <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-4 space-y-3">
+                  <p className="text-sm font-body font-medium text-foreground">
+                    Tem certeza que não quer marcar a localização?
+                  </p>
+                  <p className="text-xs text-muted-foreground font-body">
+                    Fotos com localização são muito mais úteis para o acompanhamento da obra.
+                  </p>
+                  <div className="space-y-1.5">
+                    <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                      <div
+                        className="h-full bg-destructive/50 transition-all duration-1000 ease-linear rounded-full"
+                        style={{ width: `${(skipCountdown / 10) * 100}%` }}
+                      />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground/70 font-body text-center">
+                      {skipCountdown > 0 ? `${skipCountdown}s` : 'Pronto'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={cancelSkipConfirmation}
+                      className="bg-accent text-accent-foreground hover:bg-accent/90 font-body text-xs flex-1"
+                    >
+                      <MapPin className="h-3.5 w-3.5 mr-1" />Voltar e marcar localização
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleSkipPin}
+                      disabled={skipCountdown > 0}
+                      className="font-body text-muted-foreground text-xs"
+                    >
+                      <SkipForward className="h-3.5 w-3.5 mr-1" />Pular
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               {/* Actions */}
               <div className="flex items-center justify-between pt-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleSkipPin}
-                  className="font-body text-muted-foreground text-xs"
-                >
-                  <SkipForward className="h-3.5 w-3.5 mr-1" />
-                  Pular — sem localização
-                </Button>
+                {!skipConfirming ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={startSkipConfirmation}
+                    className="font-body text-muted-foreground text-xs"
+                  >
+                    <SkipForward className="h-3.5 w-3.5 mr-1" />
+                    Pular — sem localização
+                  </Button>
+                ) : <div />}
                 <div className="flex items-center gap-2">
                   {currentPinIndex > 0 && (
                     <Button
