@@ -116,20 +116,10 @@ export default function ObraDetalhe() {
     }
   };
 
-  // CSV budget import via wizard
-  const csvImportMutation = useMutation({
-    mutationFn: async (items: Omit<EapItem, 'id' | 'created_at' | 'obra_id'>[]) => {
-      await deleteEapItemsByObra(id!);
-      const withObra = items.map(item => ({ ...item, obra_id: id! }));
-      return insertEapItems(withObra);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['eap', id] });
-      setImportWizardOpen(false);
-      toast({ title: 'Orçamento importado com sucesso!' });
-    },
-    onError: (err: any) => toast({ title: 'Erro na importação', description: err.message, variant: 'destructive' }),
-  });
+  const handleImportComplete = () => {
+    queryClient.invalidateQueries({ queryKey: ['eap', id] });
+    toast({ title: 'Orçamento importado com sucesso!' });
+  };
 
   const toggleGroup = (key: string) => {
     setCollapsedGroups(prev => {
