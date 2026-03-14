@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { MapPin, Upload, Loader2, Image, Trash2, X, Plus, Camera, FileText, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -283,12 +283,17 @@ function PlantaViewer({
     }
   };
 
-  // Measure PDF container width for responsive rendering
-  const measureWidth = useCallback((node: HTMLDivElement | null) => {
-    if (node) {
-      const w = node.getBoundingClientRect().width;
-      setPdfContainerWidth(prev => prev === w ? prev : w);
-    }
+  // Measure PDF container width for responsive rendering (base width, without zoom)
+  const zoomContainerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const node = zoomContainerRef.current;
+    if (!node) return;
+    const observer = new ResizeObserver((entries) => {
+      // We only care about the container's own width, not the zoomed content
+    });
+    // Measure once on mount
+    setPdfContainerWidth(node.getBoundingClientRect().width);
+    return () => observer.disconnect();
   }, []);
 
   const PinsOverlay = (
@@ -334,7 +339,7 @@ function PlantaViewer({
 
         <div className="relative" ref={containerRef}>
           {pdf ? (
-            <div ref={measureWidth}>
+            <div ref={zoomContainerRef}>
               {/* PDF controls: zoom + navigation */}
               <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
                 <div className="flex items-center gap-2">
