@@ -422,6 +422,7 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
   const [zoomDomain, setZoomDomain] = useState<[number, number] | null>(null);
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
   const activeDomain = zoomDomain || [domainMin, domainMax];
+  const weekBands = useMemo(() => getWeekBands(activeDomain[0], activeDomain[1]), [activeDomain]);
 
   const zoomIn = () => {
     const [l, r] = activeDomain;
