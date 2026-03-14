@@ -241,77 +241,33 @@ export default function DiarioObraNovoPage() {
   const handleBack = () => setStep(1);
   const handleSubmit = () => saveMutation.mutate();
 
-  // Tree helpers
-  const countItems = (nodes: EapNode[]): number => {
-    let c = 0;
-    for (const n of nodes) { if (n.item.tipo === 'item') c++; c += countItems(n.children); }
-    return c;
-  };
-  const countSelected = (nodes: EapNode[]): number => {
-    let c = 0;
-    for (const n of nodes) { if (n.item.tipo === 'item' && atividades.has(n.item.id)) c++; c += countSelected(n.children); }
-    return c;
-  };
-
-  const renderNode = (node: EapNode, depth: number): React.ReactNode => {
-    const { item } = node;
-
-    if (item.tipo === 'agrupador') {
-      const isExpanded = expandedGroups.has(item.id);
-      const itemCount = countItems(node.children);
-      const selCount = countSelected(node.children);
-      return (
-        <div key={item.id}>
-          <Collapsible open={isExpanded} onOpenChange={() => toggleGroup(item.id)}>
-            <CollapsibleTrigger asChild>
-              <button
-                type="button"
-                className={`flex items-center gap-2 w-full px-3 py-2 rounded-md transition-colors text-left ${
-                  depth === 0 ? 'bg-muted/50 hover:bg-muted' : 'hover:bg-muted/30'
-                }`}
-                style={{ paddingLeft: `${12 + depth * 16}px` }}
-              >
-                {isExpanded
-                  ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
-                  : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                }
-                {item.codigo && (
-                  <span className="text-xs font-mono text-accent shrink-0 font-semibold">{item.codigo}</span>
-                )}
-                <span className={`flex-1 text-sm font-heading truncate ${depth === 0 ? 'font-semibold' : 'font-medium'}`}>
-                  {item.descricao}
-                </span>
-                <Badge variant="outline" className="text-[10px] font-body shrink-0">{itemCount} itens</Badge>
-                {selCount > 0 && (
-                  <Badge className="text-[10px] font-body bg-accent text-accent-foreground shrink-0">{selCount} sel.</Badge>
-                )}
-              </button>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <div className={depth === 0 ? 'border-l-2 border-border ml-4 space-y-0.5 mt-0.5' : 'space-y-0.5'}>
-                {node.children.map(child => renderNode(child, depth + 1))}
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-        </div>
-      );
-    }
-
-    // Leaf item
+  // Render a single EAP item row with hierarchy breadcrumb
+  const renderItemRow = (item: EapItem) => {
     const selected = atividades.get(item.id);
     const currentPercent = item.avanco_realizado || 0;
     const totalQtd = item.quantidade || 0;
     const currentQtdRealized = totalQtd * (currentPercent / 100);
+    const hierarchy = getHierarchyPath(item);
 
     return (
       <div
         key={item.id}
         className={`px-3 py-2 transition-colors rounded-md ${selected ? 'bg-accent/5' : 'hover:bg-muted/20'}`}
-        style={{ paddingLeft: `${12 + depth * 16}px` }}
       >
         <div className="flex items-center gap-3">
           <Checkbox checked={!!selected} onCheckedChange={() => toggleItem(item)} />
           <div className="flex-1 min-w-0">
+            {hierarchy.length > 0 && (
+              <div className="flex items-center gap-1 flex-wrap mb-0.5">
+                {hierarchy.map((parent, idx) => (
+                  <span key={parent.id} className="text-[10px] text-muted-foreground/70 font-body flex items-center gap-0.5">
+                    {parent.codigo && <span className="font-mono text-accent/60">{parent.codigo}</span>}
+                    <span className="truncate max-w-[150px]">{parent.descricao}</span>
+                    {idx < hierarchy.length - 1 && <ChevronRight className="h-2.5 w-2.5 text-muted-foreground/40 shrink-0" />}
+                  </span>
+                ))}
+              </div>
+            )}
             <div className="flex items-center gap-2">
               {item.codigo && <span className="text-xs text-muted-foreground font-mono shrink-0">{item.codigo}</span>}
               <span className="text-sm font-body text-foreground truncate">{item.descricao}</span>
