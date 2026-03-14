@@ -1,12 +1,15 @@
 import { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Camera, Loader2, FolderTree, Layers, Building2, MapPin, FileCode, Image as ImageIcon } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Camera, Loader2, FolderTree, Layers, Building2, MapPin, FileCode, Image as ImageIcon, Trash2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import { fetchObras, fetchAllFotosLocalizadas, fetchPlantas, FotoLocalizada, PlantaObra } from '@/services/api';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import { fetchObras, fetchAllFotosLocalizadas, fetchPlantas, deleteFotoLocalizada, FotoLocalizada, PlantaObra } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import DxfPlantaViewer from '@/components/DxfPlantaViewer';
 
