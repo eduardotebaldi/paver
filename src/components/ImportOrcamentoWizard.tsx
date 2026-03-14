@@ -503,41 +503,11 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, onImport, im
 
           {/* STEP 3: Confirm */}
           {step === 'confirm' && (
-            <div className="space-y-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <Card>
-                  <CardContent className="pt-4">
-                    <div className="flex items-center gap-2 mb-1">
-                      <CheckCircle2 className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-body text-muted-foreground">Itens ativos</span>
-                    </div>
-                    <p className="text-2xl font-bold font-heading">{activeItems.length}</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-4">
-                    <div className="flex items-center gap-2 mb-1">
-                      <XCircle className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-body text-muted-foreground">Itens desativados</span>
-                    </div>
-                    <p className="text-2xl font-bold font-heading">{inactiveCount}</p>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <Card>
-                <CardContent className="pt-4">
-                  <p className="text-sm font-body text-muted-foreground mb-1">Valor total dos itens ativos</p>
-                  <p className="text-xl font-bold font-heading text-primary">
-                    {formatBRL(activeItems.reduce((sum, i) => sum + i.precoTotal, 0))}
-                  </p>
-                </CardContent>
-              </Card>
-
-              <div className="text-xs font-body text-muted-foreground bg-muted/50 rounded-md px-3 py-2">
-                Os itens ativos serão importados para a EAP desta obra. Dados anteriores da EAP serão substituídos.
-              </div>
-            </div>
+            <ConfirmOrcamentoStep
+              items={items}
+              groups={groups}
+              onItemsChange={setItems}
+            />
           )}
         </div>
 
