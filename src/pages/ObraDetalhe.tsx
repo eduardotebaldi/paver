@@ -132,6 +132,7 @@ export default function ObraDetalhe() {
         <TabsList>
           <TabsTrigger value="eap" className="font-body">EAP</TabsTrigger>
           <TabsTrigger value="diario" className="font-body">Diário de Obra</TabsTrigger>
+          <TabsTrigger value="fotos" className="font-body">Relatório Fotográfico</TabsTrigger>
         </TabsList>
 
         <TabsContent value="eap" className="mt-4">
