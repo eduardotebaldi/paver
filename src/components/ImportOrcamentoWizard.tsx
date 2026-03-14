@@ -462,6 +462,20 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
     });
   };
 
+  /** Toggle all items under a given group level */
+  const toggleGroupItems = (groupCodigo: string, nivel: number) => {
+    const groupItems = getItemsForGroup(groupCodigo, nivel);
+    const allDisabled = groupItems.every(i => disabledItems.has(i.codigo));
+    setDisabledItems(prev => {
+      const next = new Set(prev);
+      for (const i of groupItems) {
+        if (allDisabled) next.delete(i.codigo);
+        else next.add(i.codigo);
+      }
+      return next;
+    });
+  };
+
   const toggleExpanded = (codigo: string) => {
     setExpandedSections(prev => {
       const next = new Set(prev);
