@@ -1228,6 +1228,7 @@ export type Database = {
           diario_id: string
           eap_item_id: string
           id: string
+          quantidade_dia: number
         }
         Insert: {
           avanco_percentual?: number
@@ -1235,6 +1236,7 @@ export type Database = {
           diario_id: string
           eap_item_id: string
           id?: string
+          quantidade_dia?: number
         }
         Update: {
           avanco_percentual?: number
@@ -1242,6 +1244,7 @@ export type Database = {
           diario_id?: string
           eap_item_id?: string
           id?: string
+          quantidade_dia?: number
         }
         Relationships: [
           {
