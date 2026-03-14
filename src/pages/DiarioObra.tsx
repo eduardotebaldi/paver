@@ -154,121 +154,17 @@ export default function DiarioObraPage() {
         </Card>
       ) : (
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
+           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="font-heading">Registros</CardTitle>
             {canEdit && (
-              <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (open) setForm(emptyForm); }}>
-                <DialogTrigger asChild>
-                  <Button size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90 font-body">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Novo Registro
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle className="font-heading">Novo Diário de Obra</DialogTitle>
-                  </DialogHeader>
-                  <form onSubmit={handleSubmit} className="space-y-4">
-                    {/* Data */}
-                    <div className="space-y-2">
-                      <Label className="font-body">Data</Label>
-                      <Input type="date" value={form.data} onChange={e => setForm({ ...form, data: e.target.value })} required className="font-body max-w-xs" />
-                    </div>
-
-                    {/* Clima Manhã e Tarde */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className="font-body">Clima — Manhã</Label>
-                        <Select value={form.clima_manha} onValueChange={v => setForm({ ...form, clima_manha: v })}>
-                          <SelectTrigger className="font-body"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {climaOptions.map(c => (
-                              <SelectItem key={c.value} value={c.value} className="font-body">{c.label}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="font-body">Clima — Tarde</Label>
-                        <Select value={form.clima_tarde} onValueChange={v => setForm({ ...form, clima_tarde: v })}>
-                          <SelectTrigger className="font-body"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {climaOptions.map(c => (
-                              <SelectItem key={c.value} value={c.value} className="font-body">{c.label}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    {/* Equipes (mão de obra - texto) */}
-                    <div className="space-y-2">
-                      <Label className="font-body">Equipes / Mão de Obra</Label>
-                      <p className="text-xs text-muted-foreground font-body">Descreva as equipes que trabalharam na obra</p>
-                      <Textarea
-                        value={form.mao_de_obra}
-                        onChange={e => setForm({ ...form, mao_de_obra: e.target.value })}
-                        rows={3}
-                        placeholder="Ex: 2 pedreiros, 1 encanador, 3 serventes..."
-                        className="font-body"
-                      />
-                    </div>
-
-                    {/* Atividades Executadas — EAP items */}
-                    <div className="space-y-2">
-                      <Label className="font-body">Atividades Executadas (EAP)</Label>
-                      <p className="text-xs text-muted-foreground font-body">Selecione os itens da EAP executados e informe o % de avanço</p>
-                      {eapItensOnly.length === 0 ? (
-                        <p className="text-xs text-muted-foreground font-body italic py-2">Nenhum item de EAP cadastrado para esta obra.</p>
-                      ) : (
-                        <div className="border rounded-md max-h-60 overflow-y-auto">
-                          {eapItensOnly.map(item => {
-                            const selected = form.atividades_eap.find(a => a.eap_item_id === item.id);
-                            return (
-                              <div key={item.id} className="flex items-center gap-3 px-3 py-2 border-b last:border-b-0 hover:bg-muted/30 transition-colors">
-                                <Checkbox
-                                  checked={!!selected}
-                                  onCheckedChange={() => toggleAtividadeEap(item.id)}
-                                />
-                                <span className="flex-1 text-sm font-body text-foreground/80 truncate">
-                                  {item.codigo && <span className="text-muted-foreground mr-1">{item.codigo}</span>}
-                                  {item.descricao}
-                                </span>
-                                {selected && (
-                                  <div className="flex items-center gap-1 shrink-0">
-                                    <Input
-                                      type="number"
-                                      min={0}
-                                      max={100}
-                                      value={selected.avanco_percentual}
-                                      onChange={e => updateAtividadeAvanco(item.id, Number(e.target.value))}
-                                      className="w-16 h-7 text-xs font-body text-center"
-                                    />
-                                    <span className="text-xs text-muted-foreground">%</span>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Observações */}
-                    <div className="space-y-2">
-                      <Label className="font-body">Observações</Label>
-                      <Textarea value={form.observacoes} onChange={e => setForm({ ...form, observacoes: e.target.value })} rows={2} className="font-body" />
-                    </div>
-
-                    <div className="flex justify-end gap-2">
-                      <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} className="font-body">Cancelar</Button>
-                      <Button type="submit" disabled={createMutation.isPending} className="bg-accent text-accent-foreground hover:bg-accent/90 font-body">
-                        {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Registrar'}
-                      </Button>
-                    </div>
-                  </form>
-                </DialogContent>
-              </Dialog>
+              <Button
+                size="sm"
+                className="bg-accent text-accent-foreground hover:bg-accent/90 font-body"
+                onClick={() => navigate(`/diario-obra/novo?obra=${selectedObraId}`)}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Registro
+              </Button>
             )}
           </CardHeader>
           <CardContent>
