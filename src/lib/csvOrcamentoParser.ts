@@ -136,12 +136,50 @@ export function parseCsvOrcamento(csvText: string): ParsedOrcamento {
     }
   }
 
-  // Second pass: promote leaf level-3 groups (with price data and no child items) to items
+  // Second pass: auto-generate missing level 3 groups for items whose L3 prefix doesn't exist
+  const existingGroupCodes = new Set(groups.map(g => g.codigo));
+  const syntheticL3 = new Map<string, OrcamentoGroup>();
+
+  for (const item of items) {
+    // Derive the expected level 3 code from the item code (first 3 segments)
+    const parts = item.codigo.split('.');
+    if (parts.length >= 4) {
+      const expectedL3 = parts.slice(0, 3).join('.');
+      if (!existingGroupCodes.has(expectedL3) && !syntheticL3.has(expectedL3)) {
+        // Find the level 2 parent to derive a description
+        const l2Code = parts.slice(0, 2).join('.');
+        const l2Group = groups.find(g => g.codigo === l2Code);
+        const desc = l2Group ? l2Group.descricao : 'Serviços';
+
+        const synth: OrcamentoGroup = {
+          codigo: expectedL3,
+          descricao: desc,
+          nivel: 3,
+          grupoTipo: 'pacote_trabalho',
+          precoTotal: 0,
+        };
+        syntheticL3.set(expectedL3, synth);
+        existingGroupCodes.add(expectedL3);
+      }
+      // Also fix the item's grupo3Codigo if it's missing or wrong
+      if (!item.grupo3Codigo || item.grupo3Codigo !== expectedL3) {
+        item.grupo3Codigo = expectedL3;
+        // Also fix L1 and L2 if needed
+        if (!item.grupo1Codigo) item.grupo1Codigo = parts[0];
+        if (!item.grupo2Codigo) item.grupo2Codigo = parts.slice(0, 2).join('.');
+      }
+    }
+  }
+
+  // Add synthetic groups
+  for (const g of syntheticL3.values()) {
+    groups.push(g);
+  }
+
+  // Third pass: promote leaf level-3 groups (with price data and no child items) to items
   const itemsByL3 = new Set(items.map(i => i.grupo3Codigo));
-  const leafGroups: OrcamentoGroup[] = [];
   for (const g of groups) {
     if (g.nivel === 3 && !itemsByL3.has(g.codigo) && g.precoTotal > 0) {
-      // This level 3 group has no child items — treat it as an item too
       const l1Code = g.codigo.split('.')[0];
       const l2Code = g.codigo.split('.').slice(0, 2).join('.');
       items.push({
