@@ -1248,6 +1248,7 @@ export type Database = {
           lote: string | null
           obra_id: string
           ordem: number | null
+          pacote: string | null
           parent_id: string | null
           predecessoras: string[] | null
           quantidade: number | null
@@ -1266,6 +1267,7 @@ export type Database = {
           lote?: string | null
           obra_id: string
           ordem?: number | null
+          pacote?: string | null
           parent_id?: string | null
           predecessoras?: string[] | null
           quantidade?: number | null
@@ -1284,6 +1286,7 @@ export type Database = {
           lote?: string | null
           obra_id?: string
           ordem?: number | null
+          pacote?: string | null
           parent_id?: string | null
           predecessoras?: string[] | null
           quantidade?: number | null
