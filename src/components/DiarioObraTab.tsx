@@ -256,6 +256,17 @@ export default function DiarioObraTab({ obraId }: DiarioObraTabProps) {
                 {diario.observacoes && (
                   <p className="text-xs text-muted-foreground font-body italic">{diario.observacoes}</p>
                 )}
+                {/* User and timestamp info */}
+                <div className="flex items-center gap-4 pt-1 border-t border-border/50">
+                  <span className="flex items-center gap-1 text-[11px] text-muted-foreground font-body">
+                    <User className="h-3 w-3" />
+                    {profilesMap[diario.created_by] || 'Usuário desconhecido'}
+                  </span>
+                  <span className="flex items-center gap-1 text-[11px] text-muted-foreground font-body">
+                    <Clock className="h-3 w-3" />
+                    {formatCreatedAt(diario.created_at)}
+                  </span>
+                </div>
               </div>
             ))}
           </div>
