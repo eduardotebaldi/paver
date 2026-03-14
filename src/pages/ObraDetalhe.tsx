@@ -27,11 +27,11 @@ function buildGroupedView(eapItems: EapItem[], mode: GroupMode): GroupedView[] {
   const items = eapItems.filter(i => i.tipo === 'item');
 
   if (mode === 'pacote') {
-    // Group by pacote → sub-group by servico (descricao)
+    // Group by pacote → sub-group by lote (tipo de serviço)
     const pacoteMap = new Map<string, Map<string, EapItem[]>>();
     for (const item of items) {
       const pacote = item.pacote || 'Sem pacote';
-      const servico = item.descricao;
+      const servico = item.lote || 'Sem classificação';
       if (!pacoteMap.has(pacote)) pacoteMap.set(pacote, new Map());
       const servicoMap = pacoteMap.get(pacote)!;
       if (!servicoMap.has(servico)) servicoMap.set(servico, []);
@@ -47,10 +47,10 @@ function buildGroupedView(eapItems: EapItem[], mode: GroupMode): GroupedView[] {
       })),
     }));
   } else {
-    // Group by servico (descricao) → sub-group by pacote
+    // Group by lote (tipo de serviço) → sub-group by pacote
     const servicoMap = new Map<string, Map<string, EapItem[]>>();
     for (const item of items) {
-      const servico = item.descricao;
+      const servico = item.lote || 'Sem classificação';
       const pacote = item.pacote || 'Sem pacote';
       if (!servicoMap.has(servico)) servicoMap.set(servico, new Map());
       const pacoteMap = servicoMap.get(servico)!;
