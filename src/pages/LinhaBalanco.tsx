@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { BarChart3, Building2, Loader2, FolderTree, Layers, Calendar, History, Link2, Check, ChevronsUpDown, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { BarChart3, Building2, Loader2, FolderTree, Layers, Calendar, History, Link2, Check, ChevronsUpDown, ZoomIn, ZoomOut, RotateCcw, Maximize, Minimize } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -421,8 +421,25 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
 
   const [zoomDomain, setZoomDomain] = useState<[number, number] | null>(null);
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
   const activeDomain = zoomDomain || [domainMin, domainMax];
   const weekBands = useMemo(() => getWeekBands(activeDomain[0], activeDomain[1]), [activeDomain]);
+
+  const toggleFullscreen = useCallback(() => {
+    if (!cardRef.current) return;
+    if (!document.fullscreenElement) {
+      cardRef.current.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
+    } else {
+      document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
+    }
+  }, []);
+
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', handler);
+    return () => document.removeEventListener('fullscreenchange', handler);
+  }, []);
 
   const zoomIn = () => {
     const [l, r] = activeDomain;
@@ -493,7 +510,7 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
   };
 
   return (
-    <Card className="h-full flex flex-col">
+    <Card ref={cardRef} className={`flex flex-col ${isFullscreen ? 'h-screen bg-background' : 'h-full'}`}>
       <div className="flex items-center justify-end gap-1 px-4 pt-3">
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={zoomIn} title="Zoom in">
           <ZoomIn className="h-4 w-4" />
@@ -503,6 +520,10 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
         </Button>
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={resetZoom} title="Resetar zoom">
           <RotateCcw className="h-3.5 w-3.5" />
+        </Button>
+        <div className="w-px h-4 bg-border mx-1" />
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={toggleFullscreen} title={isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}>
+          {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
         </Button>
       </div>
       <CardContent className="flex-1 min-h-0 p-2 pt-1">
