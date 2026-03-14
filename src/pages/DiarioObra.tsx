@@ -5,16 +5,12 @@ import { Plus, Loader2, CloudSun, Cloud, CloudRain, Sun, Snowflake, Trash2, Clip
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { fetchObras, fetchDiarios, fetchEapItems, createDiario, deleteDiario, DiarioObra, EapItem } from '@/services/api';
+import { fetchObras, fetchDiarios, fetchEapItems, deleteDiario, DiarioObra, EapItem } from '@/services/api';
 import { supabase } from '@/integrations/supabase/client';
 
 const climaOptions = [
@@ -26,29 +22,6 @@ const climaOptions = [
 ];
 
 const climaLabels: Record<string, string> = Object.fromEntries(climaOptions.map(c => [c.value, c.label]));
-
-interface AtividadeEap {
-  eap_item_id: string;
-  avanco_percentual: number;
-}
-
-interface DiarioFormData {
-  data: string;
-  clima_manha: string;
-  clima_tarde: string;
-  mao_de_obra: string;
-  atividades_eap: AtividadeEap[];
-  observacoes: string;
-}
-
-const emptyForm: DiarioFormData = {
-  data: new Date().toISOString().split('T')[0],
-  clima_manha: 'ensolarado',
-  clima_tarde: 'ensolarado',
-  mao_de_obra: '',
-  atividades_eap: [],
-  observacoes: '',
-};
 
 export default function DiarioObraPage() {
   const { toast } = useToast();
