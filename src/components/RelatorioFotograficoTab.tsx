@@ -303,6 +303,8 @@ function PlantaViewer({
         descricao: descricao || undefined,
         pos_x: pendingPin.x,
         pos_y: pendingPin.y,
+        pacote: fotoPacote || undefined,
+        tipo_servico: fotoTipoServico || undefined,
         created_by: user.id,
       });
       queryClient.invalidateQueries({ queryKey: ['fotos-localizadas', planta.id] });
