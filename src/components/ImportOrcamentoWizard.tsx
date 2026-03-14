@@ -534,7 +534,7 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
       // 3. Insert items in batches
       const batchSize = 200;
       const itemsToInsert = activeItems.map((item, idx) => {
-        const l3 = classifications.get(item.grupo3Codigo) || classifications.get(`orphan_${item.codigo}`);
+        const cls = classifications.get(item.codigo);
         return {
           orcamento_id: orcamentoId,
           obra_id: obraId,
@@ -544,8 +544,8 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
           quantidade: item.quantidade,
           preco_unitario: item.precoUnitario,
           preco_total: item.precoTotal,
-          pacote_trabalho: l3?.pacoteTrabalho || null,
-          tipo_servico: l3?.tipoServico || null,
+          pacote_trabalho: cls?.pacoteTrabalho || null,
+          tipo_servico: cls?.tipoServico || null,
           nivel: 4,
           codigo_pai_n1: item.grupo1Codigo || null,
           codigo_pai_n2: item.grupo2Codigo || null,
