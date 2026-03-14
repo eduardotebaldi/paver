@@ -59,13 +59,31 @@ export default function ObraDetalhe() {
   };
 
   const toggleGroup = (itemId: string) => {
-    setExpandedGroups(prev => {
+    setCollapsedGroups(prev => {
       const next = new Set(prev);
       if (next.has(itemId)) next.delete(itemId);
       else next.add(itemId);
       return next;
     });
   };
+
+  // Group items under their preceding agrupador
+  const groupedEap = (() => {
+    const groups: { agrupador: EapItem; items: EapItem[] }[] = [];
+    let current: { agrupador: EapItem; items: EapItem[] } | null = null;
+    for (const item of eapItems) {
+      if (item.tipo === 'agrupador') {
+        current = { agrupador: item, items: [] };
+        groups.push(current);
+      } else if (current) {
+        current.items.push(item);
+      } else {
+        // items without a preceding agrupador
+        groups.push({ agrupador: item, items: [] });
+      }
+    }
+    return groups;
+  })();
 
   const agrupadores = eapItems.filter(i => i.tipo === 'agrupador');
   const itens = eapItems.filter(i => i.tipo === 'item');
