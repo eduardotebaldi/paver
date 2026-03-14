@@ -1,7 +1,7 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Upload, Loader2, FileSpreadsheet, ChevronRight, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Upload, Loader2, FileSpreadsheet, ChevronRight, ChevronDown, Layers, FolderTree } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +14,60 @@ import { parseEapExcel } from '@/lib/eapParser';
 import DiarioObraTab from '@/components/DiarioObraTab';
 import RelatorioFotograficoTab from '@/components/RelatorioFotograficoTab';
 
+type GroupMode = 'pacote' | 'servico';
+
+interface GroupedView {
+  key: string;
+  label: string;
+  subGroups: { key: string; label: string; items: EapItem[] }[];
+}
+
+function buildGroupedView(eapItems: EapItem[], mode: GroupMode): GroupedView[] {
+  const items = eapItems.filter(i => i.tipo === 'item');
+
+  if (mode === 'pacote') {
+    // Group by pacote → sub-group by servico (descricao)
+    const pacoteMap = new Map<string, Map<string, EapItem[]>>();
+    for (const item of items) {
+      const pacote = item.pacote || 'Sem pacote';
+      const servico = item.descricao;
+      if (!pacoteMap.has(pacote)) pacoteMap.set(pacote, new Map());
+      const servicoMap = pacoteMap.get(pacote)!;
+      if (!servicoMap.has(servico)) servicoMap.set(servico, []);
+      servicoMap.get(servico)!.push(item);
+    }
+    return Array.from(pacoteMap.entries()).map(([pacote, servicoMap]) => ({
+      key: pacote,
+      label: pacote,
+      subGroups: Array.from(servicoMap.entries()).map(([servico, items]) => ({
+        key: `${pacote}::${servico}`,
+        label: servico,
+        items,
+      })),
+    }));
+  } else {
+    // Group by servico (descricao) → sub-group by pacote
+    const servicoMap = new Map<string, Map<string, EapItem[]>>();
+    for (const item of items) {
+      const servico = item.descricao;
+      const pacote = item.pacote || 'Sem pacote';
+      if (!servicoMap.has(servico)) servicoMap.set(servico, new Map());
+      const pacoteMap = servicoMap.get(servico)!;
+      if (!pacoteMap.has(pacote)) pacoteMap.set(pacote, []);
+      pacoteMap.get(pacote)!.push(item);
+    }
+    return Array.from(servicoMap.entries()).map(([servico, pacoteMap]) => ({
+      key: servico,
+      label: servico,
+      subGroups: Array.from(pacoteMap.entries()).map(([pacote, items]) => ({
+        key: `${servico}::${pacote}`,
+        label: pacote,
+        items,
+      })),
+    }));
+  }
+}
+
 export default function ObraDetalhe() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -23,6 +77,7 @@ export default function ObraDetalhe() {
   const canEdit = hasRole('admin') || hasRole('engenharia');
   const fileRef = useRef<HTMLInputElement>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [groupMode, setGroupMode] = useState<GroupMode>('pacote');
 
   const { data: obra, isLoading: loadingObra } = useQuery({
     queryKey: ['obra', id],
@@ -58,34 +113,20 @@ export default function ObraDetalhe() {
     }
   };
 
-  const toggleGroup = (itemId: string) => {
+  const toggleGroup = (key: string) => {
     setCollapsedGroups(prev => {
       const next = new Set(prev);
-      if (next.has(itemId)) next.delete(itemId);
-      else next.add(itemId);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   };
 
-  // Group items under their preceding agrupador
-  const groupedEap = (() => {
-    const groups: { agrupador: EapItem; items: EapItem[] }[] = [];
-    let current: { agrupador: EapItem; items: EapItem[] } | null = null;
-    for (const item of eapItems) {
-      if (item.tipo === 'agrupador') {
-        current = { agrupador: item, items: [] };
-        groups.push(current);
-      } else if (current) {
-        current.items.push(item);
-      } else {
-        // items without a preceding agrupador
-        groups.push({ agrupador: item, items: [] });
-      }
-    }
-    return groups;
-  })();
+  const groupedView = useMemo(
+    () => buildGroupedView(eapItems, groupMode),
+    [eapItems, groupMode]
+  );
 
-  const agrupadores = eapItems.filter(i => i.tipo === 'agrupador');
   const itens = eapItems.filter(i => i.tipo === 'item');
   const avgRealizado = itens.length > 0
     ? itens.reduce((sum, i) => sum + (i.avanco_realizado || 0), 0) / itens.length
@@ -126,13 +167,13 @@ export default function ObraDetalhe() {
         <Card>
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground font-body">Itens da EAP</p>
-            <p className="text-2xl font-bold font-heading">{eapItems.length}</p>
+            <p className="text-2xl font-bold font-heading">{itens.length}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground font-body">Agrupadores</p>
-            <p className="text-2xl font-bold font-heading">{agrupadores.length}</p>
+            <p className="text-sm text-muted-foreground font-body">Grupos</p>
+            <p className="text-2xl font-bold font-heading">{groupedView.length}</p>
           </CardContent>
         </Card>
         <Card>
@@ -155,27 +196,55 @@ export default function ObraDetalhe() {
 
         <TabsContent value="eap" className="mt-4">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
               <CardTitle className="font-heading">Estrutura Analítica (EAP)</CardTitle>
-              {canEdit && (
-                <div>
-                  <input ref={fileRef} type="file" accept=".xlsx,.xls" onChange={handleFileUpload} className="hidden" />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => fileRef.current?.click()}
-                    disabled={importMutation.isPending}
-                    className="font-body"
+              <div className="flex items-center gap-2">
+                {/* Group mode toggle */}
+                <div className="flex items-center rounded-md border border-border overflow-hidden">
+                  <button
+                    onClick={() => { setGroupMode('pacote'); setCollapsedGroups(new Set()); }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-body transition-colors ${
+                      groupMode === 'pacote'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-background text-muted-foreground hover:bg-muted'
+                    }`}
                   >
-                    {importMutation.isPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : (
-                      <Upload className="h-4 w-4 mr-2" />
-                    )}
-                    Importar Excel
-                  </Button>
+                    <FolderTree className="h-3.5 w-3.5" />
+                    Pacote
+                  </button>
+                  <button
+                    onClick={() => { setGroupMode('servico'); setCollapsedGroups(new Set()); }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-body transition-colors ${
+                      groupMode === 'servico'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-background text-muted-foreground hover:bg-muted'
+                    }`}
+                  >
+                    <Layers className="h-3.5 w-3.5" />
+                    Serviço
+                  </button>
                 </div>
-              )}
+
+                {canEdit && (
+                  <div>
+                    <input ref={fileRef} type="file" accept=".xlsx,.xls" onChange={handleFileUpload} className="hidden" />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fileRef.current?.click()}
+                      disabled={importMutation.isPending}
+                      className="font-body"
+                    >
+                      {importMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <Upload className="h-4 w-4 mr-2" />
+                      )}
+                      Importar Excel
+                    </Button>
+                  </div>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               {loadingEap ? (
@@ -191,49 +260,70 @@ export default function ObraDetalhe() {
                 </div>
               ) : (
                 <div className="space-y-1">
-                  {groupedEap.map((group) => (
-                    <div key={group.agrupador.id}>
-                      {group.agrupador.tipo === 'agrupador' ? (
-                        <button
-                          onClick={() => toggleGroup(group.agrupador.id)}
-                          className="w-full flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 hover:bg-muted text-sm font-medium font-heading transition-colors"
-                        >
-                          {collapsedGroups.has(group.agrupador.id) ? (
-                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                          ) : (
-                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                          )}
-                          <span>{group.agrupador.descricao}</span>
-                          {group.items.length > 0 && (
-                            <span className="ml-auto text-xs text-muted-foreground font-body">
-                              {group.items.length} item(s)
-                            </span>
-                          )}
-                          {group.agrupador.lote && <Badge className="text-[10px] bg-accent/10 text-accent border-0">{group.agrupador.lote}</Badge>}
-                        </button>
-                      ) : (
-                        <div className="flex items-center gap-3 px-3 py-2 text-sm font-body">
-                          <span className="flex-1">{group.agrupador.descricao}</span>
-                          <div className="flex items-center gap-2 shrink-0 w-32">
-                            <Progress value={group.agrupador.avanco_realizado || 0} className="h-1.5" />
-                            <span className="text-[10px] text-muted-foreground w-8 text-right">
-                              {(group.agrupador.avanco_realizado || 0).toFixed(0)}%
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                      {group.agrupador.tipo === 'agrupador' && !collapsedGroups.has(group.agrupador.id) && (
-                        <div className="space-y-0.5">
-                          {group.items.map((item) => (
-                            <div key={item.id} className="flex items-center gap-3 px-3 py-2 pl-10 text-sm font-body border-l-2 border-border ml-4">
-                              <span className="flex-1">{item.descricao}</span>
-                              {item.unidade && <span className="text-xs text-muted-foreground">{item.unidade}</span>}
-                              <div className="flex items-center gap-2 shrink-0 w-32">
-                                <Progress value={item.avanco_realizado || 0} className="h-1.5" />
-                                <span className="text-[10px] text-muted-foreground w-8 text-right">
-                                  {(item.avanco_realizado || 0).toFixed(0)}%
+                  {groupedView.map((group) => (
+                    <div key={group.key}>
+                      {/* Level 1: main group */}
+                      <button
+                        onClick={() => toggleGroup(group.key)}
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 hover:bg-muted text-sm font-medium font-heading transition-colors"
+                      >
+                        {collapsedGroups.has(group.key) ? (
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                        )}
+                        <span>{group.label}</span>
+                        <span className="ml-auto text-xs text-muted-foreground font-body">
+                          {group.subGroups.reduce((s, sg) => s + sg.items.length, 0)} item(s)
+                        </span>
+                      </button>
+
+                      {/* Level 2: sub-groups */}
+                      {!collapsedGroups.has(group.key) && (
+                        <div className="ml-4 border-l-2 border-border space-y-0.5">
+                          {group.subGroups.map((sub) => (
+                            <div key={sub.key}>
+                              <button
+                                onClick={() => toggleGroup(sub.key)}
+                                className="w-full flex items-center gap-2 px-3 py-1.5 pl-6 text-sm font-body text-foreground/80 hover:bg-muted/30 rounded-md transition-colors"
+                              >
+                                {collapsedGroups.has(sub.key) ? (
+                                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                                ) : (
+                                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                                )}
+                                <span className="font-medium">{sub.label}</span>
+                                <span className="ml-auto text-xs text-muted-foreground">
+                                  {sub.items.length}
                                 </span>
-                              </div>
+                              </button>
+
+                              {/* Level 3: items */}
+                              {!collapsedGroups.has(sub.key) && (
+                                <div className="space-y-0.5">
+                                  {sub.items.map((item) => (
+                                    <div
+                                      key={item.id}
+                                      className="flex items-center gap-3 px-3 py-1.5 pl-14 text-sm font-body"
+                                    >
+                                      <span className="flex-1 text-muted-foreground">
+                                        {item.lote && (
+                                          <Badge variant="outline" className="text-[10px] mr-2 font-normal">
+                                            {item.lote}
+                                          </Badge>
+                                        )}
+                                        {item.descricao}
+                                      </span>
+                                      <div className="flex items-center gap-2 shrink-0 w-32">
+                                        <Progress value={item.avanco_realizado || 0} className="h-1.5" />
+                                        <span className="text-[10px] text-muted-foreground w-8 text-right">
+                                          {(item.avanco_realizado || 0).toFixed(0)}%
+                                        </span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>

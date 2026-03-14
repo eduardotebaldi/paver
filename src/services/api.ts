@@ -21,6 +21,7 @@ export interface EapItem {
   parent_id?: string;
   codigo?: string;
   descricao: string;
+  pacote?: string;
   lote?: string;
   tipo: 'agrupador' | 'item';
   unidade?: string;

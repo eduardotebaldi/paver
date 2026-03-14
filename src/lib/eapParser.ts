@@ -23,7 +23,6 @@ function parseNumber(val: any): number {
   if (typeof val === 'number') return val;
   const str = String(val).trim().replace(/\s/g, '');
   if (!str || str === '-') return 0;
-  // Handle locale: 1.234,56 → 1234.56
   if (str.includes(',') && str.includes('.')) {
     const lastComma = str.lastIndexOf(',');
     const lastDot = str.lastIndexOf('.');
@@ -55,7 +54,7 @@ function detectHeaderRow(sheet: XLSX.WorkSheet): number {
     }
     if (matchCount >= 2) return r;
   }
-  return 0; // fallback to first row
+  return 0;
 }
 
 export function parseEapExcel(file: File): Promise<Omit<EapItem, 'id' | 'created_at' | 'obra_id'>[]> {
@@ -67,16 +66,14 @@ export function parseEapExcel(file: File): Promise<Omit<EapItem, 'id' | 'created
         const workbook = XLSX.read(data, { type: 'array' });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
 
-        // Detect the actual header row
         const headerRow = detectHeaderRow(sheet);
-        
-        // Convert to JSON starting from the detected header row
         const rows: RawRow[] = XLSX.utils.sheet_to_json(sheet, {
           defval: '',
           range: headerRow,
         });
 
         const items: Omit<EapItem, 'id' | 'created_at' | 'obra_id'>[] = [];
+        let currentPacote = '';
 
         rows.forEach((row, index) => {
           const id = findColumn(row, ['ID']);
@@ -89,15 +86,17 @@ export function parseEapExcel(file: File): Promise<Omit<EapItem, 'id' | 'created
           const avancoPrevisto = findColumn(row, ['Previsto']);
           const avancoRealizado = findColumn(row, ['Realizado']);
 
-          // Skip empty rows or header remnants
           if (!id && !pacote && !servico) return;
-          if (id === 'ID') return; // skip duplicate header
+          if (id === 'ID') return;
 
-          // Agrupador: Serviço is "-" or empty, but has a Pacote name
           const isAgrupador = servico === '-' || servico === '';
           
+          if (isAgrupador) {
+            currentPacote = pacote || lote || `Grupo ${index + 1}`;
+          }
+
           const descricao = isAgrupador
-            ? (pacote || lote || `Grupo ${index + 1}`)
+            ? currentPacote
             : servico;
 
           if (!descricao || descricao === '-') return;
@@ -105,6 +104,7 @@ export function parseEapExcel(file: File): Promise<Omit<EapItem, 'id' | 'created
           items.push({
             codigo: id || undefined,
             descricao,
+            pacote: isAgrupador ? undefined : currentPacote,
             lote: lote || undefined,
             tipo: isAgrupador ? 'agrupador' : 'item',
             unidade: undefined,
