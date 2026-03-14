@@ -1,12 +1,14 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { FileBarChart, Loader2, Download, Filter, FolderTree, Layers, ChevronDown, ChevronRight } from 'lucide-react';
+import { FileBarChart, Loader2, Download, Filter, FolderTree, Layers, ChevronDown, ChevronRight, Check, ChevronsUpDown } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { cn } from '@/lib/utils';
 import { fetchObras, fetchAllEapItems, Obra, EapItem } from '@/services/api';
 
 type GroupMode = 'pacote' | 'servico';
