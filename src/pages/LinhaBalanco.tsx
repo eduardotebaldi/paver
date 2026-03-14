@@ -313,13 +313,30 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
     const map = new Map<string, {
       previstoStarts: number[]; previstoEnds: number[];
       realizadoStarts: number[]; realizadoEnds: number[];
+      avancoPrevistos: number[]; avancoRealizados: number[];
+      quantidades: number[]; quantidadesRealizadas: number[];
+      itemCount: number;
     }>();
     let lastMeasurement = 0;
 
     for (const item of items) {
       const key = mode === 'pacote' ? (item.pacote || 'Sem pacote') : (item.lote || 'Sem classificação');
-      if (!map.has(key)) map.set(key, { previstoStarts: [], previstoEnds: [], realizadoStarts: [], realizadoEnds: [] });
+      if (!map.has(key)) map.set(key, {
+        previstoStarts: [], previstoEnds: [],
+        realizadoStarts: [], realizadoEnds: [],
+        avancoPrevistos: [], avancoRealizados: [],
+        quantidades: [], quantidadesRealizadas: [],
+        itemCount: 0,
+      });
       const entry = map.get(key)!;
+      entry.itemCount++;
+
+      entry.avancoPrevistos.push(item.avanco_previsto || 0);
+      entry.avancoRealizados.push(item.avanco_realizado || 0);
+      if (item.quantidade != null) {
+        entry.quantidades.push(item.quantidade);
+        entry.quantidadesRealizadas.push(item.quantidade * ((item.avanco_realizado || 0) / 100));
+      }
 
       if (item.data_inicio_prevista) entry.previstoStarts.push(new Date(item.data_inicio_prevista + 'T00:00:00').getTime());
       if (item.data_fim_prevista) entry.previstoEnds.push(new Date(item.data_fim_prevista + 'T00:00:00').getTime());
@@ -350,15 +367,22 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
         }
       });
 
+      const avg = (arr: number[]) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+      const sum = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
+
       return {
         name: name.length > 30 ? name.substring(0, 27) + '…' : name,
         fullName: name,
         previsto: pStart != null && pEnd != null ? [pStart, pEnd] as [number, number] : undefined,
         realizado: rStart != null && rEnd != null ? [rStart, rEnd] as [number, number] : undefined,
+        avgAvancoPrevisto: Number(avg(d.avancoPrevistos).toFixed(1)),
+        avgAvancoRealizado: Number(avg(d.avancoRealizados).toFixed(1)),
+        qtdTotal: Number(sum(d.quantidades).toFixed(2)),
+        qtdRealizada: Number(sum(d.quantidadesRealizadas).toFixed(2)),
+        itemCount: d.itemCount,
       };
     });
 
-    // include today in domain
     if (todayTs < dMin) dMin = todayTs;
     if (todayTs > dMax) dMax = todayTs;
 
@@ -372,6 +396,7 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
   }, [items, mode, todayTs]);
 
   const [zoomDomain, setZoomDomain] = useState<[number, number] | null>(null);
+  const [hoveredRow, setHoveredRow] = useState<string | null>(null);
   const activeDomain = zoomDomain || [domainMin, domainMax];
 
   const zoomIn = () => {
@@ -401,6 +426,46 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
       </div>
     );
   }
+
+  // Custom bar shape that shows completion % as filled portion
+  const ProgressBar = (props: any) => {
+    const { x, y, width, height, payload, dataKey } = props;
+    if (width == null || height == null || !payload) return null;
+
+    const pct = dataKey === 'previsto' ? payload.avgAvancoPrevisto : payload.avgAvancoRealizado;
+    const fillColor = dataKey === 'previsto' ? 'hsl(var(--primary))' : 'hsl(var(--accent))';
+    const fillColorDark = dataKey === 'previsto' ? 'hsl(var(--primary))' : 'hsl(var(--accent))';
+    const barW = Math.abs(width);
+    const filledW = barW * (pct / 100);
+    const rx = 3;
+
+    return (
+      <g>
+        {/* Background (unfilled) */}
+        <rect x={Math.min(x, x + width)} y={y} width={barW} height={height} rx={rx} ry={rx}
+          fill={fillColor} opacity={0.25} />
+        {/* Filled portion */}
+        {filledW > 0 && (
+          <rect x={Math.min(x, x + width)} y={y} width={Math.min(filledW, barW)} height={height} rx={rx} ry={rx}
+            fill={fillColorDark} opacity={0.85} />
+        )}
+        {/* % label inside bar if wide enough */}
+        {barW > 40 && (
+          <text
+            x={Math.min(x, x + width) + barW / 2}
+            y={y + height / 2}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fontSize={9}
+            fontWeight={600}
+            fill="hsl(var(--primary-foreground))"
+          >
+            {pct}%
+          </text>
+        )}
+      </g>
+    );
+  };
 
   return (
     <Card className="h-full flex flex-col">
@@ -443,18 +508,60 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
                 const row = payload[0]?.payload;
                 if (!row) return null;
                 return (
-                  <div className="rounded-md border bg-popover px-3 py-2 shadow-md text-xs font-body">
-                    <p className="font-medium mb-1">{row.fullName}</p>
-                    {row.previsto && (
-                      <p className="text-primary">
-                        Previsto: {formatDateFull(row.previsto[0])} → {formatDateFull(row.previsto[1])}
-                      </p>
-                    )}
-                    {row.realizado && (
-                      <p className="text-accent">
-                        Realizado: {formatDateFull(row.realizado[0])} → {formatDateFull(row.realizado[1])}
-                      </p>
-                    )}
+                  <div className="rounded-lg border bg-popover px-4 py-3 shadow-lg text-xs font-body space-y-2 max-w-xs">
+                    <p className="font-heading font-semibold text-sm">{row.fullName}</p>
+
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-muted-foreground">
+                      <span>Itens:</span>
+                      <span className="text-foreground font-medium">{row.itemCount}</span>
+
+                      {row.previsto && (
+                        <>
+                          <span>Início previsto:</span>
+                          <span className="text-foreground">{formatDateFull(row.previsto[0])}</span>
+                          <span>Fim previsto:</span>
+                          <span className="text-foreground">{formatDateFull(row.previsto[1])}</span>
+                        </>
+                      )}
+
+                      {row.realizado && (
+                        <>
+                          <span>Início real:</span>
+                          <span className="text-foreground">{formatDateFull(row.realizado[0])}</span>
+                          <span>Fim real:</span>
+                          <span className="text-foreground">{formatDateFull(row.realizado[1])}</span>
+                        </>
+                      )}
+
+                      <span>Avanço previsto:</span>
+                      <span className="text-primary font-medium">{row.avgAvancoPrevisto}%</span>
+
+                      <span>Avanço realizado:</span>
+                      <span className="text-accent font-medium">{row.avgAvancoRealizado}%</span>
+
+                      {row.qtdTotal > 0 && (
+                        <>
+                          <span>Qtd. total:</span>
+                          <span className="text-foreground">{row.qtdTotal.toLocaleString('pt-BR')}</span>
+                          <span>Qtd. executada:</span>
+                          <span className="text-foreground">{row.qtdRealizada.toLocaleString('pt-BR')}</span>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Mini progress bar */}
+                    <div className="space-y-1 pt-1">
+                      <div className="flex items-center justify-between text-[10px]">
+                        <span className="text-muted-foreground">Conclusão</span>
+                        <span className="font-medium text-foreground">{row.avgAvancoRealizado}%</span>
+                      </div>
+                      <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-accent transition-all"
+                          style={{ width: `${Math.min(row.avgAvancoRealizado, 100)}%` }}
+                        />
+                      </div>
+                    </div>
                   </div>
                 );
               }}
@@ -483,8 +590,8 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
               />
             )}
 
-            <Bar dataKey="previsto" fill="hsl(var(--primary))" barSize={10} radius={[0, 4, 4, 0]} />
-            <Bar dataKey="realizado" fill="hsl(var(--accent))" barSize={10} radius={[0, 4, 4, 0]} />
+            <Bar dataKey="previsto" barSize={12} shape={<ProgressBar dataKey="previsto" />} />
+            <Bar dataKey="realizado" barSize={12} shape={<ProgressBar dataKey="realizado" />} />
           </ComposedChart>
         </ChartContainer>
       </CardContent>
