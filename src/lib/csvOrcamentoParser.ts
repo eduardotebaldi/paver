@@ -136,6 +136,29 @@ export function parseCsvOrcamento(csvText: string): ParsedOrcamento {
     }
   }
 
+  // Second pass: promote leaf level-3 groups (with price data and no child items) to items
+  const itemsByL3 = new Set(items.map(i => i.grupo3Codigo));
+  const leafGroups: OrcamentoGroup[] = [];
+  for (const g of groups) {
+    if (g.nivel === 3 && !itemsByL3.has(g.codigo) && g.precoTotal > 0) {
+      // This level 3 group has no child items — treat it as an item too
+      const l1Code = g.codigo.split('.')[0];
+      const l2Code = g.codigo.split('.').slice(0, 2).join('.');
+      items.push({
+        codigo: g.codigo,
+        descricao: g.descricao,
+        unidade: '',
+        quantidade: 1,
+        precoUnitario: g.precoTotal,
+        precoTotal: g.precoTotal,
+        ativo: true,
+        grupo1Codigo: l1Code,
+        grupo2Codigo: l2Code,
+        grupo3Codigo: g.codigo,
+      });
+    }
+  }
+
   return { groups, items };
 }
 

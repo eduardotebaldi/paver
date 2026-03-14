@@ -15,6 +15,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Dialog,
@@ -168,6 +169,9 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
   // Section toggles (level 1 codes)
   const [enabledSections, setEnabledSections] = useState<Set<string>>(new Set());
 
+  // Individual item toggles (disabled item codigos)
+  const [disabledItems, setDisabledItems] = useState<Set<string>>(new Set());
+
   // Expanded sections in step 2
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
 
@@ -271,10 +275,10 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
     [groups, enabledSections],
   );
 
-  // Active items (belonging to enabled sections)
+  // Active items (belonging to enabled sections AND not individually disabled)
   const activeItems = useMemo(
-    () => items.filter(i => enabledSections.has(i.grupo1Codigo)),
-    [items, enabledSections],
+    () => items.filter(i => enabledSections.has(i.grupo1Codigo) && !disabledItems.has(i.codigo)),
+    [items, enabledSections, disabledItems],
   );
 
   // Total of enabled sections
@@ -350,6 +354,15 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
 
   const toggleSection = (codigo: string) => {
     setEnabledSections(prev => {
+      const next = new Set(prev);
+      if (next.has(codigo)) next.delete(codigo);
+      else next.add(codigo);
+      return next;
+    });
+  };
+
+  const toggleItemEnabled = (codigo: string) => {
+    setDisabledItems(prev => {
       const next = new Set(prev);
       if (next.has(codigo)) next.delete(codigo);
       else next.add(codigo);
@@ -493,6 +506,7 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
     setHeaderLine([]);
     setImportSuccess(false);
     setEnabledSections(new Set());
+    setDisabledItems(new Set());
     setExpandedSections(new Set());
     setClassifications(new Map());
     setDragOver(false);
@@ -623,11 +637,11 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
             </div>
           )}
 
-          {/* STEP 2: Sections — expandable */}
+          {/* STEP 2: Sections — expandable with item-level toggles */}
           {step === 'sections' && (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground font-body">
-                Selecione as seções que deseja importar. Clique na seta para ver o conteúdo de cada seção.
+                Selecione as seções e itens que deseja importar. Use o switch para seções inteiras ou os checkboxes para itens individuais.
               </p>
 
               <div className="flex items-center gap-3 px-3 py-2 bg-muted/50 rounded-md">
@@ -644,7 +658,8 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
                 <div className="space-y-1 pr-4">
                   {level1Groups.map(l1 => {
                     const sectionItems = getItemsForGroup(l1.codigo, 1);
-                    const sectionTotal = sectionItems.reduce((s, i) => s + i.precoTotal, 0);
+                    const sectionActiveItems = sectionItems.filter(i => !disabledItems.has(i.codigo));
+                    const sectionTotal = sectionActiveItems.reduce((s, i) => s + i.precoTotal, 0);
                     const enabled = enabledSections.has(l1.codigo);
                     const expanded = expandedSections.has(l1.codigo);
                     const l2Groups = getChildGroups(l1.codigo, 2);
@@ -673,7 +688,7 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
                           <span className="text-xs text-muted-foreground font-mono w-8">{l1.codigo}</span>
                           <span className="flex-1 text-sm font-body font-medium">{l1.descricao}</span>
                           <span className="text-xs text-muted-foreground font-body">
-                            {sectionItems.length} itens
+                            {sectionActiveItems.length}/{sectionItems.length} itens
                           </span>
                           <span className="text-sm font-body font-medium w-28 text-right">
                             {formatBRL(sectionTotal)}
@@ -687,7 +702,9 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
                               const l2Expanded = expandedSections.has(l2.codigo);
                               const l3Groups = getChildGroups(l2.codigo, 3);
                               const l2Items = getItemsForGroup(l2.codigo, 2);
-                              const l2Total = l2Items.reduce((s, i) => s + i.precoTotal, 0);
+                              const l2ActiveItems = l2Items.filter(i => !disabledItems.has(i.codigo));
+                              const l2Total = l2ActiveItems.reduce((s, i) => s + i.precoTotal, 0);
+                              const hasChildren = l3Groups.length > 0 || l2Items.length > 0;
 
                               return (
                                 <div key={l2.codigo}>
@@ -695,7 +712,7 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
                                     onClick={() => toggleExpanded(l2.codigo)}
                                     className="w-full flex items-center gap-2 px-3 py-1.5 pl-4 text-sm font-body text-foreground/80 hover:bg-muted/30 rounded-md transition-colors"
                                   >
-                                    {l3Groups.length > 0 ? (
+                                    {hasChildren ? (
                                       l2Expanded ? (
                                         <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                                       ) : (
@@ -706,7 +723,7 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
                                     )}
                                     <span className="text-[10px] text-muted-foreground font-mono">{l2.codigo}</span>
                                     <span className="flex-1 text-left">{l2.descricao}</span>
-                                    <span className="text-[10px] text-muted-foreground">{l2Items.length} itens</span>
+                                    <span className="text-[10px] text-muted-foreground">{l2ActiveItems.length}/{l2Items.length} itens</span>
                                     <span className="text-xs text-muted-foreground w-24 text-right">{formatBRL(l2Total)}</span>
                                   </button>
 
@@ -715,7 +732,8 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
                                       {l3Groups.map(l3 => {
                                         const l3Expanded = expandedSections.has(l3.codigo);
                                         const l3Items = getItemsForGroup(l3.codigo, 3);
-                                        const l3Total = l3Items.reduce((s, i) => s + i.precoTotal, 0);
+                                        const l3ActiveItems = l3Items.filter(i => !disabledItems.has(i.codigo));
+                                        const l3Total = l3ActiveItems.reduce((s, i) => s + i.precoTotal, 0);
 
                                         return (
                                           <div key={l3.codigo}>
@@ -734,46 +752,65 @@ export default function ImportOrcamentoWizard({ open, onOpenChange, obraId, onIm
                                               )}
                                               <span className="text-[10px] text-muted-foreground font-mono">{l3.codigo}</span>
                                               <span className="flex-1 text-left">{l3.descricao}</span>
-                                              <span className="text-[10px] text-muted-foreground">{l3Items.length}</span>
+                                              <span className="text-[10px] text-muted-foreground">{l3ActiveItems.length}/{l3Items.length}</span>
                                               <span className="text-[10px] text-muted-foreground w-20 text-right">{formatBRL(l3Total)}</span>
                                             </button>
 
                                             {l3Expanded && l3Items.length > 0 && (
                                               <div className="ml-6 space-y-0">
-                                                {l3Items.map(item => (
-                                                  <div
-                                                    key={item.codigo}
-                                                    className="flex items-center gap-2 px-2 py-0.5 pl-4 text-[10px] font-body text-muted-foreground"
-                                                  >
-                                                    <span className="font-mono">{item.codigo}</span>
-                                                    <span className="flex-1 truncate">{item.descricao}</span>
-                                                    <Badge variant="outline" className="text-[8px] shrink-0">{item.unidade}</Badge>
-                                                    <span className="w-10 text-right">{item.quantidade.toLocaleString('pt-BR')}</span>
-                                                    <span className="w-16 text-right">{formatBRL(item.precoTotal)}</span>
-                                                  </div>
-                                                ))}
+                                                {l3Items.map(item => {
+                                                  const itemEnabled = !disabledItems.has(item.codigo);
+                                                  return (
+                                                    <div
+                                                      key={item.codigo}
+                                                      className={`flex items-center gap-2 px-2 py-0.5 pl-4 text-[10px] font-body transition-opacity ${
+                                                        itemEnabled ? 'text-muted-foreground' : 'text-muted-foreground/40 line-through'
+                                                      }`}
+                                                    >
+                                                      <Checkbox
+                                                        checked={itemEnabled}
+                                                        onCheckedChange={() => toggleItemEnabled(item.codigo)}
+                                                        className="h-3 w-3"
+                                                      />
+                                                      <span className="font-mono">{item.codigo}</span>
+                                                      <span className="flex-1 truncate">{item.descricao}</span>
+                                                      <Badge variant="outline" className="text-[8px] shrink-0">{item.unidade}</Badge>
+                                                      <span className="w-10 text-right">{item.quantidade.toLocaleString('pt-BR')}</span>
+                                                      <span className="w-16 text-right">{formatBRL(item.precoTotal)}</span>
+                                                    </div>
+                                                  );
+                                                })}
                                               </div>
                                             )}
                                           </div>
                                         );
                                       })}
 
-                                      {/* Items directly under level 2 */}
+                                      {/* Items directly under level 2 (no l3 parent) */}
                                       {l2Items
                                         .filter(i => !i.grupo3Codigo || !groups.some(g => g.codigo === i.grupo3Codigo))
-                                        .map(item => (
-                                          <div
-                                            key={item.codigo}
-                                            className="flex items-center gap-2 px-2 py-0.5 pl-4 text-[10px] font-body text-muted-foreground"
-                                          >
-                                            <span className="w-3 shrink-0" />
-                                            <span className="font-mono">{item.codigo}</span>
-                                            <span className="flex-1 truncate">{item.descricao}</span>
-                                            <Badge variant="outline" className="text-[8px] shrink-0">{item.unidade}</Badge>
-                                            <span className="w-10 text-right">{item.quantidade.toLocaleString('pt-BR')}</span>
-                                            <span className="w-16 text-right">{formatBRL(item.precoTotal)}</span>
-                                          </div>
-                                        ))}
+                                        .map(item => {
+                                          const itemEnabled = !disabledItems.has(item.codigo);
+                                          return (
+                                            <div
+                                              key={item.codigo}
+                                              className={`flex items-center gap-2 px-2 py-0.5 pl-4 text-[10px] font-body transition-opacity ${
+                                                itemEnabled ? 'text-muted-foreground' : 'text-muted-foreground/40 line-through'
+                                              }`}
+                                            >
+                                              <Checkbox
+                                                checked={itemEnabled}
+                                                onCheckedChange={() => toggleItemEnabled(item.codigo)}
+                                                className="h-3 w-3"
+                                              />
+                                              <span className="font-mono">{item.codigo}</span>
+                                              <span className="flex-1 truncate">{item.descricao}</span>
+                                              <Badge variant="outline" className="text-[8px] shrink-0">{item.unidade}</Badge>
+                                              <span className="w-10 text-right">{item.quantidade.toLocaleString('pt-BR')}</span>
+                                              <span className="w-16 text-right">{formatBRL(item.precoTotal)}</span>
+                                            </div>
+                                          );
+                                        })}
                                     </div>
                                   )}
                                 </div>
