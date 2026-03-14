@@ -510,7 +510,7 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
   };
 
   return (
-    <Card className="h-full flex flex-col">
+    <Card ref={cardRef} className={`flex flex-col ${isFullscreen ? 'h-screen bg-background' : 'h-full'}`}>
       <div className="flex items-center justify-end gap-1 px-4 pt-3">
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={zoomIn} title="Zoom in">
           <ZoomIn className="h-4 w-4" />
@@ -520,6 +520,10 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
         </Button>
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={resetZoom} title="Resetar zoom">
           <RotateCcw className="h-3.5 w-3.5" />
+        </Button>
+        <div className="w-px h-4 bg-border mx-1" />
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={toggleFullscreen} title={isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}>
+          {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
         </Button>
       </div>
       <CardContent className="flex-1 min-h-0 p-2 pt-1">
