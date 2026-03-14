@@ -1,9 +1,10 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft, ArrowRight, Loader2, Sun, Cloud, CloudSun, CloudRain, Snowflake,
   ChevronDown, ChevronRight, Check, Package, Layers, Search, Camera, Upload, X, Trash2,
+  MapPin, Video, SkipForward,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,9 +16,10 @@ import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { fetchObras, fetchEapItems, createDiario, uploadFile, EapItem } from '@/services/api';
+import { fetchObras, fetchEapItems, fetchPlantas, createDiario, createFotoLocalizada, uploadFile, EapItem, PlantaObra } from '@/services/api';
 import { supabase } from '@/integrations/supabase/client';
 import CollapsibleClassification from '@/components/CollapsibleClassification';
 
@@ -41,6 +43,12 @@ interface FotoDiario {
   file: File;
   preview: string;
   descricao: string;
+  isVideo: boolean;
+  // Pin location (optional)
+  pinned: boolean;
+  plantaId?: string;
+  posX?: number;
+  posY?: number;
 }
 
 interface EapNode {
@@ -71,10 +79,21 @@ export default function DiarioObraNovoPage() {
   const [fotos, setFotos] = useState<FotoDiario[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Pin modal state
+  const [pinModalOpen, setPinModalOpen] = useState(false);
+  const [pinQueue, setPinQueue] = useState<number[]>([]); // indices of fotos awaiting pinning
+  const [currentPinIndex, setCurrentPinIndex] = useState(0);
+  const [selectedPlantaId, setSelectedPlantaId] = useState<string>('');
+
   const { data: obras = [] } = useQuery({ queryKey: ['obras'], queryFn: fetchObras });
   const { data: eapItems = [] } = useQuery({
     queryKey: ['eap', selectedObraId],
     queryFn: () => fetchEapItems(selectedObraId),
+    enabled: !!selectedObraId,
+  });
+  const { data: plantas = [] } = useQuery({
+    queryKey: ['plantas', selectedObraId],
+    queryFn: () => fetchPlantas(selectedObraId),
     enabled: !!selectedObraId,
   });
 
@@ -105,7 +124,6 @@ export default function DiarioObraNovoPage() {
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(item);
     }
-    // Sort groups alphabetically
     return [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   }, [eapItensOnly, groupMode]);
 
@@ -187,19 +205,68 @@ export default function DiarioObraNovoPage() {
     });
   };
 
-  // Photo handlers
+  // Media handlers (photos + videos)
   const handleAddFotos = (files: FileList | null) => {
     if (!files) return;
     const newFotos: FotoDiario[] = Array.from(files).map(file => ({
-      file, preview: URL.createObjectURL(file), descricao: '',
+      file,
+      preview: URL.createObjectURL(file),
+      descricao: '',
+      isVideo: file.type.startsWith('video/'),
+      pinned: false,
     }));
+    const startIndex = fotos.length;
     setFotos(prev => [...prev, ...newFotos]);
+
+    // If there are plantas available, auto-open pinning modal
+    if (plantas.length > 0 && newFotos.length > 0) {
+      const indices = newFotos.map((_, i) => startIndex + i);
+      setPinQueue(indices);
+      setCurrentPinIndex(0);
+      if (!selectedPlantaId && plantas.length > 0) {
+        setSelectedPlantaId(plantas[0].id);
+      }
+      setPinModalOpen(true);
+    }
   };
+
   const removeFoto = (index: number) => {
     setFotos(prev => { const next = [...prev]; URL.revokeObjectURL(next[index].preview); next.splice(index, 1); return next; });
   };
   const updateFotoDescricao = (index: number, descricao: string) => {
     setFotos(prev => prev.map((f, i) => i === index ? { ...f, descricao } : f));
+  };
+
+  // Pin placement handler
+  const handlePinPlace = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (pinQueue.length === 0) return;
+    const fotoIndex = pinQueue[currentPinIndex];
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+
+    setFotos(prev => prev.map((f, i) =>
+      i === fotoIndex ? { ...f, pinned: true, plantaId: selectedPlantaId, posX: x, posY: y } : f
+    ));
+
+    // Move to next in queue
+    if (currentPinIndex < pinQueue.length - 1) {
+      setCurrentPinIndex(prev => prev + 1);
+    } else {
+      setPinModalOpen(false);
+      setPinQueue([]);
+      setCurrentPinIndex(0);
+    }
+  }, [pinQueue, currentPinIndex, selectedPlantaId]);
+
+  const handleSkipPin = () => {
+    if (currentPinIndex < pinQueue.length - 1) {
+      setCurrentPinIndex(prev => prev + 1);
+    } else {
+      setPinModalOpen(false);
+      setPinQueue([]);
+      setCurrentPinIndex(0);
+    }
   };
 
   const selectedCount = atividades.size;
@@ -208,12 +275,17 @@ export default function DiarioObraNovoPage() {
     mutationFn: async () => {
       const atividadesArr = Array.from(atividades.values()).filter(a => a.quantidade_dia > 0 || a.avanco_percentual > 0);
       const fotoUrls: string[] = [];
+
+      // Upload all media files
+      const uploadedFotos: { url: string; foto: FotoDiario }[] = [];
       for (const foto of fotos) {
         const ext = foto.file.name.split('.').pop() || 'jpg';
         const path = `diarios/${selectedObraId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
         const url = await uploadFile('paver-fotos', path, foto.file);
         fotoUrls.push(url);
+        uploadedFotos.push({ url, foto });
       }
+
       const diario = await createDiario({
         obra_id: selectedObraId, data, clima: climaManha, clima_manha: climaManha, clima_tarde: climaTarde,
         mao_de_obra: maoDeObra, fotos: fotoUrls.length > 0 ? fotoUrls : null,
@@ -222,6 +294,23 @@ export default function DiarioObraNovoPage() {
           : 'Sem atividades registradas',
         observacoes: observacoes || undefined, created_by: user!.id,
       } as any);
+
+      // Create paver_fotos_localizadas for pinned files
+      for (const { url, foto } of uploadedFotos) {
+        if (foto.pinned && foto.plantaId && foto.posX != null && foto.posY != null) {
+          await createFotoLocalizada({
+            planta_id: foto.plantaId,
+            obra_id: selectedObraId,
+            foto_url: url,
+            descricao: foto.descricao || undefined,
+            pos_x: foto.posX,
+            pos_y: foto.posY,
+            diario_id: diario.id,
+            created_by: user!.id,
+          });
+        }
+      }
+
       if (atividadesArr.length > 0) {
         const { error } = await supabase.from('paver_diario_atividades').insert(atividadesArr.map(a => ({
           diario_id: diario.id, eap_item_id: a.eap_item_id, avanco_percentual: a.avanco_percentual, quantidade_dia: a.quantidade_dia,
@@ -238,6 +327,7 @@ export default function DiarioObraNovoPage() {
       queryClient.invalidateQueries({ queryKey: ['diarios'] });
       queryClient.invalidateQueries({ queryKey: ['diario-atividades'] });
       queryClient.invalidateQueries({ queryKey: ['eap'] });
+      queryClient.invalidateQueries({ queryKey: ['fotos-localizadas'] });
       toast({ title: 'Diário registrado com sucesso!' });
       navigate('/diario-obra');
     },
@@ -247,6 +337,9 @@ export default function DiarioObraNovoPage() {
   const handleNext = () => setStep(2);
   const handleBack = () => setStep(1);
   const handleSubmit = () => saveMutation.mutate();
+
+  // Get the current planta object for the pin modal
+  const currentPlanta = plantas.find(p => p.id === selectedPlantaId);
 
   // Render a single EAP item row with hierarchy breadcrumb
   const renderItemRow = (item: EapItem, hideClassification = false) => {
@@ -478,7 +571,6 @@ export default function DiarioObraNovoPage() {
                               if (!subGroups.has(subKey)) subGroups.set(subKey, []);
                               subGroups.get(subKey)!.push(item);
                             }
-                            // If only one sub-group (or all empty), render flat
                             // Only render flat if there's a single group with no classificacao
                             if (subGroups.size === 1 && subGroups.has('')) {
                               return items.map(item => renderItemRow(item, false));
@@ -521,39 +613,75 @@ export default function DiarioObraNovoPage() {
           </Card>
         </div>
       ) : (
-        /* ═══ STEP 2: Photos ═══ */
+        /* ═══ STEP 2: Photos & Videos ═══ */
         <div className="space-y-6">
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="font-heading text-base flex items-center gap-2">
-                  <Camera className="h-5 w-5 text-accent" />Registro Fotográfico
+                  <Camera className="h-5 w-5 text-accent" />Registro Fotográfico e Vídeos
                 </CardTitle>
-                <Badge variant="secondary" className="font-body">{fotos.length} foto(s)</Badge>
+                <Badge variant="secondary" className="font-body">{fotos.length} arquivo(s)</Badge>
               </div>
-              <p className="text-xs text-muted-foreground font-body">Adicione fotos do dia. Você pode adicionar uma descrição para cada foto.</p>
+              <p className="text-xs text-muted-foreground font-body">
+                Adicione fotos e vídeos do dia.
+                {plantas.length > 0 && ' Ao selecionar, você poderá marcar a localização na planta da obra.'}
+              </p>
             </CardHeader>
             <CardContent className="space-y-4">
               <div onClick={() => fileInputRef.current?.click()}
                 className="border-2 border-dashed border-border rounded-lg p-8 flex flex-col items-center justify-center cursor-pointer hover:border-accent/50 hover:bg-muted/30 transition-colors">
                 <Upload className="h-8 w-8 text-muted-foreground/50 mb-2" />
-                <p className="text-sm font-body text-muted-foreground">Clique para adicionar fotos</p>
-                <p className="text-xs font-body text-muted-foreground/60 mt-1">JPG, PNG ou WEBP</p>
-                <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={e => handleAddFotos(e.target.files)} />
+                <p className="text-sm font-body text-muted-foreground">Clique para adicionar fotos e vídeos</p>
+                <p className="text-xs font-body text-muted-foreground/60 mt-1">JPG, PNG, WEBP, MP4, MOV</p>
+                <input ref={fileInputRef} type="file" accept="image/*,video/*" multiple className="hidden" onChange={e => handleAddFotos(e.target.files)} />
               </div>
               {fotos.length > 0 && (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {fotos.map((foto, index) => (
                     <div key={index} className="border rounded-lg overflow-hidden group">
                       <div className="aspect-video bg-muted relative">
-                        <img src={foto.preview} alt={`Foto ${index + 1}`} className="w-full h-full object-cover" />
+                        {foto.isVideo ? (
+                          <video src={foto.preview} className="w-full h-full object-cover" muted />
+                        ) : (
+                          <img src={foto.preview} alt={`Foto ${index + 1}`} className="w-full h-full object-cover" />
+                        )}
                         <button type="button" onClick={() => removeFoto(index)}
                           className="absolute top-2 right-2 h-7 w-7 bg-destructive/90 text-destructive-foreground rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
+                        {foto.isVideo && (
+                          <div className="absolute top-2 left-2">
+                            <Badge variant="secondary" className="text-[9px] font-body"><Video className="h-3 w-3 mr-0.5" />Vídeo</Badge>
+                          </div>
+                        )}
+                        {foto.pinned && (
+                          <div className="absolute bottom-2 left-2">
+                            <Badge className="text-[9px] font-body bg-accent text-accent-foreground">
+                              <MapPin className="h-3 w-3 mr-0.5" />Localizado
+                            </Badge>
+                          </div>
+                        )}
+                        {!foto.pinned && plantas.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPinQueue([index]);
+                              setCurrentPinIndex(0);
+                              if (!selectedPlantaId && plantas.length > 0) setSelectedPlantaId(plantas[0].id);
+                              setPinModalOpen(true);
+                            }}
+                            className="absolute bottom-2 left-2"
+                          >
+                            <Badge variant="outline" className="text-[9px] font-body bg-background/80 hover:bg-background cursor-pointer">
+                              <MapPin className="h-3 w-3 mr-0.5" />Marcar no mapa
+                            </Badge>
+                          </button>
+                        )}
                       </div>
                       <div className="p-2">
-                        <Input value={foto.descricao} onChange={e => updateFotoDescricao(index, e.target.value)} placeholder="Descrição da foto (opcional)" className="text-xs font-body h-7" />
+                        <Input value={foto.descricao} onChange={e => updateFotoDescricao(index, e.target.value)} placeholder="Descrição (opcional)" className="text-xs font-body h-7" />
                       </div>
                     </div>
                   ))}
@@ -621,6 +749,147 @@ export default function DiarioObraNovoPage() {
           </div>
         </div>
       )}
+
+      {/* ═══ PIN MODAL ═══ */}
+      <Dialog open={pinModalOpen} onOpenChange={v => { if (!v) { setPinModalOpen(false); setPinQueue([]); setCurrentPinIndex(0); } }}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-heading flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-accent" />
+              Marcar localização na planta
+            </DialogTitle>
+          </DialogHeader>
+
+          {pinQueue.length > 0 && fotos[pinQueue[currentPinIndex]] && (
+            <div className="space-y-4">
+              {/* Current file preview */}
+              <div className="flex items-center gap-4 bg-muted/50 rounded-lg p-3">
+                <div className="h-16 w-16 rounded-md overflow-hidden bg-muted shrink-0">
+                  {fotos[pinQueue[currentPinIndex]].isVideo ? (
+                    <video src={fotos[pinQueue[currentPinIndex]].preview} className="w-full h-full object-cover" muted />
+                  ) : (
+                    <img src={fotos[pinQueue[currentPinIndex]].preview} className="w-full h-full object-cover" alt="" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-body font-medium text-foreground truncate">
+                    {fotos[pinQueue[currentPinIndex]].file.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground font-body">
+                    {fotos[pinQueue[currentPinIndex]].isVideo ? 'Vídeo' : 'Foto'} {currentPinIndex + 1} de {pinQueue.length}
+                  </p>
+                  {fotos[pinQueue[currentPinIndex]].pinned && (
+                    <Badge className="text-[9px] font-body bg-accent text-accent-foreground mt-1">
+                      <MapPin className="h-3 w-3 mr-0.5" />Localizado
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {pinQueue.length > 1 && (
+                    <span className="text-xs text-muted-foreground font-body">{currentPinIndex + 1}/{pinQueue.length}</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Planta selector (if multiple) */}
+              {plantas.length > 1 && (
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs font-body text-muted-foreground whitespace-nowrap">Planta:</Label>
+                  <Select value={selectedPlantaId} onValueChange={setSelectedPlantaId}>
+                    <SelectTrigger className="font-body text-xs h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {plantas.map(p => (
+                        <SelectItem key={p.id} value={p.id} className="font-body text-xs">{p.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Plant image with crosshair */}
+              {currentPlanta && (
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground font-body flex items-center gap-1">
+                    <MapPin className="h-3 w-3" />
+                    Clique na planta para marcar a localização
+                  </p>
+                  <div className="relative inline-block w-full border border-border rounded-lg overflow-hidden">
+                    <img
+                      src={currentPlanta.imagem_url}
+                      alt={currentPlanta.nome}
+                      className="w-full cursor-crosshair"
+                      draggable={false}
+                      onClick={handlePinPlace}
+                    />
+                    {/* Show pin if already placed for current file */}
+                    {fotos[pinQueue[currentPinIndex]]?.pinned &&
+                     fotos[pinQueue[currentPinIndex]]?.plantaId === selectedPlantaId && (
+                      <div
+                        className="absolute w-6 h-6 -ml-3 -mt-6 z-20"
+                        style={{
+                          left: `${fotos[pinQueue[currentPinIndex]].posX}%`,
+                          top: `${fotos[pinQueue[currentPinIndex]].posY}%`,
+                        }}
+                      >
+                        <MapPin className="h-6 w-6 text-accent drop-shadow-md fill-accent/30" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex items-center justify-between pt-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleSkipPin}
+                  className="font-body text-muted-foreground text-xs"
+                >
+                  <SkipForward className="h-3.5 w-3.5 mr-1" />
+                  Pular — sem localização
+                </Button>
+                <div className="flex items-center gap-2">
+                  {currentPinIndex > 0 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPinIndex(prev => prev - 1)}
+                      className="font-body text-xs"
+                    >
+                      <ArrowLeft className="h-3.5 w-3.5 mr-1" />Anterior
+                    </Button>
+                  )}
+                  {fotos[pinQueue[currentPinIndex]]?.pinned && currentPinIndex < pinQueue.length - 1 && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => setCurrentPinIndex(prev => prev + 1)}
+                      className="bg-accent text-accent-foreground hover:bg-accent/90 font-body text-xs"
+                    >
+                      Próximo <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                    </Button>
+                  )}
+                  {fotos[pinQueue[currentPinIndex]]?.pinned && currentPinIndex === pinQueue.length - 1 && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => { setPinModalOpen(false); setPinQueue([]); setCurrentPinIndex(0); }}
+                      className="bg-accent text-accent-foreground hover:bg-accent/90 font-body text-xs"
+                    >
+                      <Check className="h-3.5 w-3.5 mr-1" />Concluir
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
