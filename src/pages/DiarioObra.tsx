@@ -397,7 +397,7 @@ export default function DiarioObraPage() {
                           </Badge>
                         </div>
                         <div className="flex items-center gap-2">
-                          {hasRole('admin') && (
+                          {canModifyDiario(diario) && (
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive">

@@ -576,7 +576,7 @@ function PlantaViewer({
                   </p>
                 </div>
                 <div className="flex gap-1">
-                  {canEdit && (
+                  {canModifyFoto(selectedFoto) && (
                     <Button
                       variant="ghost"
                       size="icon"
