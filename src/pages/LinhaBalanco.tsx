@@ -512,13 +512,25 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
             layout="vertical"
             margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
           >
-            <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+            {/* Alternating week bands */}
+            {weekBands.filter(w => w.odd).map((w, i) => (
+              <ReferenceArea
+                key={`week-${i}`}
+                x1={w.x1}
+                x2={w.x2}
+                fill="hsl(var(--muted))"
+                fillOpacity={0.4}
+                ifOverflow="hidden"
+              />
+            ))}
+            <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
             <XAxis
               type="number"
               domain={activeDomain}
               tickFormatter={formatDateTick}
               fontSize={10}
               scale="time"
+              ticks={weekBands.map(w => w.x1)}
             />
             <YAxis
               type="category"
