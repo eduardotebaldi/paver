@@ -526,6 +526,7 @@ export default function DiarioObraNovoPage() {
                           <span className="truncate text-foreground">
                             {item?.codigo && <span className="font-mono text-muted-foreground mr-1">{item.codigo}</span>}
                             {item?.descricao || 'Item'}
+                            {item?.classificacao_adicional && <CollapsibleClassification text={item.classificacao_adicional} />}
                           </span>
                           <div className="flex items-center gap-2 shrink-0">
                             {a.quantidade_dia > 0 && <span className="text-muted-foreground">+{a.quantidade_dia} {item?.unidade || 'un'}</span>}
