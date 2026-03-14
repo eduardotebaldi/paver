@@ -244,7 +244,16 @@ export default function ObraDetalhe() {
                 </div>
 
                 {canEdit && (
-                  <div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => setImportWizardOpen(true)}
+                      className="font-body"
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      Importar Orçamento
+                    </Button>
                     <input ref={fileRef} type="file" accept=".xlsx,.xls" onChange={handleFileUpload} className="hidden" />
                     <Button
                       variant="outline"
@@ -256,7 +265,7 @@ export default function ObraDetalhe() {
                       {importMutation.isPending ? (
                         <Loader2 className="h-4 w-4 animate-spin mr-2" />
                       ) : (
-                        <Upload className="h-4 w-4 mr-2" />
+                        <FileSpreadsheet className="h-4 w-4 mr-2" />
                       )}
                       Importar Excel
                     </Button>
