@@ -285,28 +285,33 @@ import {
   ReferenceLine,
   ReferenceArea,
   Tooltip,
-  Rectangle,
 } from 'recharts';
-
-
-const chartConfig: ChartConfig = {
-  previsto: { label: 'Previsto', color: 'hsl(var(--primary))' },
-  realizado: { label: 'Realizado', color: 'hsl(var(--accent))' },
-};
 
 const DAY_MS = 86400000;
 const WEEK_MS = DAY_MS * 7;
 
-/** Generate Monday-aligned week intervals covering the given domain */
+const SUB_COLORS = [
+  'hsl(220, 20%, 35%)',
+  'hsl(45, 85%, 48%)',
+  'hsl(280, 55%, 45%)',
+  'hsl(160, 55%, 38%)',
+  'hsl(10, 70%, 50%)',
+  'hsl(200, 65%, 45%)',
+  'hsl(330, 55%, 48%)',
+  'hsl(90, 50%, 38%)',
+  'hsl(30, 75%, 45%)',
+  'hsl(260, 45%, 55%)',
+  'hsl(180, 50%, 40%)',
+  'hsl(350, 60%, 42%)',
+];
+
 function getWeekBands(domainStart: number, domainEnd: number): { x1: number; x2: number; odd: boolean }[] {
-  // Find first Monday at or before domainStart
   const startDate = new Date(domainStart);
-  const day = startDate.getUTCDay(); // 0=Sun
+  const day = startDate.getUTCDay();
   const diffToMonday = day === 0 ? -6 : 1 - day;
   const firstMonday = new Date(domainStart);
   firstMonday.setDate(firstMonday.getDate() + diffToMonday);
   firstMonday.setHours(0, 0, 0, 0);
-
   const bands: { x1: number; x2: number; odd: boolean }[] = [];
   let current = firstMonday.getTime();
   let idx = 0;
@@ -329,90 +334,101 @@ function formatDateFull(ts: number) {
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 }
 
+interface SubBarMeta {
+  name: string;
+  start: number | null;
+  end: number | null;
+  avanco: number;
+  qtdTotal: number;
+  qtdRealizada: number;
+  itemCount: number;
+}
+
 function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem[]; mode: GroupMode; obraName?: string }) {
   const items = eapItems.filter(i => i.tipo === 'item');
   const todayTs = useMemo(() => new Date().setHours(0, 0, 0, 0), []);
 
-  const { chartData, lastMeasurementTs, domainMin, domainMax } = useMemo(() => {
-    const map = new Map<string, {
-      previstoStarts: number[]; previstoEnds: number[];
-      realizadoStarts: number[]; realizadoEnds: number[];
-      avancoPrevistos: number[]; avancoRealizados: number[];
-      quantidades: number[]; quantidadesRealizadas: number[];
+  const { chartData, subCategories, colorMap, lastMeasurementTs, domainMin, domainMax } = useMemo(() => {
+    // Group by primary axis, sub-group by secondary axis
+    const groupMap = new Map<string, Map<string, {
+      starts: number[]; ends: number[];
+      avancos: number[]; qtds: number[]; qtdsRealizadas: number[];
       itemCount: number;
-    }>();
+    }>>();
     let lastMeasurement = 0;
+    const allSubs = new Set<string>();
 
     for (const item of items) {
-      const key = mode === 'pacote' ? (item.pacote || 'Sem pacote') : (item.lote || 'Sem classificação');
-      if (!map.has(key)) map.set(key, {
-        previstoStarts: [], previstoEnds: [],
-        realizadoStarts: [], realizadoEnds: [],
-        avancoPrevistos: [], avancoRealizados: [],
-        quantidades: [], quantidadesRealizadas: [],
-        itemCount: 0,
-      });
-      const entry = map.get(key)!;
+      const groupKey = mode === 'pacote' ? (item.pacote || 'Sem pacote') : (item.lote || 'Sem classificação');
+      const subKey = mode === 'pacote' ? (item.lote || 'Sem classificação') : (item.pacote || 'Sem pacote');
+      allSubs.add(subKey);
+
+      if (!groupMap.has(groupKey)) groupMap.set(groupKey, new Map());
+      const group = groupMap.get(groupKey)!;
+      if (!group.has(subKey)) group.set(subKey, { starts: [], ends: [], avancos: [], qtds: [], qtdsRealizadas: [], itemCount: 0 });
+      const entry = group.get(subKey)!;
       entry.itemCount++;
-
-      entry.avancoPrevistos.push(item.avanco_previsto || 0);
-      entry.avancoRealizados.push(item.avanco_realizado || 0);
+      entry.avancos.push(item.avanco_realizado || 0);
       if (item.quantidade != null) {
-        entry.quantidades.push(item.quantidade);
-        entry.quantidadesRealizadas.push(item.quantidade * ((item.avanco_realizado || 0) / 100));
+        entry.qtds.push(item.quantidade);
+        entry.qtdsRealizadas.push(item.quantidade * ((item.avanco_realizado || 0) / 100));
       }
-
-      if (item.data_inicio_prevista) entry.previstoStarts.push(new Date(item.data_inicio_prevista + 'T00:00:00').getTime());
-      if (item.data_fim_prevista) entry.previstoEnds.push(new Date(item.data_fim_prevista + 'T00:00:00').getTime());
+      if (item.data_inicio_prevista) entry.starts.push(new Date(item.data_inicio_prevista + 'T00:00:00').getTime());
+      if (item.data_fim_prevista) entry.ends.push(new Date(item.data_fim_prevista + 'T00:00:00').getTime());
       if (item.data_inicio_real) {
         const t = new Date(item.data_inicio_real + 'T00:00:00').getTime();
-        entry.realizadoStarts.push(t);
         if (t > lastMeasurement) lastMeasurement = t;
       }
       if (item.data_fim_real) {
         const t = new Date(item.data_fim_real + 'T00:00:00').getTime();
-        entry.realizadoEnds.push(t);
         if (t > lastMeasurement) lastMeasurement = t;
       }
     }
 
+    const sortedSubs = Array.from(allSubs).sort();
+    const cMap: Record<string, string> = {};
+    sortedSubs.forEach((sub, i) => { cMap[sub] = SUB_COLORS[i % SUB_COLORS.length]; });
+
     let dMin = Infinity, dMax = -Infinity;
+    const avg = (arr: number[]) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+    const sum = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
 
-    const data = Array.from(map.entries()).map(([name, d]) => {
-      const pStart = d.previstoStarts.length ? Math.min(...d.previstoStarts) : null;
-      const pEnd = d.previstoEnds.length ? Math.max(...d.previstoEnds) : null;
-      const rStart = d.realizadoStarts.length ? Math.min(...d.realizadoStarts) : null;
-      const rEnd = d.realizadoEnds.length ? Math.max(...d.realizadoEnds) : null;
-
-      [pStart, pEnd, rStart, rEnd].forEach(v => {
-        if (v !== null) {
-          if (v < dMin) dMin = v;
-          if (v > dMax) dMax = v;
-        }
-      });
-
-      const avg = (arr: number[]) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
-      const sum = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
-
-      return {
-        name: name.length > 30 ? name.substring(0, 27) + '…' : name,
-        fullName: name,
-        previsto: pStart != null && pEnd != null ? [pStart, pEnd] as [number, number] : undefined,
-        realizado: rStart != null && rEnd != null ? [rStart, rEnd] as [number, number] : undefined,
-        avgAvancoPrevisto: Number(avg(d.avancoPrevistos).toFixed(1)),
-        avgAvancoRealizado: Number(avg(d.avancoRealizados).toFixed(1)),
-        qtdTotal: Number(sum(d.quantidades).toFixed(2)),
-        qtdRealizada: Number(sum(d.quantidadesRealizadas).toFixed(2)),
-        itemCount: d.itemCount,
+    const data = Array.from(groupMap.entries()).map(([groupName, subMap]) => {
+      const row: Record<string, any> = {
+        name: groupName.length > 25 ? groupName.substring(0, 22) + '…' : groupName,
+        fullName: groupName,
+        _subBars: [] as SubBarMeta[],
       };
+
+      for (const [subName, d] of subMap.entries()) {
+        const start = d.starts.length ? Math.min(...d.starts) : null;
+        const end = d.ends.length ? Math.max(...d.ends) : null;
+        if (start !== null) { if (start < dMin) dMin = start; if (start > dMax) dMax = start; }
+        if (end !== null) { if (end < dMin) dMin = end; if (end > dMax) dMax = end; }
+
+        if (start != null && end != null) {
+          row[subName] = [start, end];
+        }
+        row._subBars.push({
+          name: subName,
+          start, end,
+          avanco: Number(avg(d.avancos).toFixed(1)),
+          qtdTotal: Number(sum(d.qtds).toFixed(2)),
+          qtdRealizada: Number(sum(d.qtdsRealizadas).toFixed(2)),
+          itemCount: d.itemCount,
+        });
+      }
+      return row;
     });
 
     if (todayTs < dMin) dMin = todayTs;
     if (todayTs > dMax) dMax = todayTs;
-
     const pad = Math.max((dMax - dMin) * 0.05, DAY_MS * 7);
+
     return {
       chartData: data,
+      subCategories: sortedSubs,
+      colorMap: cMap,
       lastMeasurementTs: lastMeasurement || null,
       domainMin: dMin === Infinity ? todayTs - DAY_MS * 30 : dMin - pad,
       domainMax: dMax === -Infinity ? todayTs + DAY_MS * 30 : dMax + pad,
@@ -420,7 +436,6 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
   }, [items, mode, todayTs]);
 
   const [zoomDomain, setZoomDomain] = useState<[number, number] | null>(null);
-  const [hoveredRow, setHoveredRow] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const activeDomain = zoomDomain || [domainMin, domainMax];
@@ -447,17 +462,12 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
     const center = (l + r) / 2;
     setZoomDomain([center - range * 0.25, center + range * 0.25]);
   };
-
   const zoomOut = () => {
     const [l, r] = activeDomain;
     const range = r - l;
     const center = (l + r) / 2;
-    setZoomDomain([
-      Math.max(domainMin, center - range),
-      Math.min(domainMax, center + range),
-    ]);
+    setZoomDomain([Math.max(domainMin, center - range), Math.min(domainMax, center + range)]);
   };
-
   const resetZoom = () => setZoomDomain(null);
 
   if (items.length === 0) {
@@ -469,45 +479,54 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
     );
   }
 
-  // Custom bar shape that shows completion % as filled portion
-  const ProgressBar = (props: any) => {
+  // Custom bar shape: shows sub-category name + progress fill
+  const SubBarShape = (props: any) => {
     const { x, y, width, height, payload, dataKey } = props;
     if (width == null || height == null || !payload) return null;
 
-    const pct = dataKey === 'previsto' ? payload.avgAvancoPrevisto : payload.avgAvancoRealizado;
-    const fillColor = dataKey === 'previsto' ? 'hsl(var(--primary))' : 'hsl(var(--accent))';
-    const fillColorDark = dataKey === 'previsto' ? 'hsl(var(--primary))' : 'hsl(var(--accent))';
+    const subBar: SubBarMeta | undefined = payload._subBars?.find((s: SubBarMeta) => s.name === dataKey);
+    if (!subBar) return null;
+
     const barW = Math.abs(width);
+    const barX = Math.min(x, x + width);
+    const fillColor = colorMap[dataKey] || 'hsl(var(--muted-foreground))';
+    const pct = subBar.avanco;
     const filledW = barW * (pct / 100);
-    const rx = 3;
+    const rx = 2;
+
+    // Truncate label to fit
+    const maxChars = Math.max(0, Math.floor(barW / 7));
+    const label = dataKey.length > maxChars ? dataKey.substring(0, maxChars - 1) + '…' : dataKey;
 
     return (
       <g>
-        {/* Background (unfilled) */}
-        <rect x={Math.min(x, x + width)} y={y} width={barW} height={height} rx={rx} ry={rx}
-          fill={fillColor} opacity={0.25} />
-        {/* Filled portion */}
+        {/* Background */}
+        <rect x={barX} y={y} width={barW} height={height} rx={rx} ry={rx}
+          fill={fillColor} opacity={0.3} />
+        {/* Filled progress */}
         {filledW > 0 && (
-          <rect x={Math.min(x, x + width)} y={y} width={Math.min(filledW, barW)} height={height} rx={rx} ry={rx}
-            fill={fillColorDark} opacity={0.85} />
+          <rect x={barX} y={y} width={Math.min(filledW, barW)} height={height} rx={rx} ry={rx}
+            fill={fillColor} opacity={0.9} />
         )}
-        {/* % label inside bar if wide enough */}
+        {/* Label */}
         {barW > 40 && (
-          <text
-            x={Math.min(x, x + width) + barW / 2}
-            y={y + height / 2}
-            textAnchor="middle"
-            dominantBaseline="central"
-            fontSize={9}
-            fontWeight={600}
-            fill="hsl(var(--primary-foreground))"
-          >
-            {pct}%
+          <text x={barX + 5} y={y + height / 2} dominantBaseline="central"
+            fontSize={9} fontWeight={600} fill="white"
+            style={{ textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}>
+            {label}
           </text>
         )}
       </g>
     );
   };
+
+  // Dynamic chart config for legend
+  const dynamicConfig: ChartConfig = {};
+  subCategories.forEach(sub => {
+    dynamicConfig[sub] = { label: sub, color: colorMap[sub] };
+  });
+
+  const subLabel = mode === 'pacote' ? 'Tipo de Serviço' : 'Pacote';
 
   return (
     <Card ref={cardRef} className={`flex flex-col ${isFullscreen ? 'h-screen bg-background' : 'h-full'}`}>
@@ -527,7 +546,7 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
         </Button>
       </div>
       <CardContent className="flex-1 min-h-0 p-2 pt-1">
-        <ChartContainer config={chartConfig} className="h-full w-full">
+        <ChartContainer config={dynamicConfig} className="h-full w-full">
           <ComposedChart
             data={chartData}
             layout="vertical"
@@ -564,68 +583,52 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
               content={({ payload }) => {
                 if (!payload || payload.length === 0) return null;
                 const row = payload[0]?.payload;
-                if (!row) return null;
+                if (!row || !row._subBars) return null;
+                const subs: SubBarMeta[] = row._subBars;
                 return (
-                  <div className="rounded-lg border bg-popover px-4 py-3 shadow-lg text-xs font-body space-y-2 max-w-xs">
+                  <div className="rounded-lg border bg-popover px-4 py-3 shadow-lg text-xs font-body space-y-2 max-w-sm">
                     <p className="font-heading font-semibold text-sm">{row.fullName}</p>
-
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-muted-foreground">
-                      <span>Itens:</span>
-                      <span className="text-foreground font-medium">{row.itemCount}</span>
-
-                      {row.previsto && (
-                        <>
-                          <span>Início previsto:</span>
-                          <span className="text-foreground">{formatDateFull(row.previsto[0])}</span>
-                          <span>Fim previsto:</span>
-                          <span className="text-foreground">{formatDateFull(row.previsto[1])}</span>
-                        </>
-                      )}
-
-                      {row.realizado && (
-                        <>
-                          <span>Início real:</span>
-                          <span className="text-foreground">{formatDateFull(row.realizado[0])}</span>
-                          <span>Fim real:</span>
-                          <span className="text-foreground">{formatDateFull(row.realizado[1])}</span>
-                        </>
-                      )}
-
-                      <span>Avanço previsto:</span>
-                      <span className="text-primary font-medium">{row.avgAvancoPrevisto}%</span>
-
-                      <span>Avanço realizado:</span>
-                      <span className="text-accent font-medium">{row.avgAvancoRealizado}%</span>
-
-                      {row.qtdTotal > 0 && (
-                        <>
-                          <span>Qtd. total:</span>
-                          <span className="text-foreground">{row.qtdTotal.toLocaleString('pt-BR')}</span>
-                          <span>Qtd. executada:</span>
-                          <span className="text-foreground">{row.qtdRealizada.toLocaleString('pt-BR')}</span>
-                        </>
-                      )}
-                    </div>
-
-                    {/* Mini progress bar */}
-                    <div className="space-y-1 pt-1">
-                      <div className="flex items-center justify-between text-[10px]">
-                        <span className="text-muted-foreground">Conclusão</span>
-                        <span className="font-medium text-foreground">{row.avgAvancoRealizado}%</span>
-                      </div>
-                      <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-accent transition-all"
-                          style={{ width: `${Math.min(row.avgAvancoRealizado, 100)}%` }}
-                        />
-                      </div>
+                    <div className="space-y-2">
+                      {subs.map((sub: SubBarMeta) => (
+                        <div key={sub.name} className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0"
+                              style={{ backgroundColor: colorMap[sub.name] }} />
+                            <span className="font-medium text-foreground">{sub.name}</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 pl-4 text-muted-foreground">
+                            {sub.start && sub.end && (
+                              <>
+                                <span>Período:</span>
+                                <span className="text-foreground">{formatDateFull(sub.start)} → {formatDateFull(sub.end)}</span>
+                              </>
+                            )}
+                            <span>Avanço:</span>
+                            <span className="text-foreground font-medium">{sub.avanco}%</span>
+                            {sub.qtdTotal > 0 && (
+                              <>
+                                <span>Qtd:</span>
+                                <span className="text-foreground">{sub.qtdRealizada.toLocaleString('pt-BR')} / {sub.qtdTotal.toLocaleString('pt-BR')}</span>
+                              </>
+                            )}
+                            <span>Itens:</span>
+                            <span className="text-foreground">{sub.itemCount}</span>
+                          </div>
+                          {/* Mini progress */}
+                          <div className="h-1 w-full rounded-full bg-muted overflow-hidden ml-4" style={{ maxWidth: '120px' }}>
+                            <div className="h-full rounded-full transition-all"
+                              style={{ width: `${Math.min(sub.avanco, 100)}%`, backgroundColor: colorMap[sub.name] }} />
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 );
               }}
             />
             <Legend
-              formatter={(value) => chartConfig[value as keyof typeof chartConfig]?.label || value}
+              formatter={(value) => dynamicConfig[value]?.label || value}
+              wrapperStyle={{ fontSize: 10 }}
             />
 
             {/* Today reference line */}
@@ -648,8 +651,13 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
               />
             )}
 
-            <Bar dataKey="previsto" barSize={12} shape={<ProgressBar dataKey="previsto" />} />
-            <Bar dataKey="realizado" barSize={12} shape={<ProgressBar dataKey="realizado" />} />
+            {/* One Bar per sub-category */}
+            {subCategories.map(sub => (
+              <Bar key={sub} dataKey={sub} barSize={14}
+                shape={<SubBarShape dataKey={sub} />}
+                hide={false}
+              />
+            ))}
           </ComposedChart>
         </ChartContainer>
       </CardContent>
