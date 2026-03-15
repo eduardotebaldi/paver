@@ -1263,7 +1263,7 @@ export default function DiarioObraNovoPage() {
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => setCurrentPinIndex(prev => prev - 1)}
+                      onClick={() => { setTempPin(null); setCurrentPinIndex(prev => prev - 1); }}
                       className="font-body text-xs"
                     >
                       <ArrowLeft className="h-3.5 w-3.5 mr-1" />Anterior
