@@ -453,13 +453,21 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
     if (todayTs > dMax) dMax = todayTs;
     const pad = Math.max((dMax - dMin) * 0.05, DAY_MS * 7);
 
+    const finalMin = dMin === Infinity ? todayTs - DAY_MS * 30 : dMin - pad;
+    const finalMax = dMax === -Infinity ? todayTs + DAY_MS * 30 : dMax + pad;
+
+    // Set _allRange to full domain so the Bar spans the entire chart width
+    data.forEach(row => {
+      row._allRange = [finalMin, finalMax];
+    });
+
     return {
       chartData: data,
       subCategories: sortedSubs,
       colorMap: cMap,
       lastMeasurementTs: lastMeasurement || null,
-      domainMin: dMin === Infinity ? todayTs - DAY_MS * 30 : dMin - pad,
-      domainMax: dMax === -Infinity ? todayTs + DAY_MS * 30 : dMax + pad,
+      domainMin: finalMin,
+      domainMax: finalMax,
     };
   }, [items, mode, todayTs]);
 
