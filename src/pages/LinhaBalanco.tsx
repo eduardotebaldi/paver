@@ -608,8 +608,8 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
             {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
           </Button>
         </div>
-        <CardContent className="flex-1 min-h-0 p-2 pt-1">
-          <ChartContainer config={dynamicConfig} className="h-full w-full">
+        <CardContent className="flex-1 min-h-0 p-2 pt-1 overflow-y-auto">
+          <ChartContainer config={dynamicConfig} className="w-full" style={{ height: Math.max(400, chartData.length * 55 + 60) }}>
             <ComposedChart
               data={chartData}
               layout="vertical"
