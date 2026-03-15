@@ -669,13 +669,10 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
                 />
               )}
 
-              {/* One Bar per sub-category */}
-              {subCategories.map(sub => (
-                <Bar key={sub} dataKey={sub} barSize={14}
-                  shape={<SubBarShape dataKey={sub} />}
-                  hide={false}
-                />
-              ))}
+              {/* Single Bar with custom shape rendering all sub-bars */}
+              <Bar dataKey="_allRange" barSize={50}
+                shape={<MultiSubBarShape />}
+              />
             </ComposedChart>
           </ChartContainer>
         </CardContent>
