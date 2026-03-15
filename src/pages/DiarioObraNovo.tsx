@@ -265,9 +265,9 @@ function DxfPinCanvas({
                     if (!parent) return;
                     const onMove = (ev: MouseEvent) => {
                       const rect = parent.getBoundingClientRect();
-                      const x = ((ev.clientX - rect.left) / rect.width) * 100;
-                      const y = ((ev.clientY - rect.top) / rect.height) * 100;
-                      onDragPin?.({ clientX: ev.clientX, clientY: ev.clientY, currentTarget: parent } as any);
+                      const nx = ((ev.clientX - rect.left) / rect.width) * 100;
+                      const ny = ((ev.clientY - rect.top) / rect.height) * 100;
+                      onDragPin?.(nx, ny);
                     };
                     const onUp = () => {
                       document.removeEventListener('mousemove', onMove);
