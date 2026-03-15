@@ -525,35 +525,33 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
   }
 
   // Custom bar shape: renders ALL sub-bars for the row using a single Bar component
+  // _allRange spans the full domain, so x..x+width maps exactly to domainMin..domainMax
   const MultiSubBarShape = (props: any) => {
     const { x, y, width, height, payload } = props;
     if (width == null || height == null || !payload) return null;
 
-    const subBars: SubBarMeta[] = payload._subBars || [];
+    const subBars: SubBarMeta[] = (payload._subBars || []).filter(
+      (s: SubBarMeta) => s.start != null && s.end != null
+    );
     if (subBars.length === 0) return null;
 
-    // We need to convert each sub-bar's [start, end] timestamps to pixel positions
-    // The `x` and `width` correspond to the `_allRange` data key, which spans the full domain
-    // We use the domain to map sub-bar timestamps to x positions
-    const domainStart = activeDomain[0];
-    const domainEnd = activeDomain[1];
-    const domainRange = domainEnd - domainStart;
-    // The full chart area width: x is the left edge of domain, x+width is the right edge
     const chartLeft = Math.min(x, x + width);
     const chartWidth = Math.abs(width);
+    const dStart = activeDomain[0];
+    const dEnd = activeDomain[1];
+    const dRange = dEnd - dStart;
 
-    const tsToX = (ts: number) => chartLeft + ((ts - domainStart) / domainRange) * chartWidth;
+    const tsToX = (ts: number) => chartLeft + ((ts - dStart) / dRange) * chartWidth;
 
-    const barH = Math.min(14, height / subBars.length - 1);
+    const barH = Math.min(14, (height - (subBars.length - 1)) / subBars.length);
     const totalBarHeight = barH * subBars.length + (subBars.length - 1);
     const startY = y + (height - totalBarHeight) / 2;
 
     return (
-      <g style={{ cursor: 'pointer' }} onClick={() => handleBarClick(payload)}>
+      <g style={{ cursor: 'pointer' }}>
         {subBars.map((sub, i) => {
-          if (sub.start == null || sub.end == null) return null;
-          const barX = tsToX(sub.start);
-          const barEndX = tsToX(sub.end);
+          const barX = tsToX(sub.start!);
+          const barEndX = tsToX(sub.end!);
           const barW = Math.max(barEndX - barX, 2);
           const barY = startY + i * (barH + 1);
           const fillColor = colorMap[sub.name] || 'hsl(var(--muted-foreground))';
@@ -565,7 +563,7 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
           const label = sub.name.length > maxChars ? sub.name.substring(0, maxChars - 1) + '…' : sub.name;
 
           return (
-            <g key={sub.name}>
+            <g key={sub.name} onClick={(e) => { e.stopPropagation(); handleBarClick(payload, sub); }}>
               <rect x={barX} y={barY} width={barW} height={barH} rx={rx} ry={rx}
                 fill={fillColor} opacity={0.3} />
               {filledW > 0 && (
