@@ -638,9 +638,10 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
               <YAxis
                 type="category"
                 dataKey="name"
-                width={150}
-                fontSize={11}
+                width={120}
+                fontSize={9}
                 tick={{ fill: 'hsl(var(--foreground))' }}
+                interval={0}
               />
               {/* Disable hover tooltip */}
               <Tooltip content={() => null} />
