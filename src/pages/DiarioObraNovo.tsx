@@ -62,7 +62,7 @@ interface EapNode {
 }
 
 function DxfPinCanvas({
-  plantaUrl, dxfData, dxfLoading, setDxfData, setDxfLoading, onPinPlace, pinned, pinX, pinY,
+  plantaUrl, dxfData, dxfLoading, setDxfData, setDxfLoading, onPinPlace, tempPin, onDragPin,
 }: {
   plantaUrl: string;
   dxfData: DxfSvgData | null;
@@ -70,9 +70,8 @@ function DxfPinCanvas({
   setDxfData: (d: DxfSvgData | null) => void;
   setDxfLoading: (b: boolean) => void;
   onPinPlace: (e: React.MouseEvent<HTMLDivElement>) => void;
-  pinned?: boolean;
-  pinX?: number;
-  pinY?: number;
+  tempPin?: { x: number; y: number } | null;
+  onDragPin?: (x: number, y: number) => void;
 }) {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
