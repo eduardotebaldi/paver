@@ -438,6 +438,13 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
 
         if (start != null && end != null) {
           row[subName] = [start, end];
+          // Track overall range for the single Bar
+          const prevRange = row._allRange as [number, number] | undefined;
+          if (prevRange) {
+            row._allRange = [Math.min(prevRange[0], start), Math.max(prevRange[1], end)];
+          } else {
+            row._allRange = [start, end];
+          }
         }
         row._subBars.push({
           name: subName,
