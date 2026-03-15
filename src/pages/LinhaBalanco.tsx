@@ -506,11 +506,11 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
   };
   const resetZoom = () => setZoomDomain(null);
 
-  // Handle bar click to open detail dialog
-  const handleBarClick = useCallback((data: any) => {
+  // Handle bar click to open detail dialog — optionally filter to a specific sub-bar
+  const handleBarClick = useCallback((data: any, clickedSub?: SubBarMeta) => {
     if (!data || !data._subBars) return;
-    setDetailGroup(data.fullName);
-    setDetailSubs(data._subBars);
+    setDetailGroup(clickedSub ? `${data.fullName} — ${clickedSub.name}` : data.fullName);
+    setDetailSubs(clickedSub ? [clickedSub] : data._subBars);
     setDetailColorMap(colorMap);
     setDetailOpen(true);
   }, [colorMap]);
