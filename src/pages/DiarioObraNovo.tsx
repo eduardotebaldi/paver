@@ -1283,7 +1283,7 @@ export default function DiarioObraNovoPage() {
                     <Button
                       type="button"
                       size="sm"
-                      onClick={() => setCurrentPinIndex(prev => prev + 1)}
+                      onClick={() => { setTempPin(null); setCurrentPinIndex(prev => prev + 1); }}
                       className="bg-accent text-accent-foreground hover:bg-accent/90 font-body text-xs"
                     >
                       Próximo <ArrowRight className="h-3.5 w-3.5 ml-1" />
