@@ -519,43 +519,64 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
     );
   }
 
-  // Custom bar shape: shows sub-category name + progress fill
-  const SubBarShape = (props: any) => {
-    const { x, y, width, height, payload, dataKey } = props;
+  // Custom bar shape: renders ALL sub-bars for the row using a single Bar component
+  const MultiSubBarShape = (props: any) => {
+    const { x, y, width, height, payload } = props;
     if (width == null || height == null || !payload) return null;
 
-    const subBar: SubBarMeta | undefined = payload._subBars?.find((s: SubBarMeta) => s.name === dataKey);
-    if (!subBar) return null;
+    const subBars: SubBarMeta[] = payload._subBars || [];
+    if (subBars.length === 0) return null;
 
-    const barW = Math.abs(width);
-    const barX = Math.min(x, x + width);
-    const fillColor = colorMap[dataKey] || 'hsl(var(--muted-foreground))';
-    const pct = subBar.avanco;
-    const filledW = barW * (pct / 100);
-    const rx = 2;
+    // We need to convert each sub-bar's [start, end] timestamps to pixel positions
+    // The `x` and `width` correspond to the `_allRange` data key, which spans the full domain
+    // We use the domain to map sub-bar timestamps to x positions
+    const domainStart = activeDomain[0];
+    const domainEnd = activeDomain[1];
+    const domainRange = domainEnd - domainStart;
+    // The full chart area width: x is the left edge of domain, x+width is the right edge
+    const chartLeft = Math.min(x, x + width);
+    const chartWidth = Math.abs(width);
 
-    // Truncate label to fit
-    const maxChars = Math.max(0, Math.floor(barW / 7));
-    const label = dataKey.length > maxChars ? dataKey.substring(0, maxChars - 1) + '…' : dataKey;
+    const tsToX = (ts: number) => chartLeft + ((ts - domainStart) / domainRange) * chartWidth;
+
+    const barH = Math.min(14, height / subBars.length - 1);
+    const totalBarHeight = barH * subBars.length + (subBars.length - 1);
+    const startY = y + (height - totalBarHeight) / 2;
 
     return (
       <g style={{ cursor: 'pointer' }} onClick={() => handleBarClick(payload)}>
-        {/* Background */}
-        <rect x={barX} y={y} width={barW} height={height} rx={rx} ry={rx}
-          fill={fillColor} opacity={0.3} />
-        {/* Filled progress */}
-        {filledW > 0 && (
-          <rect x={barX} y={y} width={Math.min(filledW, barW)} height={height} rx={rx} ry={rx}
-            fill={fillColor} opacity={0.9} />
-        )}
-        {/* Label */}
-        {barW > 40 && (
-          <text x={barX + 5} y={y + height / 2} dominantBaseline="central"
-            fontSize={9} fontWeight={600} fill="white"
-            style={{ textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}>
-            {label}
-          </text>
-        )}
+        {subBars.map((sub, i) => {
+          if (sub.start == null || sub.end == null) return null;
+          const barX = tsToX(sub.start);
+          const barEndX = tsToX(sub.end);
+          const barW = Math.max(barEndX - barX, 2);
+          const barY = startY + i * (barH + 1);
+          const fillColor = colorMap[sub.name] || 'hsl(var(--muted-foreground))';
+          const pct = sub.avanco;
+          const filledW = barW * (pct / 100);
+          const rx = 2;
+
+          const maxChars = Math.max(0, Math.floor(barW / 7));
+          const label = sub.name.length > maxChars ? sub.name.substring(0, maxChars - 1) + '…' : sub.name;
+
+          return (
+            <g key={sub.name}>
+              <rect x={barX} y={barY} width={barW} height={barH} rx={rx} ry={rx}
+                fill={fillColor} opacity={0.3} />
+              {filledW > 0 && (
+                <rect x={barX} y={barY} width={Math.min(filledW, barW)} height={barH} rx={rx} ry={rx}
+                  fill={fillColor} opacity={0.9} />
+              )}
+              {barW > 40 && (
+                <text x={barX + 5} y={barY + barH / 2} dominantBaseline="central"
+                  fontSize={9} fontWeight={600} fill="white"
+                  style={{ textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}>
+                  {label}
+                </text>
+              )}
+            </g>
+          );
+        })}
       </g>
     );
   };
