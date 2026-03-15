@@ -1269,7 +1269,17 @@ export default function DiarioObraNovoPage() {
                       <ArrowLeft className="h-3.5 w-3.5 mr-1" />Anterior
                     </Button>
                   )}
-                  {fotos[pinQueue[currentPinIndex]]?.pinned && currentPinIndex < pinQueue.length - 1 && (
+                  {tempPin && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleConfirmPin}
+                      className="bg-accent text-accent-foreground hover:bg-accent/90 font-body text-xs"
+                    >
+                      <Check className="h-3.5 w-3.5 mr-1" />Confirmar localização
+                    </Button>
+                  )}
+                  {fotos[pinQueue[currentPinIndex]]?.pinned && !tempPin && currentPinIndex < pinQueue.length - 1 && (
                     <Button
                       type="button"
                       size="sm"
@@ -1279,7 +1289,7 @@ export default function DiarioObraNovoPage() {
                       Próximo <ArrowRight className="h-3.5 w-3.5 ml-1" />
                     </Button>
                   )}
-                  {fotos[pinQueue[currentPinIndex]]?.pinned && currentPinIndex === pinQueue.length - 1 && (
+                  {fotos[pinQueue[currentPinIndex]]?.pinned && !tempPin && currentPinIndex === pinQueue.length - 1 && (
                     <Button
                       type="button"
                       size="sm"
