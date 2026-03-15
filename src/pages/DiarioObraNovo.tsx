@@ -255,10 +255,28 @@ function DxfPinCanvas({
                   );
                 })}
               </svg>
-              {pinned && pinX != null && pinY != null && (
+              {tempPin && (
                 <div
-                  className="absolute w-6 h-6 -ml-3 -mt-6 z-20 pointer-events-none"
-                  style={{ left: `${pinX}%`, top: `${pinY}%`, transform: `scale(${1 / zoom})` }}
+                  className="absolute w-6 h-6 -ml-3 -mt-6 z-20 cursor-grab active:cursor-grabbing"
+                  style={{ left: `${tempPin.x}%`, top: `${tempPin.y}%`, transform: `scale(${1 / zoom})` }}
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    // Start dragging - subsequent mousemove on parent will reposition
+                    const parent = e.currentTarget.parentElement;
+                    if (!parent) return;
+                    const onMove = (ev: MouseEvent) => {
+                      const rect = parent.getBoundingClientRect();
+                      const x = ((ev.clientX - rect.left) / rect.width) * 100;
+                      const y = ((ev.clientY - rect.top) / rect.height) * 100;
+                      onDragPin?.({ clientX: ev.clientX, clientY: ev.clientY, currentTarget: parent } as any);
+                    };
+                    const onUp = () => {
+                      document.removeEventListener('mousemove', onMove);
+                      document.removeEventListener('mouseup', onUp);
+                    };
+                    document.addEventListener('mousemove', onMove);
+                    document.addEventListener('mouseup', onUp);
+                  }}
                 >
                   <MapPin className="h-6 w-6 text-accent drop-shadow-md fill-accent/30" />
                 </div>
