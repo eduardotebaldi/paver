@@ -547,39 +547,50 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
     const totalBarHeight = barH * subBars.length + (subBars.length - 1);
     const startY = y + (height - totalBarHeight) / 2;
 
+    const clipId = `clip-bars-${payload?.name?.replace(/\s/g, '') || 'x'}`;
+
     return (
       <g style={{ cursor: 'pointer' }}>
-        {subBars.map((sub, i) => {
-          const barX = tsToX(sub.start!);
-          const barEndX = tsToX(sub.end!);
-          const barW = Math.max(barEndX - barX, 2);
-          const barY = startY + i * (barH + 1);
-          const fillColor = colorMap[sub.name] || 'hsl(var(--muted-foreground))';
-          const pct = sub.avanco;
-          const filledW = barW * (pct / 100);
-          const rx = 2;
+        <defs>
+          <clipPath id={clipId}>
+            <rect x={chartLeft} y={y - 2} width={chartWidth} height={height + 4} />
+          </clipPath>
+        </defs>
+        <g clipPath={`url(#${clipId})`}>
+          {subBars.map((sub, i) => {
+            const barX = tsToX(sub.start!);
+            const barEndX = tsToX(sub.end!);
+            const barW = Math.max(barEndX - barX, 2);
+            const barY = startY + i * (barH + 1);
+            const fillColor = colorMap[sub.name] || 'hsl(var(--muted-foreground))';
+            const pct = sub.avanco;
+            const filledW = barW * (pct / 100);
+            const rx = 2;
 
-          const maxChars = Math.max(0, Math.floor(barW / 7));
-          const label = sub.name.length > maxChars ? sub.name.substring(0, maxChars - 1) + '…' : sub.name;
+            const visibleW = Math.max(0, Math.min(barX + barW, chartLeft + chartWidth) - Math.max(barX, chartLeft));
+            const maxChars = Math.max(0, Math.floor(visibleW / 7));
+            const label = sub.name.length > maxChars ? sub.name.substring(0, maxChars - 1) + '…' : sub.name;
+            const labelX = Math.max(barX + 5, chartLeft + 5);
 
-          return (
-            <g key={sub.name} onClick={(e) => { e.stopPropagation(); handleBarClick(payload, sub); }}>
-              <rect x={barX} y={barY} width={barW} height={barH} rx={rx} ry={rx}
-                fill={fillColor} opacity={0.3} />
-              {filledW > 0 && (
-                <rect x={barX} y={barY} width={Math.min(filledW, barW)} height={barH} rx={rx} ry={rx}
-                  fill={fillColor} opacity={0.9} />
-              )}
-              {barW > 40 && (
-                <text x={barX + 5} y={barY + barH / 2} dominantBaseline="central"
-                  fontSize={9} fontWeight={600} fill="white"
-                  style={{ textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}>
-                  {label}
-                </text>
-              )}
-            </g>
-          );
-        })}
+            return (
+              <g key={sub.name} onClick={(e) => { e.stopPropagation(); handleBarClick(payload, sub); }}>
+                <rect x={barX} y={barY} width={barW} height={barH} rx={rx} ry={rx}
+                  fill={fillColor} opacity={0.3} />
+                {filledW > 0 && (
+                  <rect x={barX} y={barY} width={Math.min(filledW, barW)} height={barH} rx={rx} ry={rx}
+                    fill={fillColor} opacity={0.9} />
+                )}
+                {visibleW > 40 && (
+                  <text x={labelX} y={barY + barH / 2} dominantBaseline="central"
+                    fontSize={9} fontWeight={600} fill="white"
+                    style={{ textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}>
+                    {label}
+                  </text>
+                )}
+              </g>
+            );
+          })}
+        </g>
       </g>
     );
   };
