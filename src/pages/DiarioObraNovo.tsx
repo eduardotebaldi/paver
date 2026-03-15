@@ -1166,14 +1166,30 @@ export default function DiarioObraNovoPage() {
                         className="w-full block"
                         draggable={false}
                       />
-                      {/* Show pin if already placed for current file */}
-                      {fotos[pinQueue[currentPinIndex]]?.pinned &&
-                       fotos[pinQueue[currentPinIndex]]?.plantaId === selectedPlantaId && (
+                      {/* Show temporary pin */}
+                      {tempPin && (
                         <div
-                          className="absolute w-6 h-6 -ml-3 -mt-6 z-20 pointer-events-none"
+                          className="absolute w-6 h-6 -ml-3 -mt-6 z-20 cursor-grab active:cursor-grabbing"
                           style={{
-                            left: `${fotos[pinQueue[currentPinIndex]].posX}%`,
-                            top: `${fotos[pinQueue[currentPinIndex]].posY}%`,
+                            left: `${tempPin.x}%`,
+                            top: `${tempPin.y}%`,
+                          }}
+                          onMouseDown={(e) => {
+                            e.stopPropagation();
+                            const parent = e.currentTarget.parentElement;
+                            if (!parent) return;
+                            const onMove = (ev: MouseEvent) => {
+                              const rect = parent.getBoundingClientRect();
+                              const nx = ((ev.clientX - rect.left) / rect.width) * 100;
+                              const ny = ((ev.clientY - rect.top) / rect.height) * 100;
+                              setTempPin({ x: nx, y: ny });
+                            };
+                            const onUp = () => {
+                              document.removeEventListener('mousemove', onMove);
+                              document.removeEventListener('mouseup', onUp);
+                            };
+                            document.addEventListener('mousemove', onMove);
+                            document.addEventListener('mouseup', onUp);
                           }}
                         >
                           <MapPin className="h-6 w-6 text-accent drop-shadow-md fill-accent/30" />
