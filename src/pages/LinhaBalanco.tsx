@@ -425,7 +425,7 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
 
     const data = Array.from(groupMap.entries()).map(([groupName, subMap]) => {
       const row: Record<string, any> = {
-        name: groupName.length > 25 ? groupName.substring(0, 22) + '…' : groupName,
+        name: groupName.length > 18 ? groupName.substring(0, 16) + '…' : groupName,
         fullName: groupName,
         _subBars: [] as SubBarMeta[],
       };
