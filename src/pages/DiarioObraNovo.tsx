@@ -535,6 +535,7 @@ export default function DiarioObraNovoPage() {
 
   const handleSkipPin = () => {
     setSkipConfirming(false);
+    setTempPin(null);
     if (skipTimerRef.current) clearInterval(skipTimerRef.current);
     if (currentPinIndex < pinQueue.length - 1) {
       setCurrentPinIndex(prev => prev + 1);
