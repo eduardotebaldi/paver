@@ -655,7 +655,7 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
 
       {/* Detail dialog - click on bar to open */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent className="max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
+        <DialogContent className="max-w-lg max-h-[80vh] flex flex-col overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-heading text-base">{detailGroup}</DialogTitle>
           </DialogHeader>
