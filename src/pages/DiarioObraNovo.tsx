@@ -1123,7 +1123,7 @@ export default function DiarioObraNovoPage() {
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground font-body flex items-center gap-1">
                     <MapPin className="h-3 w-3" />
-                    Clique na planta para marcar a localização
+                    Clique na planta para marcar · Arraste o pin para ajustar
                   </p>
                   {currentPlanta.imagem_url.match(/\.pdf(\?|$)/i) ? (
                     <div className="bg-muted/50 rounded-lg p-8 text-center">
