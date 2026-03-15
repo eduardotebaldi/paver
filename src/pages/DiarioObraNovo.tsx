@@ -1152,9 +1152,8 @@ export default function DiarioObraNovoPage() {
                       setDxfData={setDxfData}
                       setDxfLoading={setDxfLoading}
                       onPinPlace={handlePinPlace}
-                      pinned={fotos[pinQueue[currentPinIndex]]?.pinned && fotos[pinQueue[currentPinIndex]]?.plantaId === selectedPlantaId}
-                      pinX={fotos[pinQueue[currentPinIndex]]?.posX}
-                      pinY={fotos[pinQueue[currentPinIndex]]?.posY}
+                      tempPin={tempPin}
+                      onDragPin={(x, y) => setTempPin({ x, y })}
                     />
                   ) : (
                     <div
