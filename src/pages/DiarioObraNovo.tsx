@@ -62,7 +62,7 @@ interface EapNode {
 }
 
 function DxfPinCanvas({
-  plantaUrl, dxfData, dxfLoading, setDxfData, setDxfLoading, onPinPlace, pinned, pinX, pinY,
+  plantaUrl, dxfData, dxfLoading, setDxfData, setDxfLoading, onPinPlace, tempPin, onDragPin,
 }: {
   plantaUrl: string;
   dxfData: DxfSvgData | null;
@@ -70,9 +70,8 @@ function DxfPinCanvas({
   setDxfData: (d: DxfSvgData | null) => void;
   setDxfLoading: (b: boolean) => void;
   onPinPlace: (e: React.MouseEvent<HTMLDivElement>) => void;
-  pinned?: boolean;
-  pinX?: number;
-  pinY?: number;
+  tempPin?: { x: number; y: number } | null;
+  onDragPin?: (x: number, y: number) => void;
 }) {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -255,10 +254,28 @@ function DxfPinCanvas({
                   );
                 })}
               </svg>
-              {pinned && pinX != null && pinY != null && (
+              {tempPin && (
                 <div
-                  className="absolute w-6 h-6 -ml-3 -mt-6 z-20 pointer-events-none"
-                  style={{ left: `${pinX}%`, top: `${pinY}%`, transform: `scale(${1 / zoom})` }}
+                  className="absolute w-6 h-6 -ml-3 -mt-6 z-20 cursor-grab active:cursor-grabbing"
+                  style={{ left: `${tempPin.x}%`, top: `${tempPin.y}%`, transform: `scale(${1 / zoom})` }}
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    // Start dragging - subsequent mousemove on parent will reposition
+                    const parent = e.currentTarget.parentElement;
+                    if (!parent) return;
+                    const onMove = (ev: MouseEvent) => {
+                      const rect = parent.getBoundingClientRect();
+                      const nx = ((ev.clientX - rect.left) / rect.width) * 100;
+                      const ny = ((ev.clientY - rect.top) / rect.height) * 100;
+                      onDragPin?.(nx, ny);
+                    };
+                    const onUp = () => {
+                      document.removeEventListener('mousemove', onMove);
+                      document.removeEventListener('mouseup', onUp);
+                    };
+                    document.addEventListener('mousemove', onMove);
+                    document.addEventListener('mouseup', onUp);
+                  }}
                 >
                   <MapPin className="h-6 w-6 text-accent drop-shadow-md fill-accent/30" />
                 </div>
@@ -458,21 +475,33 @@ export default function DiarioObraNovoPage() {
     setFotos(prev => prev.map((f, i) => i === index ? { ...f, descricao } : f));
   };
 
-  // Pin placement handler
+  // Temporary pin position (before confirming)
+  const [tempPin, setTempPin] = useState<{ x: number; y: number } | null>(null);
+  const [isDraggingPin, setIsDraggingPin] = useState(false);
+
+  // Pin placement handler - now just places a temporary pin
   const handlePinPlace = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (pinQueue.length === 0) return;
     // Cancel any active skip confirmation
     setSkipConfirming(false);
     if (skipTimerRef.current) clearInterval(skipTimerRef.current);
 
-    const fotoIndex = pinQueue[currentPinIndex];
     const rect = e.currentTarget.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
 
+    setTempPin({ x, y });
+  }, [pinQueue, currentPinIndex, selectedPlantaId]);
+
+  // Confirm the temporary pin placement
+  const handleConfirmPin = useCallback(() => {
+    if (!tempPin || pinQueue.length === 0) return;
+    const fotoIndex = pinQueue[currentPinIndex];
+
     setFotos(prev => prev.map((f, i) =>
-      i === fotoIndex ? { ...f, pinned: true, plantaId: selectedPlantaId, posX: x, posY: y } : f
+      i === fotoIndex ? { ...f, pinned: true, plantaId: selectedPlantaId, posX: tempPin.x, posY: tempPin.y } : f
     ));
+    setTempPin(null);
 
     // Move to next in queue
     if (currentPinIndex < pinQueue.length - 1) {
@@ -482,7 +511,7 @@ export default function DiarioObraNovoPage() {
       setPinQueue([]);
       setCurrentPinIndex(0);
     }
-  }, [pinQueue, currentPinIndex, selectedPlantaId]);
+  }, [pinQueue, currentPinIndex, selectedPlantaId, tempPin]);
 
   const startSkipConfirmation = () => {
     setSkipConfirming(true);
@@ -506,6 +535,7 @@ export default function DiarioObraNovoPage() {
 
   const handleSkipPin = () => {
     setSkipConfirming(false);
+    setTempPin(null);
     if (skipTimerRef.current) clearInterval(skipTimerRef.current);
     if (currentPinIndex < pinQueue.length - 1) {
       setCurrentPinIndex(prev => prev + 1);
@@ -1094,7 +1124,7 @@ export default function DiarioObraNovoPage() {
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground font-body flex items-center gap-1">
                     <MapPin className="h-3 w-3" />
-                    Clique na planta para marcar a localização
+                    Clique na planta para marcar · Arraste o pin para ajustar
                   </p>
                   {currentPlanta.imagem_url.match(/\.pdf(\?|$)/i) ? (
                     <div className="bg-muted/50 rounded-lg p-8 text-center">
@@ -1123,9 +1153,8 @@ export default function DiarioObraNovoPage() {
                       setDxfData={setDxfData}
                       setDxfLoading={setDxfLoading}
                       onPinPlace={handlePinPlace}
-                      pinned={fotos[pinQueue[currentPinIndex]]?.pinned && fotos[pinQueue[currentPinIndex]]?.plantaId === selectedPlantaId}
-                      pinX={fotos[pinQueue[currentPinIndex]]?.posX}
-                      pinY={fotos[pinQueue[currentPinIndex]]?.posY}
+                      tempPin={tempPin}
+                      onDragPin={(x, y) => setTempPin({ x, y })}
                     />
                   ) : (
                     <div
@@ -1138,14 +1167,30 @@ export default function DiarioObraNovoPage() {
                         className="w-full block"
                         draggable={false}
                       />
-                      {/* Show pin if already placed for current file */}
-                      {fotos[pinQueue[currentPinIndex]]?.pinned &&
-                       fotos[pinQueue[currentPinIndex]]?.plantaId === selectedPlantaId && (
+                      {/* Show temporary pin */}
+                      {tempPin && (
                         <div
-                          className="absolute w-6 h-6 -ml-3 -mt-6 z-20 pointer-events-none"
+                          className="absolute w-6 h-6 -ml-3 -mt-6 z-20 cursor-grab active:cursor-grabbing"
                           style={{
-                            left: `${fotos[pinQueue[currentPinIndex]].posX}%`,
-                            top: `${fotos[pinQueue[currentPinIndex]].posY}%`,
+                            left: `${tempPin.x}%`,
+                            top: `${tempPin.y}%`,
+                          }}
+                          onMouseDown={(e) => {
+                            e.stopPropagation();
+                            const parent = e.currentTarget.parentElement;
+                            if (!parent) return;
+                            const onMove = (ev: MouseEvent) => {
+                              const rect = parent.getBoundingClientRect();
+                              const nx = ((ev.clientX - rect.left) / rect.width) * 100;
+                              const ny = ((ev.clientY - rect.top) / rect.height) * 100;
+                              setTempPin({ x: nx, y: ny });
+                            };
+                            const onUp = () => {
+                              document.removeEventListener('mousemove', onMove);
+                              document.removeEventListener('mouseup', onUp);
+                            };
+                            document.addEventListener('mousemove', onMove);
+                            document.addEventListener('mouseup', onUp);
                           }}
                         >
                           <MapPin className="h-6 w-6 text-accent drop-shadow-md fill-accent/30" />
@@ -1219,23 +1264,33 @@ export default function DiarioObraNovoPage() {
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => setCurrentPinIndex(prev => prev - 1)}
+                      onClick={() => { setTempPin(null); setCurrentPinIndex(prev => prev - 1); }}
                       className="font-body text-xs"
                     >
                       <ArrowLeft className="h-3.5 w-3.5 mr-1" />Anterior
                     </Button>
                   )}
-                  {fotos[pinQueue[currentPinIndex]]?.pinned && currentPinIndex < pinQueue.length - 1 && (
+                  {tempPin && (
                     <Button
                       type="button"
                       size="sm"
-                      onClick={() => setCurrentPinIndex(prev => prev + 1)}
+                      onClick={handleConfirmPin}
+                      className="bg-accent text-accent-foreground hover:bg-accent/90 font-body text-xs"
+                    >
+                      <Check className="h-3.5 w-3.5 mr-1" />Confirmar localização
+                    </Button>
+                  )}
+                  {fotos[pinQueue[currentPinIndex]]?.pinned && !tempPin && currentPinIndex < pinQueue.length - 1 && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => { setTempPin(null); setCurrentPinIndex(prev => prev + 1); }}
                       className="bg-accent text-accent-foreground hover:bg-accent/90 font-body text-xs"
                     >
                       Próximo <ArrowRight className="h-3.5 w-3.5 ml-1" />
                     </Button>
                   )}
-                  {fotos[pinQueue[currentPinIndex]]?.pinned && currentPinIndex === pinQueue.length - 1 && (
+                  {fotos[pinQueue[currentPinIndex]]?.pinned && !tempPin && currentPinIndex === pinQueue.length - 1 && (
                     <Button
                       type="button"
                       size="sm"
