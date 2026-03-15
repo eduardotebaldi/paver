@@ -458,21 +458,33 @@ export default function DiarioObraNovoPage() {
     setFotos(prev => prev.map((f, i) => i === index ? { ...f, descricao } : f));
   };
 
-  // Pin placement handler
+  // Temporary pin position (before confirming)
+  const [tempPin, setTempPin] = useState<{ x: number; y: number } | null>(null);
+  const [isDraggingPin, setIsDraggingPin] = useState(false);
+
+  // Pin placement handler - now just places a temporary pin
   const handlePinPlace = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (pinQueue.length === 0) return;
     // Cancel any active skip confirmation
     setSkipConfirming(false);
     if (skipTimerRef.current) clearInterval(skipTimerRef.current);
 
-    const fotoIndex = pinQueue[currentPinIndex];
     const rect = e.currentTarget.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
 
+    setTempPin({ x, y });
+  }, [pinQueue, currentPinIndex, selectedPlantaId]);
+
+  // Confirm the temporary pin placement
+  const handleConfirmPin = useCallback(() => {
+    if (!tempPin || pinQueue.length === 0) return;
+    const fotoIndex = pinQueue[currentPinIndex];
+
     setFotos(prev => prev.map((f, i) =>
-      i === fotoIndex ? { ...f, pinned: true, plantaId: selectedPlantaId, posX: x, posY: y } : f
+      i === fotoIndex ? { ...f, pinned: true, plantaId: selectedPlantaId, posX: tempPin.x, posY: tempPin.y } : f
     ));
+    setTempPin(null);
 
     // Move to next in queue
     if (currentPinIndex < pinQueue.length - 1) {
@@ -482,7 +494,7 @@ export default function DiarioObraNovoPage() {
       setPinQueue([]);
       setCurrentPinIndex(0);
     }
-  }, [pinQueue, currentPinIndex, selectedPlantaId]);
+  }, [pinQueue, currentPinIndex, selectedPlantaId, tempPin]);
 
   const startSkipConfirmation = () => {
     setSkipConfirming(true);
