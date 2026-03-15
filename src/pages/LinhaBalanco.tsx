@@ -666,7 +666,7 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
               )}
 
               {/* Single Bar with custom shape rendering all sub-bars */}
-              <Bar dataKey="_allRange" barSize={50}
+              <Bar dataKey="_allRange" barSize={50} fill="transparent"
                 shape={<MultiSubBarShape />}
               />
             </ComposedChart>
