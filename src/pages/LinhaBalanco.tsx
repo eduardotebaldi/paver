@@ -436,16 +436,6 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
         if (start !== null) { if (start < dMin) dMin = start; if (start > dMax) dMax = start; }
         if (end !== null) { if (end < dMin) dMin = end; if (end > dMax) dMax = end; }
 
-        if (start != null && end != null) {
-          row[subName] = [start, end];
-          // Track overall range for the single Bar
-          const prevRange = row._allRange as [number, number] | undefined;
-          if (prevRange) {
-            row._allRange = [Math.min(prevRange[0], start), Math.max(prevRange[1], end)];
-          } else {
-            row._allRange = [start, end];
-          }
-        }
         row._subBars.push({
           name: subName,
           start, end,
@@ -463,13 +453,21 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
     if (todayTs > dMax) dMax = todayTs;
     const pad = Math.max((dMax - dMin) * 0.05, DAY_MS * 7);
 
+    const finalMin = dMin === Infinity ? todayTs - DAY_MS * 30 : dMin - pad;
+    const finalMax = dMax === -Infinity ? todayTs + DAY_MS * 30 : dMax + pad;
+
+    // Set _allRange to full domain so the Bar spans the entire chart width
+    data.forEach(row => {
+      row._allRange = [finalMin, finalMax];
+    });
+
     return {
       chartData: data,
       subCategories: sortedSubs,
       colorMap: cMap,
       lastMeasurementTs: lastMeasurement || null,
-      domainMin: dMin === Infinity ? todayTs - DAY_MS * 30 : dMin - pad,
-      domainMax: dMax === -Infinity ? todayTs + DAY_MS * 30 : dMax + pad,
+      domainMin: finalMin,
+      domainMax: finalMax,
     };
   }, [items, mode, todayTs]);
 
@@ -508,11 +506,11 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
   };
   const resetZoom = () => setZoomDomain(null);
 
-  // Handle bar click to open detail dialog
-  const handleBarClick = useCallback((data: any) => {
+  // Handle bar click to open detail dialog — optionally filter to a specific sub-bar
+  const handleBarClick = useCallback((data: any, clickedSub?: SubBarMeta) => {
     if (!data || !data._subBars) return;
-    setDetailGroup(data.fullName);
-    setDetailSubs(data._subBars);
+    setDetailGroup(clickedSub ? `${data.fullName} — ${clickedSub.name}` : data.fullName);
+    setDetailSubs(clickedSub ? [clickedSub] : data._subBars);
     setDetailColorMap(colorMap);
     setDetailOpen(true);
   }, [colorMap]);
@@ -527,35 +525,33 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
   }
 
   // Custom bar shape: renders ALL sub-bars for the row using a single Bar component
+  // _allRange spans the full domain, so x..x+width maps exactly to domainMin..domainMax
   const MultiSubBarShape = (props: any) => {
     const { x, y, width, height, payload } = props;
     if (width == null || height == null || !payload) return null;
 
-    const subBars: SubBarMeta[] = payload._subBars || [];
+    const subBars: SubBarMeta[] = (payload._subBars || []).filter(
+      (s: SubBarMeta) => s.start != null && s.end != null
+    );
     if (subBars.length === 0) return null;
 
-    // We need to convert each sub-bar's [start, end] timestamps to pixel positions
-    // The `x` and `width` correspond to the `_allRange` data key, which spans the full domain
-    // We use the domain to map sub-bar timestamps to x positions
-    const domainStart = activeDomain[0];
-    const domainEnd = activeDomain[1];
-    const domainRange = domainEnd - domainStart;
-    // The full chart area width: x is the left edge of domain, x+width is the right edge
     const chartLeft = Math.min(x, x + width);
     const chartWidth = Math.abs(width);
+    const dStart = activeDomain[0];
+    const dEnd = activeDomain[1];
+    const dRange = dEnd - dStart;
 
-    const tsToX = (ts: number) => chartLeft + ((ts - domainStart) / domainRange) * chartWidth;
+    const tsToX = (ts: number) => chartLeft + ((ts - dStart) / dRange) * chartWidth;
 
-    const barH = Math.min(14, height / subBars.length - 1);
+    const barH = Math.min(14, (height - (subBars.length - 1)) / subBars.length);
     const totalBarHeight = barH * subBars.length + (subBars.length - 1);
     const startY = y + (height - totalBarHeight) / 2;
 
     return (
-      <g style={{ cursor: 'pointer' }} onClick={() => handleBarClick(payload)}>
+      <g style={{ cursor: 'pointer' }}>
         {subBars.map((sub, i) => {
-          if (sub.start == null || sub.end == null) return null;
-          const barX = tsToX(sub.start);
-          const barEndX = tsToX(sub.end);
+          const barX = tsToX(sub.start!);
+          const barEndX = tsToX(sub.end!);
           const barW = Math.max(barEndX - barX, 2);
           const barY = startY + i * (barH + 1);
           const fillColor = colorMap[sub.name] || 'hsl(var(--muted-foreground))';
@@ -567,7 +563,7 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
           const label = sub.name.length > maxChars ? sub.name.substring(0, maxChars - 1) + '…' : sub.name;
 
           return (
-            <g key={sub.name}>
+            <g key={sub.name} onClick={(e) => { e.stopPropagation(); handleBarClick(payload, sub); }}>
               <rect x={barX} y={barY} width={barW} height={barH} rx={rx} ry={rx}
                 fill={fillColor} opacity={0.3} />
               {filledW > 0 && (
@@ -670,7 +666,7 @@ function LinhaBalancoFullChart({ eapItems, mode, obraName }: { eapItems: EapItem
               )}
 
               {/* Single Bar with custom shape rendering all sub-bars */}
-              <Bar dataKey="_allRange" barSize={50}
+              <Bar dataKey="_allRange" barSize={50} fill="transparent"
                 shape={<MultiSubBarShape />}
               />
             </ComposedChart>
