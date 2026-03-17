@@ -294,7 +294,7 @@ export default function DxfPlantaViewer({ planta, obraId, canEdit, onClose, visi
         <div
           ref={svgContainerRef}
           className="flex-1 overflow-hidden border border-border rounded-lg bg-muted/20 relative"
-          style={{ height: '55vh' }}
+          style={{ height: '65vh', minHeight: '400px' }}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
