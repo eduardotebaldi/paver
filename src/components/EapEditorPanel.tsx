@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { fetchEapItems, type EapItem } from '@/services/api';
 import { updateEapItem, deleteEapItem, insertSingleEapItem } from '@/services/eapApi';
+import { cn } from '@/lib/utils';
 
 interface Props {
   open: boolean;
@@ -45,6 +46,7 @@ export default function EapEditorPanel({ open, onOpenChange, obraId, obraNome }:
   const [saving, setSaving] = useState(false);
   const [addingItem, setAddingItem] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [groupBy, setGroupBy] = useState<'pacote' | 'lote'>('pacote');
 
   // New item form
   const [newItem, setNewItem] = useState({
@@ -72,16 +74,17 @@ export default function EapEditorPanel({ open, onOpenChange, obraId, obraNome }:
     );
   }, [items, search]);
 
-  // Group by pacote
+  // Group by pacote or lote (serviço)
   const grouped = useMemo(() => {
+    const noGroupLabel = groupBy === 'pacote' ? 'Sem pacote' : 'Sem serviço';
     const map = new Map<string, typeof filtered>();
     for (const item of filtered) {
-      const key = item.pacote || 'Sem pacote';
+      const key = (groupBy === 'pacote' ? item.pacote : item.lote) || noGroupLabel;
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(item);
     }
     return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
-  }, [filtered]);
+  }, [filtered, groupBy]);
 
   // Unique values for autocomplete hints
   const uniquePacotes = useMemo(() => [...new Set(items.map(i => i.pacote).filter(Boolean))].sort(), [items]);
@@ -193,6 +196,32 @@ export default function EapEditorPanel({ open, onOpenChange, obraId, obraNome }:
               onChange={e => setSearch(e.target.value)}
               className="pl-8 h-8 text-xs font-body"
             />
+          </div>
+          <div className="flex items-center border rounded-md h-8 text-xs font-body overflow-hidden shrink-0">
+            <button
+              className={cn(
+                'px-2.5 h-full transition-colors',
+                groupBy === 'pacote'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'hover:bg-muted'
+              )}
+              onClick={() => { setGroupBy('pacote'); setCollapsedGroups(new Set()); }}
+            >
+              <Package className="h-3.5 w-3.5 inline mr-1" />
+              Pacote
+            </button>
+            <button
+              className={cn(
+                'px-2.5 h-full transition-colors',
+                groupBy === 'lote'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'hover:bg-muted'
+              )}
+              onClick={() => { setGroupBy('lote'); setCollapsedGroups(new Set()); }}
+            >
+              <Layers className="h-3.5 w-3.5 inline mr-1" />
+              Serviço
+            </button>
           </div>
           <Button
             size="sm"
