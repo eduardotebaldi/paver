@@ -45,6 +45,7 @@ export default function EapEditorPanel({ open, onOpenChange, obraId, obraNome }:
   const [saving, setSaving] = useState(false);
   const [addingItem, setAddingItem] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [groupBy, setGroupBy] = useState<'pacote' | 'lote'>('pacote');
 
   // New item form
   const [newItem, setNewItem] = useState({
