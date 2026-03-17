@@ -599,12 +599,11 @@ export default function DiarioObraNovoPage() {
         })));
         if (error) throw error;
 
-        // Recalculate avanco_realizado from sum of ALL measurements for each item
+        // Update data_inicio_real / data_fim_real (avanco_realizado is computed dynamically)
         for (const a of atividadesArr) {
           const item = eapItensOnly.find(i => i.id === a.eap_item_id);
           const totalQtd = item?.quantidade || 0;
 
-          // Sum all quantidade_dia from all diários for this item
           const { data: allMeasurements } = await supabase
             .from('paver_diario_atividades')
             .select('quantidade_dia')
@@ -615,7 +614,7 @@ export default function DiarioObraNovoPage() {
             ? Math.min(100, Math.round((sumQtdDia / totalQtd) * 10000) / 100)
             : a.avanco_percentual;
 
-          const updateFields: Record<string, any> = { avanco_realizado: newAvanco };
+          const updateFields: Record<string, any> = {};
 
           // Auto-set data_inicio_real on first measurement
           if (item && !item.data_inicio_real && newAvanco > 0) {
@@ -627,8 +626,10 @@ export default function DiarioObraNovoPage() {
             updateFields.data_fim_real = data;
           }
 
-          const { error: updErr } = await supabase.from('paver_eap_items').update(updateFields).eq('id', a.eap_item_id);
-          if (updErr) console.error('Failed to update EAP item:', updErr);
+          if (Object.keys(updateFields).length > 0) {
+            const { error: updErr } = await supabase.from('paver_eap_items').update(updateFields).eq('id', a.eap_item_id);
+            if (updErr) console.error('Failed to update EAP item:', updErr);
+          }
         }
       }
       return diario;
