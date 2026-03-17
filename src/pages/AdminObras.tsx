@@ -16,6 +16,7 @@ import { fetchObras, createObra, updateObra, deleteObra, fetchEapItems, insertEa
 import { parseEapExcel } from '@/lib/eapParser';
 import ImportOrcamentoWizard from '@/components/ImportOrcamentoWizard';
 import EapItemEditModal from '@/components/EapItemEditModal';
+import EapEditorPanel from '@/components/EapEditorPanel';
 import type { EapItem } from '@/services/api';
 import { updateEapItem } from '@/services/eapApi';
 
@@ -72,6 +73,10 @@ export default function AdminObras() {
   // DXF upload
   const [dxfUploadObraId, setDxfUploadObraId] = useState<string>('');
   const [dxfUploading, setDxfUploading] = useState(false);
+
+  // EAP editor panel
+  const [editorObraId, setEditorObraId] = useState<string>('');
+  const [editorObraNome, setEditorObraNome] = useState<string>('');
 
   const { data: obras = [], isLoading } = useQuery({
     queryKey: ['obras'],
@@ -469,7 +474,10 @@ export default function AdminObras() {
                         <Pencil className="h-3 w-3 mr-1" /> Editar
                       </Button>
                       <Button size="sm" variant="outline" className="h-7 text-xs font-body" onClick={() => { setImportObraId(obra.id); setImportWizardOpen(true); }}>
-                        <Upload className="h-3 w-3 mr-1" /> Orçamento
+                        <Upload className="h-3 w-3 mr-1" /> Importar Orç.
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-7 text-xs font-body" onClick={() => { setEditorObraId(obra.id); setEditorObraNome(obra.nome); }}>
+                        <FileSpreadsheet className="h-3 w-3 mr-1" /> Editar Orç.
                       </Button>
                       {!planta ? (
                         <Button
@@ -548,6 +556,13 @@ export default function AdminObras() {
           item={editingItem}
           allItems={editEapItems}
           onSave={handleSaveItem}
+        />
+
+        <EapEditorPanel
+          open={!!editorObraId}
+          onOpenChange={(open) => { if (!open) { setEditorObraId(''); setEditorObraNome(''); } }}
+          obraId={editorObraId}
+          obraNome={editorObraNome}
         />
       </div>
     </TooltipProvider>
