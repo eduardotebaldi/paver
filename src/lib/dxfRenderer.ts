@@ -17,7 +17,7 @@ export interface DxfSvgData {
 // AutoCAD Color Index (ACI) → hex color (subset of common colors)
 const ACI_COLORS: Record<number, string> = {
   0: '#000000', 1: '#FF0000', 2: '#FFFF00', 3: '#00FF00', 4: '#00FFFF',
-  5: '#0000FF', 6: '#FF00FF', 7: '#FFFFFF', 8: '#808080', 9: '#C0C0C0',
+  5: '#0000FF', 6: '#FF00FF', 7: 'hsl(var(--foreground))', 8: '#808080', 9: '#C0C0C0',
   10: '#FF0000', 11: '#FF7F7F', 12: '#CC0000', 14: '#990000',
   30: '#FF7F00', 40: '#FFFF00', 50: '#7FFF00', 60: '#00FF00',
   70: '#00FF7F', 80: '#00FFFF', 90: '#007FFF', 100: '#0000FF',

@@ -1156,8 +1156,8 @@ export default function DiarioObraNovoPage() {
 
       {/* ═══ PIN MODAL ═══ */}
       <Dialog open={pinModalOpen} onOpenChange={() => { /* prevent close by clicking outside */ }}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto [&>button:last-child]:hidden" onPointerDownOutside={e => e.preventDefault()} onEscapeKeyDown={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
-          <DialogHeader>
+        <DialogContent className="max-w-[95vw] w-[95vw] max-h-[95vh] !flex !flex-col overflow-hidden p-4 [&>button:last-child]:hidden" onPointerDownOutside={e => e.preventDefault()} onEscapeKeyDown={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
+          <DialogHeader className="shrink-0">
             <DialogTitle className="font-heading flex items-center gap-2">
               <MapPin className="h-5 w-5 text-accent" />
               Marcar localização na planta
@@ -1165,9 +1165,9 @@ export default function DiarioObraNovoPage() {
           </DialogHeader>
 
           {pinQueue.length > 0 && fotos[pinQueue[currentPinIndex]] && (
-            <div className="space-y-4">
+            <div className="flex flex-1 min-h-0 flex-col gap-4 overflow-y-auto pr-1">
               {/* Current file preview */}
-              <div className="flex items-center gap-4 bg-muted/50 rounded-lg p-3">
+              <div className="flex items-center gap-4 rounded-lg bg-muted/50 p-3">
                 <div className="h-16 w-16 rounded-md overflow-hidden bg-muted shrink-0">
                   {fotos[pinQueue[currentPinIndex]].isVideo ? (
                     <video src={fotos[pinQueue[currentPinIndex]].preview} className="w-full h-full object-cover" muted />
