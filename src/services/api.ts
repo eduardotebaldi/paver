@@ -104,6 +104,31 @@ export async function deleteObra(id: string) {
 }
 
 // === EAP ===
+
+async function enrichWithComputedAvanco(items: EapItem[], obraId?: string): Promise<EapItem[]> {
+  const itemsOnly = items.filter(i => i.tipo === 'item');
+  if (itemsOnly.length === 0) return items;
+
+  const { data: sums } = await supabase.rpc('get_eap_avanco_sums', {
+    p_obra_id: obraId ?? null,
+  });
+
+  const sumMap = new Map<string, number>();
+  for (const row of (sums || [])) {
+    sumMap.set(row.eap_item_id, Number(row.sum_quantidade_dia) || 0);
+  }
+
+  return items.map(item => {
+    if (item.tipo !== 'item') return item;
+    const totalQtd = item.quantidade || 0;
+    const sumQtdDia = sumMap.get(item.id) || 0;
+    const avanco = totalQtd > 0
+      ? Math.min(100, Math.round((sumQtdDia / totalQtd) * 10000) / 100)
+      : 0;
+    return { ...item, avanco_realizado: avanco };
+  });
+}
+
 export async function fetchEapItems(obraId: string) {
   const { data, error } = await supabase
     .from('paver_eap_items')
@@ -111,7 +136,7 @@ export async function fetchEapItems(obraId: string) {
     .eq('obra_id', obraId)
     .order('ordem', { ascending: true });
   if (error) throw error;
-  return data as EapItem[];
+  return enrichWithComputedAvanco(data as EapItem[], obraId);
 }
 
 export async function fetchAllEapItems() {
@@ -120,7 +145,7 @@ export async function fetchAllEapItems() {
     .select('*')
     .eq('tipo', 'item');
   if (error) throw error;
-  return data as EapItem[];
+  return enrichWithComputedAvanco(data as EapItem[]);
 }
 
 export async function insertEapItems(items: Omit<EapItem, 'id' | 'created_at'>[]) {
