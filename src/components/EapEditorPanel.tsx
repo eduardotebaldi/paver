@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { fetchEapItems, type EapItem } from '@/services/api';
 import { updateEapItem, deleteEapItem, insertSingleEapItem } from '@/services/eapApi';
+import { cn } from '@/lib/utils';
 
 interface Props {
   open: boolean;
