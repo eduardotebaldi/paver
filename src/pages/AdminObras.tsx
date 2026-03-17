@@ -16,6 +16,7 @@ import { fetchObras, createObra, updateObra, deleteObra, fetchEapItems, insertEa
 import { parseEapExcel } from '@/lib/eapParser';
 import ImportOrcamentoWizard from '@/components/ImportOrcamentoWizard';
 import EapItemEditModal from '@/components/EapItemEditModal';
+import EapEditorPanel from '@/components/EapEditorPanel';
 import type { EapItem } from '@/services/api';
 import { updateEapItem } from '@/services/eapApi';
 
