@@ -24,11 +24,15 @@ export default function Login() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
+      let description = error.message;
+      if (error.message === 'Invalid login credentials') {
+        description = 'E-mail ou senha inválidos.';
+      } else if (error.message === 'Email not confirmed') {
+        description = 'Seu e-mail ainda não foi confirmado. Entre em contato com o administrador.';
+      }
       toast({
         title: 'Erro ao entrar',
-        description: error.message === 'Invalid login credentials'
-          ? 'E-mail ou senha inválidos.'
-          : error.message,
+        description,
         variant: 'destructive',
       });
     } else {

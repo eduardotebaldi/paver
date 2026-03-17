@@ -79,6 +79,417 @@ export type Database = {
         }
         Relationships: []
       }
+      cobranca_config_calculo_intimacao: {
+        Row: {
+          ativo: boolean
+          atualizado_em: string
+          correcao_aplicacao: string | null
+          criado_em: string
+          descricao: string | null
+          id: number
+          indexador_padrao: string | null
+          juros_diario: number | null
+          juros_mensal: number | null
+          multa_aplicacao: string | null
+          multa_percentual: number | null
+          nome: string
+        }
+        Insert: {
+          ativo?: boolean
+          atualizado_em?: string
+          correcao_aplicacao?: string | null
+          criado_em?: string
+          descricao?: string | null
+          id: number
+          indexador_padrao?: string | null
+          juros_diario?: number | null
+          juros_mensal?: number | null
+          multa_aplicacao?: string | null
+          multa_percentual?: number | null
+          nome: string
+        }
+        Update: {
+          ativo?: boolean
+          atualizado_em?: string
+          correcao_aplicacao?: string | null
+          criado_em?: string
+          descricao?: string | null
+          id?: number
+          indexador_padrao?: string | null
+          juros_diario?: number | null
+          juros_mensal?: number | null
+          multa_aplicacao?: string | null
+          multa_percentual?: number | null
+          nome?: string
+        }
+        Relationships: []
+      }
+      cobranca_config_gdrive_empreendimento: {
+        Row: {
+          ativo: boolean
+          atualizado_em: string
+          criado_em: string
+          empreendimento_id: number
+          empreendimento_nome: string | null
+          gdrive_folder_id: string | null
+          gdrive_folder_url: string | null
+          id: number
+          padrao_nome_matricula: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          atualizado_em?: string
+          criado_em?: string
+          empreendimento_id: number
+          empreendimento_nome?: string | null
+          gdrive_folder_id?: string | null
+          gdrive_folder_url?: string | null
+          id: number
+          padrao_nome_matricula?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          atualizado_em?: string
+          criado_em?: string
+          empreendimento_id?: number
+          empreendimento_nome?: string | null
+          gdrive_folder_id?: string | null
+          gdrive_folder_url?: string | null
+          id?: number
+          padrao_nome_matricula?: string | null
+        }
+        Relationships: []
+      }
+      cobranca_empreendimentos: {
+        Row: {
+          atualizado_em: string
+          criado_em: string
+          empresa_id: number
+          id: number
+          nome: string | null
+        }
+        Insert: {
+          atualizado_em?: string
+          criado_em?: string
+          empresa_id: number
+          id: number
+          nome?: string | null
+        }
+        Update: {
+          atualizado_em?: string
+          criado_em?: string
+          empresa_id?: number
+          id?: number
+          nome?: string | null
+        }
+        Relationships: []
+      }
+      cobranca_empresas: {
+        Row: {
+          atualizado_em: string
+          criado_em: string
+          id: number
+          nome: string
+        }
+        Insert: {
+          atualizado_em?: string
+          criado_em?: string
+          id: number
+          nome: string
+        }
+        Update: {
+          atualizado_em?: string
+          criado_em?: string
+          id?: number
+          nome?: string
+        }
+        Relationships: []
+      }
+      cobranca_followup_cobrancas: {
+        Row: {
+          assunto_email_sienge: string | null
+          cliente_email: string | null
+          cliente_id: number
+          cliente_nome: string | null
+          created_at: string
+          data_alerta_notificacao_1: string | null
+          data_alerta_retorno: string | null
+          data_email_sienge: string | null
+          data_envio_notificacao_1: string | null
+          data_envio_notificacao_2: string | null
+          data_retorno: string | null
+          documento_titulo: string | null
+          email_sienge_id: number | null
+          empreendimento_id: number | null
+          empreendimento_nome: string | null
+          id: number
+          notificacao_1_id: number | null
+          notificacao_2_id: number | null
+          observacao_retorno: string | null
+          qtd_parcelas_atraso: number | null
+          recebeu_retorno: boolean | null
+          status: string
+          unidade: string | null
+          updated_at: string
+          valor_atraso: number | null
+        }
+        Insert: {
+          assunto_email_sienge?: string | null
+          cliente_email?: string | null
+          cliente_id: number
+          cliente_nome?: string | null
+          created_at?: string
+          data_alerta_notificacao_1?: string | null
+          data_alerta_retorno?: string | null
+          data_email_sienge?: string | null
+          data_envio_notificacao_1?: string | null
+          data_envio_notificacao_2?: string | null
+          data_retorno?: string | null
+          documento_titulo?: string | null
+          email_sienge_id?: number | null
+          empreendimento_id?: number | null
+          empreendimento_nome?: string | null
+          id: number
+          notificacao_1_id?: number | null
+          notificacao_2_id?: number | null
+          observacao_retorno?: string | null
+          qtd_parcelas_atraso?: number | null
+          recebeu_retorno?: boolean | null
+          status?: string
+          unidade?: string | null
+          updated_at?: string
+          valor_atraso?: number | null
+        }
+        Update: {
+          assunto_email_sienge?: string | null
+          cliente_email?: string | null
+          cliente_id?: number
+          cliente_nome?: string | null
+          created_at?: string
+          data_alerta_notificacao_1?: string | null
+          data_alerta_retorno?: string | null
+          data_email_sienge?: string | null
+          data_envio_notificacao_1?: string | null
+          data_envio_notificacao_2?: string | null
+          data_retorno?: string | null
+          documento_titulo?: string | null
+          email_sienge_id?: number | null
+          empreendimento_id?: number | null
+          empreendimento_nome?: string | null
+          id?: number
+          notificacao_1_id?: number | null
+          notificacao_2_id?: number | null
+          observacao_retorno?: string | null
+          qtd_parcelas_atraso?: number | null
+          recebeu_retorno?: boolean | null
+          status?: string
+          unidade?: string | null
+          updated_at?: string
+          valor_atraso?: number | null
+        }
+        Relationships: []
+      }
+      cobranca_historico_emails: {
+        Row: {
+          assunto: string | null
+          cliente_id: number | null
+          cliente_nome: string | null
+          created_at: string
+          data_envio: string | null
+          data_vencimento: string | null
+          documento_titulo: string | null
+          email: string | null
+          empreendimento_id: number | null
+          empreendimento_nome: string | null
+          empresa_id: number | null
+          empresa_nome: string | null
+          enviou_email: boolean | null
+          enviou_sms: boolean | null
+          id: number
+          mensagem_notificacao: string | null
+          origem: string | null
+          parcela_id: number | null
+          referencia: string | null
+          sienge_id: number | null
+          situacao: string | null
+          titulo_id: number | null
+          valor_parcela: string | null
+        }
+        Insert: {
+          assunto?: string | null
+          cliente_id?: number | null
+          cliente_nome?: string | null
+          created_at?: string
+          data_envio?: string | null
+          data_vencimento?: string | null
+          documento_titulo?: string | null
+          email?: string | null
+          empreendimento_id?: number | null
+          empreendimento_nome?: string | null
+          empresa_id?: number | null
+          empresa_nome?: string | null
+          enviou_email?: boolean | null
+          enviou_sms?: boolean | null
+          id: number
+          mensagem_notificacao?: string | null
+          origem?: string | null
+          parcela_id?: number | null
+          referencia?: string | null
+          sienge_id?: number | null
+          situacao?: string | null
+          titulo_id?: number | null
+          valor_parcela?: string | null
+        }
+        Update: {
+          assunto?: string | null
+          cliente_id?: number | null
+          cliente_nome?: string | null
+          created_at?: string
+          data_envio?: string | null
+          data_vencimento?: string | null
+          documento_titulo?: string | null
+          email?: string | null
+          empreendimento_id?: number | null
+          empreendimento_nome?: string | null
+          empresa_id?: number | null
+          empresa_nome?: string | null
+          enviou_email?: boolean | null
+          enviou_sms?: boolean | null
+          id?: number
+          mensagem_notificacao?: string | null
+          origem?: string | null
+          parcela_id?: number | null
+          referencia?: string | null
+          sienge_id?: number | null
+          situacao?: string | null
+          titulo_id?: number | null
+          valor_parcela?: string | null
+        }
+        Relationships: []
+      }
+      cobranca_historico_sincronizacao: {
+        Row: {
+          empreendimento_id: number | null
+          empresa_id: number | null
+          executado_em: string
+          id: number
+          mensagem: string | null
+          registros_importados: number | null
+          status: string | null
+        }
+        Insert: {
+          empreendimento_id?: number | null
+          empresa_id?: number | null
+          executado_em?: string
+          id: number
+          mensagem?: string | null
+          registros_importados?: number | null
+          status?: string | null
+        }
+        Update: {
+          empreendimento_id?: number | null
+          empresa_id?: number | null
+          executado_em?: string
+          id?: number
+          mensagem?: string | null
+          registros_importados?: number | null
+          status?: string | null
+        }
+        Relationships: []
+      }
+      cobranca_inadimplencia: {
+        Row: {
+          acrescimos: number | null
+          atraso_atualizado: number | null
+          atraso_desde: string | null
+          atualizado_em: string
+          cliente_cpf: string | null
+          cliente_email: string | null
+          cliente_endereco: string | null
+          cliente_id: number | null
+          cliente_telefone: string | null
+          contrato_id: number | null
+          criado_em: string
+          dados_originais: Json | null
+          data_contrato: string | null
+          data_venda: string | null
+          documento_titulo: string | null
+          empreendimento_id: number | null
+          empreendimento_nome: string | null
+          empresa_id: number | null
+          id: number
+          numero_contrato: string | null
+          proprietario: string | null
+          qtd_parcelas: number | null
+          saldo_devedor: number | null
+          status: string | null
+          unidade: string | null
+          valor_corrigido: number | null
+          valor_recebido: number | null
+          valor_total_contrato: number | null
+        }
+        Insert: {
+          acrescimos?: number | null
+          atraso_atualizado?: number | null
+          atraso_desde?: string | null
+          atualizado_em?: string
+          cliente_cpf?: string | null
+          cliente_email?: string | null
+          cliente_endereco?: string | null
+          cliente_id?: number | null
+          cliente_telefone?: string | null
+          contrato_id?: number | null
+          criado_em?: string
+          dados_originais?: Json | null
+          data_contrato?: string | null
+          data_venda?: string | null
+          documento_titulo?: string | null
+          empreendimento_id?: number | null
+          empreendimento_nome?: string | null
+          empresa_id?: number | null
+          id: number
+          numero_contrato?: string | null
+          proprietario?: string | null
+          qtd_parcelas?: number | null
+          saldo_devedor?: number | null
+          status?: string | null
+          unidade?: string | null
+          valor_corrigido?: number | null
+          valor_recebido?: number | null
+          valor_total_contrato?: number | null
+        }
+        Update: {
+          acrescimos?: number | null
+          atraso_atualizado?: number | null
+          atraso_desde?: string | null
+          atualizado_em?: string
+          cliente_cpf?: string | null
+          cliente_email?: string | null
+          cliente_endereco?: string | null
+          cliente_id?: number | null
+          cliente_telefone?: string | null
+          contrato_id?: number | null
+          criado_em?: string
+          dados_originais?: Json | null
+          data_contrato?: string | null
+          data_venda?: string | null
+          documento_titulo?: string | null
+          empreendimento_id?: number | null
+          empreendimento_nome?: string | null
+          empresa_id?: number | null
+          id?: number
+          numero_contrato?: string | null
+          proprietario?: string | null
+          qtd_parcelas?: number | null
+          saldo_devedor?: number | null
+          status?: string | null
+          unidade?: string | null
+          valor_corrigido?: number | null
+          valor_recebido?: number | null
+          valor_total_contrato?: number | null
+        }
+        Relationships: []
+      }
       comercial_corretores: {
         Row: {
           bairro: string
