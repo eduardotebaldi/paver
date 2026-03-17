@@ -2421,6 +2421,13 @@ export type Database = {
           role: Database["public"]["Enums"]["app_role"]
         }[]
       }
+      get_eap_avanco_sums: {
+        Args: { p_obra_id?: string }
+        Returns: {
+          eap_item_id: string
+          sum_quantidade_dia: number
+        }[]
+      }
       get_user_emails: {
         Args: { user_ids: string[] }
         Returns: {
