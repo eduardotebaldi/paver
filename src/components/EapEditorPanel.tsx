@@ -448,7 +448,7 @@ export default function EapEditorPanel({ open, onOpenChange, obraId, obraNome }:
               })}
             </div>
           )}
-        </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );
