@@ -557,6 +557,13 @@ export default function AdminObras() {
           allItems={editEapItems}
           onSave={handleSaveItem}
         />
+
+        <EapEditorPanel
+          open={!!editorObraId}
+          onOpenChange={(open) => { if (!open) { setEditorObraId(''); setEditorObraNome(''); } }}
+          obraId={editorObraId}
+          obraNome={editorObraNome}
+        />
       </div>
     </TooltipProvider>
   );
