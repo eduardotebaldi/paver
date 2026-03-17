@@ -74,6 +74,10 @@ export default function AdminObras() {
   const [dxfUploadObraId, setDxfUploadObraId] = useState<string>('');
   const [dxfUploading, setDxfUploading] = useState(false);
 
+  // EAP editor panel
+  const [editorObraId, setEditorObraId] = useState<string>('');
+  const [editorObraNome, setEditorObraNome] = useState<string>('');
+
   const { data: obras = [], isLoading } = useQuery({
     queryKey: ['obras'],
     queryFn: fetchObras,
