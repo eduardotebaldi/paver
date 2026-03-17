@@ -196,6 +196,32 @@ export default function EapEditorPanel({ open, onOpenChange, obraId, obraNome }:
               className="pl-8 h-8 text-xs font-body"
             />
           </div>
+          <div className="flex items-center border rounded-md h-8 text-xs font-body overflow-hidden shrink-0">
+            <button
+              className={cn(
+                'px-2.5 h-full transition-colors',
+                groupBy === 'pacote'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'hover:bg-muted'
+              )}
+              onClick={() => { setGroupBy('pacote'); setCollapsedGroups(new Set()); }}
+            >
+              <Package className="h-3.5 w-3.5 inline mr-1" />
+              Pacote
+            </button>
+            <button
+              className={cn(
+                'px-2.5 h-full transition-colors',
+                groupBy === 'lote'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'hover:bg-muted'
+              )}
+              onClick={() => { setGroupBy('lote'); setCollapsedGroups(new Set()); }}
+            >
+              <Layers className="h-3.5 w-3.5 inline mr-1" />
+              Serviço
+            </button>
+          </div>
           <Button
             size="sm"
             className="h-8 text-xs font-body"
