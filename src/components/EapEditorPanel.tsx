@@ -288,7 +288,7 @@ export default function EapEditorPanel({ open, onOpenChange, obraId, obraNome }:
         )}
 
         {/* Items list */}
-        <ScrollArea className="flex-1 min-h-0">
+        <ScrollArea className="flex-1 min-h-0 max-h-[60vh]">
           {isLoading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-accent" />
