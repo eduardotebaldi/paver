@@ -28,6 +28,7 @@ export async function insertSingleEapItem(item: Omit<EapItem, 'id' | 'created_at
     .single();
   if (error) throw error;
   return data as EapItem;
+}
 
 // === BULK UPDATE EAP ITEMS ===
 export async function bulkUpdateEapItems(items: { id: string; updates: Partial<EapItem> }[]) {
