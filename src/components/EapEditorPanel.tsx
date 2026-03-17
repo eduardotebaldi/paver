@@ -173,7 +173,7 @@ export default function EapEditorPanel({ open, onOpenChange, obraId, obraNome }:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle className="font-heading">
             Editar Orçamento — {obraNome}
@@ -288,7 +288,7 @@ export default function EapEditorPanel({ open, onOpenChange, obraId, obraNome }:
         )}
 
         {/* Items list */}
-        <ScrollArea className="flex-1 min-h-0">
+        <ScrollArea className="flex-1 min-h-0 max-h-[60vh]">
           {isLoading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-accent" />
