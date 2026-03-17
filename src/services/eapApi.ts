@@ -13,6 +13,22 @@ export async function updateEapItem(id: string, updates: Partial<EapItem>) {
   return data as EapItem;
 }
 
+// === DELETE SINGLE EAP ITEM ===
+export async function deleteEapItem(id: string) {
+  const { error } = await supabase.from('paver_eap_items').delete().eq('id', id);
+  if (error) throw error;
+}
+
+// === INSERT SINGLE EAP ITEM ===
+export async function insertSingleEapItem(item: Omit<EapItem, 'id' | 'created_at'>) {
+  const { data, error } = await supabase
+    .from('paver_eap_items')
+    .insert(item)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as EapItem;
+
 // === BULK UPDATE EAP ITEMS ===
 export async function bulkUpdateEapItems(items: { id: string; updates: Partial<EapItem> }[]) {
   const results = [];
