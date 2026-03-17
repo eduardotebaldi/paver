@@ -73,16 +73,17 @@ export default function EapEditorPanel({ open, onOpenChange, obraId, obraNome }:
     );
   }, [items, search]);
 
-  // Group by pacote
+  // Group by pacote or lote (serviço)
   const grouped = useMemo(() => {
+    const noGroupLabel = groupBy === 'pacote' ? 'Sem pacote' : 'Sem serviço';
     const map = new Map<string, typeof filtered>();
     for (const item of filtered) {
-      const key = item.pacote || 'Sem pacote';
+      const key = (groupBy === 'pacote' ? item.pacote : item.lote) || noGroupLabel;
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(item);
     }
     return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
-  }, [filtered]);
+  }, [filtered, groupBy]);
 
   // Unique values for autocomplete hints
   const uniquePacotes = useMemo(() => [...new Set(items.map(i => i.pacote).filter(Boolean))].sort(), [items]);
