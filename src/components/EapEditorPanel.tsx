@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
+
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -288,7 +288,7 @@ export default function EapEditorPanel({ open, onOpenChange, obraId, obraNome }:
         )}
 
         {/* Items list */}
-        <ScrollArea className="flex-1 min-h-0 max-h-[60vh]">
+        <div className="flex-1 min-h-0 overflow-y-auto pr-1">
           {isLoading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-accent" />
@@ -448,7 +448,7 @@ export default function EapEditorPanel({ open, onOpenChange, obraId, obraNome }:
               })}
             </div>
           )}
-        </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );
