@@ -202,16 +202,14 @@ export async function deleteDiario(id: string) {
   const { error } = await supabase.from('paver_diarios').delete().eq('id', id);
   if (error) throw error;
 
-  // 3. Recalculate avanco_realizado for each affected EAP item
+  // 3. Update data_inicio_real / data_fim_real for affected items (avanco_realizado is computed dynamically)
   for (const itemId of affectedItemIds) {
-    // Get the EAP item's total quantity
     const { data: eapItem } = await supabase
       .from('paver_eap_items')
       .select('quantidade')
       .eq('id', itemId)
       .single();
 
-    // Sum remaining quantidade_dia from all other diários
     const { data: remaining } = await supabase
       .from('paver_diario_atividades')
       .select('quantidade_dia')
@@ -223,9 +221,8 @@ export async function deleteDiario(id: string) {
       ? Math.min(100, Math.round((sumQtdDia / totalQtd) * 10000) / 100)
       : 0;
 
-    const updateFields: Record<string, any> = { avanco_realizado: newAvanco };
+    const updateFields: Record<string, any> = {};
 
-    // Reset data_inicio_real if no more measurements
     if (sumQtdDia === 0) {
       updateFields.data_inicio_real = null;
       updateFields.data_fim_real = null;
@@ -233,7 +230,9 @@ export async function deleteDiario(id: string) {
       updateFields.data_fim_real = null;
     }
 
-    await supabase.from('paver_eap_items').update(updateFields).eq('id', itemId);
+    if (Object.keys(updateFields).length > 0) {
+      await supabase.from('paver_eap_items').update(updateFields).eq('id', itemId);
+    }
   }
 }
 
