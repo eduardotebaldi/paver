@@ -73,42 +73,59 @@ function DxfPinCanvas({
   tempPin?: { x: number; y: number } | null;
   onDragPin?: (x: number, y: number) => void;
 }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [layerVisibility, setLayerVisibility] = useState<Record<string, boolean>>({});
   const [showLayers, setShowLayers] = useState(false);
+  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
     let cancelled = false;
+
     async function load() {
       setDxfLoading(true);
+      setDxfData(null);
       try {
         const res = await fetch(plantaUrl);
         const text = await res.text();
         const parser = new DxfParser();
         const dxf = parser.parseSync(text);
         if (cancelled || !dxf) return;
+
         const parsed = parseDxfToSvg(dxf);
         setDxfData(parsed);
-        const vis: Record<string, boolean> = {};
-        parsed.layers.forEach(l => { vis[l.name] = l.visible; });
-        setLayerVisibility(vis);
+        setLayerVisibility(Object.fromEntries(parsed.layers.map(layer => [layer.name, layer.visible])));
       } catch {
-        // silently fail
+        if (!cancelled) setDxfData(null);
       } finally {
         if (!cancelled) setDxfLoading(false);
       }
     }
-    if (!dxfData) load();
-    else if (Object.keys(layerVisibility).length === 0) {
-      const vis: Record<string, boolean> = {};
-      dxfData.layers.forEach(l => { vis[l.name] = l.visible; });
-      setLayerVisibility(vis);
-    }
-    return () => { cancelled = true; };
-  }, [plantaUrl, dxfData]);
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [plantaUrl, setDxfData, setDxfLoading]);
+
+  useEffect(() => {
+    const node = containerRef.current;
+    if (!node) return;
+
+    const updateSize = () => {
+      setCanvasSize({ width: node.clientWidth, height: node.clientHeight });
+    };
+
+    updateSize();
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(node);
+
+    return () => observer.disconnect();
+  }, []);
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
@@ -130,11 +147,6 @@ function DxfPinCanvas({
 
   const handleMouseUp = useCallback(() => setIsPanning(false), []);
 
-  const handleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (isPanning) return;
-    onPinPlace(e);
-  }, [isPanning, onPinPlace]);
-
   if (dxfLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -150,10 +162,58 @@ function DxfPinCanvas({
 
   const { viewBox, pathsByLayer, layers } = dxfData;
   const visibleCount = layers.filter(l => layerVisibility[l.name] !== false).length;
+  const aspectRatio = viewBox.width > 0 && viewBox.height > 0 ? viewBox.width / viewBox.height : 1;
+
+  const fittedViewport = (() => {
+    const { width, height } = canvasSize;
+    if (!width || !height) return null;
+
+    const containerRatio = width / height;
+    if (containerRatio > aspectRatio) {
+      const fittedHeight = height;
+      const fittedWidth = fittedHeight * aspectRatio;
+      return {
+        width: fittedWidth,
+        height: fittedHeight,
+        left: (width - fittedWidth) / 2,
+        top: 0,
+      };
+    }
+
+    const fittedWidth = width;
+    const fittedHeight = fittedWidth / aspectRatio;
+    return {
+      width: fittedWidth,
+      height: fittedHeight,
+      left: 0,
+      top: (height - fittedHeight) / 2,
+    };
+  })();
+
+  const handleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (isPanning) return;
+
+    const rect = viewportRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    if (
+      e.clientX < rect.left ||
+      e.clientX > rect.right ||
+      e.clientY < rect.top ||
+      e.clientY > rect.bottom
+    ) {
+      return;
+    }
+
+    onPinPlace({
+      ...e,
+      currentTarget: viewportRef.current,
+      target: viewportRef.current,
+    } as React.MouseEvent<HTMLDivElement>);
+  }, [isPanning, onPinPlace]);
 
   return (
     <div className="space-y-2">
-      {/* Zoom toolbar */}
       <div className="flex items-center gap-2 flex-wrap">
         <Button type="button" variant="outline" size="icon" className="h-7 w-7" onClick={() => setZoom(z => Math.max(0.1, z / 1.25))}>
           <ZoomOut className="h-3.5 w-3.5" />
@@ -172,42 +232,51 @@ function DxfPinCanvas({
           type="button"
           variant={showLayers ? 'default' : 'outline'}
           size="sm"
-          className="h-7 font-body text-[10px] ml-auto"
+          className="ml-auto h-7 font-body text-[10px]"
           onClick={() => setShowLayers(!showLayers)}
         >
-          <Layers className="h-3 w-3 mr-1" />
+          <Layers className="mr-1 h-3 w-3" />
           Layers ({visibleCount}/{layers.length})
         </Button>
       </div>
 
       <div className="flex gap-2">
-        {/* Layer panel */}
         {showLayers && (
-          <div className="shrink-0 w-44 border border-border rounded-lg p-2 space-y-1.5 bg-background">
+          <div className="shrink-0 w-44 rounded-lg border border-border bg-background p-2 space-y-1.5">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-heading font-semibold">Layers</span>
               <div className="flex gap-1">
-                <Button type="button" variant="ghost" size="sm" className="h-5 px-1 text-[9px]"
-                  onClick={() => setLayerVisibility(Object.fromEntries(layers.map(l => [l.name, true])))}>
-                  <Eye className="h-2.5 w-2.5 mr-0.5" />Todas
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-5 px-1 text-[9px]"
+                  onClick={() => setLayerVisibility(Object.fromEntries(layers.map(l => [l.name, true])))}
+                >
+                  <Eye className="mr-0.5 h-2.5 w-2.5" />Todas
                 </Button>
-                <Button type="button" variant="ghost" size="sm" className="h-5 px-1 text-[9px]"
-                  onClick={() => setLayerVisibility(Object.fromEntries(layers.map(l => [l.name, false])))}>
-                  <EyeOff className="h-2.5 w-2.5 mr-0.5" />Nenhuma
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-5 px-1 text-[9px]"
+                  onClick={() => setLayerVisibility(Object.fromEntries(layers.map(l => [l.name, false])))}
+                >
+                  <EyeOff className="mr-0.5 h-2.5 w-2.5" />Nenhuma
                 </Button>
               </div>
             </div>
-            <ScrollArea className="h-[35vh]">
+            <ScrollArea className="h-[45vh]">
               <div className="space-y-0.5 pr-2">
                 {layers.map(layer => (
-                  <label key={layer.name} className="flex items-center gap-1.5 px-1 py-0.5 rounded hover:bg-muted/50 cursor-pointer">
+                  <label key={layer.name} className="flex cursor-pointer items-center gap-1.5 rounded px-1 py-0.5 hover:bg-muted/50">
                     <UiCheckbox
                       checked={layerVisibility[layer.name] !== false}
                       onCheckedChange={() => setLayerVisibility(prev => ({ ...prev, [layer.name]: !prev[layer.name] }))}
                       className="h-3 w-3"
                     />
-                    <span className="w-2 h-2 rounded-full shrink-0 border border-border" style={{ backgroundColor: layer.color }} />
-                    <span className="text-[10px] font-body truncate flex-1">{layer.name}</span>
+                    <span className="h-2 w-2 shrink-0 rounded-full border border-border" style={{ backgroundColor: layer.color }} />
+                    <span className="flex-1 truncate text-[10px] font-body">{layer.name}</span>
                   </label>
                 ))}
               </div>
@@ -215,10 +284,10 @@ function DxfPinCanvas({
           </div>
         )}
 
-        {/* DXF canvas */}
         <div
-          className="flex-1 relative border border-border rounded-lg overflow-hidden bg-muted/20"
-          style={{ height: '40vh' }}
+          ref={containerRef}
+          className="relative flex-1 overflow-hidden rounded-lg border border-border bg-muted/20"
+          style={{ height: '60vh', minHeight: '420px' }}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
@@ -226,58 +295,81 @@ function DxfPinCanvas({
           onWheel={handleWheel}
           onContextMenu={e => e.preventDefault()}
         >
-          <div style={{
-            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-            transformOrigin: 'center center',
-            width: '100%', height: '100%', position: 'relative',
-          }}>
+          <div
+            style={{
+              transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+              transformOrigin: 'center center',
+              width: '100%',
+              height: '100%',
+              position: 'relative',
+            }}
+          >
             <div
-              className={`w-full h-full ${!isPanning ? 'cursor-crosshair' : 'cursor-grabbing'}`}
+              className={`relative h-full w-full ${!isPanning ? 'cursor-crosshair' : 'cursor-grabbing'}`}
               onClick={handleClick}
-              style={{ position: 'relative' }}
             >
-              <svg
-                viewBox={`${viewBox.minX} ${viewBox.minY} ${viewBox.width} ${viewBox.height}`}
-                className="w-full h-full"
-                preserveAspectRatio="xMidYMid meet"
-              >
-                {Array.from(pathsByLayer.entries()).map(([layerName, paths]) => {
-                  if (layerVisibility[layerName] === false) return null;
-                  const layerInfo = layers.find(l => l.name === layerName);
-                  const color = layerInfo?.color || '#888';
-                  return (
-                    <g key={layerName}>
-                      {paths.map((d, i) => (
-                        <path key={i} d={d} fill="none" stroke={color} strokeWidth={viewBox.width * 0.001} vectorEffect="non-scaling-stroke" />
-                      ))}
-                    </g>
-                  );
-                })}
-              </svg>
-              {tempPin && (
+              {fittedViewport && (
                 <div
-                  className="absolute w-6 h-6 -ml-3 -mt-6 z-20 cursor-grab active:cursor-grabbing"
-                  style={{ left: `${tempPin.x}%`, top: `${tempPin.y}%`, transform: `scale(${1 / zoom})` }}
-                  onMouseDown={(e) => {
-                    e.stopPropagation();
-                    // Start dragging - subsequent mousemove on parent will reposition
-                    const parent = e.currentTarget.parentElement;
-                    if (!parent) return;
-                    const onMove = (ev: MouseEvent) => {
-                      const rect = parent.getBoundingClientRect();
-                      const nx = ((ev.clientX - rect.left) / rect.width) * 100;
-                      const ny = ((ev.clientY - rect.top) / rect.height) * 100;
-                      onDragPin?.(nx, ny);
-                    };
-                    const onUp = () => {
-                      document.removeEventListener('mousemove', onMove);
-                      document.removeEventListener('mouseup', onUp);
-                    };
-                    document.addEventListener('mousemove', onMove);
-                    document.addEventListener('mouseup', onUp);
+                  ref={viewportRef}
+                  className="absolute overflow-hidden"
+                  style={{
+                    left: fittedViewport.left,
+                    top: fittedViewport.top,
+                    width: fittedViewport.width,
+                    height: fittedViewport.height,
                   }}
                 >
-                  <MapPin className="h-6 w-6 text-accent drop-shadow-md fill-accent/30" />
+                  <svg
+                    viewBox={`${viewBox.minX} ${viewBox.minY} ${viewBox.width} ${viewBox.height}`}
+                    className="block h-full w-full"
+                    preserveAspectRatio="none"
+                  >
+                    {Array.from(pathsByLayer.entries()).map(([layerName, paths]) => {
+                      if (layerVisibility[layerName] === false) return null;
+                      const layerInfo = layers.find(l => l.name === layerName);
+                      const color = layerInfo?.color || '#888';
+                      return (
+                        <g key={layerName}>
+                          {paths.map((d, i) => (
+                            <path key={i} d={d} fill="none" stroke={color} strokeWidth={viewBox.width * 0.001} vectorEffect="non-scaling-stroke" />
+                          ))}
+                        </g>
+                      );
+                    })}
+                  </svg>
+
+                  {tempPin && (
+                    <div
+                      className="absolute z-20 cursor-grab active:cursor-grabbing"
+                      style={{
+                        left: `${tempPin.x}%`,
+                        top: `${tempPin.y}%`,
+                        transform: `translate(-50%, -100%) scale(${1 / zoom})`,
+                      }}
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        const parent = viewportRef.current;
+                        if (!parent) return;
+
+                        const onMove = (ev: MouseEvent) => {
+                          const rect = parent.getBoundingClientRect();
+                          const nx = ((ev.clientX - rect.left) / rect.width) * 100;
+                          const ny = ((ev.clientY - rect.top) / rect.height) * 100;
+                          onDragPin?.(Math.min(100, Math.max(0, nx)), Math.min(100, Math.max(0, ny)));
+                        };
+
+                        const onUp = () => {
+                          document.removeEventListener('mousemove', onMove);
+                          document.removeEventListener('mouseup', onUp);
+                        };
+
+                        document.addEventListener('mousemove', onMove);
+                        document.addEventListener('mouseup', onUp);
+                      }}
+                    >
+                      <MapPin className="h-6 w-6 fill-accent/30 text-accent drop-shadow-md" />
+                    </div>
+                  )}
                 </div>
               )}
             </div>
