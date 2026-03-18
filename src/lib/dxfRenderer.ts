@@ -109,18 +109,65 @@ function splineToSvgPath(controlPoints: { x: number; y: number }[], closed: bool
   return d;
 }
 
+function quantile(values: number[], q: number): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const position = (sorted.length - 1) * q;
+  const base = Math.floor(position);
+  const rest = position - base;
+  const next = sorted[Math.min(base + 1, sorted.length - 1)];
+  return sorted[base] + (next - sorted[base]) * rest;
+}
+
+function resolveViewBounds(sampledXs: number[], sampledYs: number[]) {
+  if (sampledXs.length === 0 || sampledYs.length === 0) {
+    return { minX: 0, minY: 0, maxX: 100, maxY: 100 };
+  }
+
+  const rawMinX = Math.min(...sampledXs);
+  const rawMaxX = Math.max(...sampledXs);
+  const rawMinY = Math.min(...sampledYs);
+  const rawMaxY = Math.max(...sampledYs);
+  const rawWidth = Math.max(rawMaxX - rawMinX, 1);
+  const rawHeight = Math.max(rawMaxY - rawMinY, 1);
+
+  if (sampledXs.length < 50) {
+    return { minX: rawMinX, minY: rawMinY, maxX: rawMaxX, maxY: rawMaxY };
+  }
+
+  const trimmedMinX = quantile(sampledXs, 0.02);
+  const trimmedMaxX = quantile(sampledXs, 0.98);
+  const trimmedMinY = quantile(sampledYs, 0.02);
+  const trimmedMaxY = quantile(sampledYs, 0.98);
+  const trimmedWidth = Math.max(trimmedMaxX - trimmedMinX, 1);
+  const trimmedHeight = Math.max(trimmedMaxY - trimmedMinY, 1);
+
+  const hasOutlierCompression = rawWidth / trimmedWidth > 4 || rawHeight / trimmedHeight > 4;
+
+  if (!hasOutlierCompression) {
+    return { minX: rawMinX, minY: rawMinY, maxX: rawMaxX, maxY: rawMaxY };
+  }
+
+  return {
+    minX: trimmedMinX,
+    minY: trimmedMinY,
+    maxX: trimmedMaxX,
+    maxY: trimmedMaxY,
+  };
+}
+
 export function parseDxfToSvg(dxf: any): DxfSvgData {
   const pathsByLayer = new Map<string, string[]>();
   const layerColors = new Map<string, number>();
-  
-  // Extract layer info from tables
+  const sampledXs: number[] = [];
+  const sampledYs: number[] = [];
+
   if (dxf.tables?.layer?.layers) {
     for (const [name, layer] of Object.entries(dxf.tables.layer.layers) as any[]) {
       layerColors.set(name, layer.color || 7);
     }
   }
 
-  // Extract block definitions
   const blocks = new Map<string, any[]>();
   if (dxf.blocks) {
     for (const [blockName, block] of Object.entries(dxf.blocks) as any[]) {
@@ -130,15 +177,10 @@ export function parseDxfToSvg(dxf: any): DxfSvgData {
     }
   }
 
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-
   function track(x: number, y: number) {
-    if (isFinite(x) && isFinite(y)) {
-      minX = Math.min(minX, x);
-      minY = Math.min(minY, y);
-      maxX = Math.max(maxX, x);
-      maxY = Math.max(maxY, y);
-    }
+    if (!isFinite(x) || !isFinite(y)) return;
+    sampledXs.push(x);
+    sampledYs.push(y);
   }
 
   function addPath(layer: string, path: string) {
@@ -149,9 +191,7 @@ export function parseDxfToSvg(dxf: any): DxfSvgData {
   function processEntity(entity: any, offsetX = 0, offsetY = 0, scaleX = 1, scaleY = 1, rotation = 0) {
     const layer = entity.layer || '0';
 
-    // Apply transform: rotate then scale then translate
     function tx(x: number, y: number): [number, number] {
-      // Apply rotation
       if (rotation !== 0) {
         const rad = (rotation * Math.PI) / 180;
         const cos = Math.cos(rad);
@@ -161,6 +201,7 @@ export function parseDxfToSvg(dxf: any): DxfSvgData {
         x = nx;
         y = ny;
       }
+
       return [x * scaleX + offsetX, y * scaleY + offsetY];
     }
 
@@ -172,7 +213,8 @@ export function parseDxfToSvg(dxf: any): DxfSvgData {
           if (s.x != null && s.y != null && e.x != null && e.y != null) {
             const [x1, y1] = tx(s.x, s.y);
             const [x2, y2] = tx(e.x, e.y);
-            track(x1, y1); track(x2, y2);
+            track(x1, y1);
+            track(x2, y2);
             addPath(layer, `M ${x1} ${-y1} L ${x2} ${-y2}`);
           }
           break;
@@ -189,6 +231,7 @@ export function parseDxfToSvg(dxf: any): DxfSvgData {
           for (let i = 0; i < verts.length - 1; i++) {
             const [cx, cy] = tx(verts[i].x, verts[i].y);
             const [nx, ny] = tx(verts[i + 1].x, verts[i + 1].y);
+            track(cx, cy);
             track(nx, ny);
 
             const bulge = verts[i].bulge;
@@ -199,11 +242,11 @@ export function parseDxfToSvg(dxf: any): DxfSvgData {
             }
           }
 
-          // Handle closed polylines: check for bulge on last vertex connecting to first
           if (entity.shape || entity.closed) {
             const lastIdx = verts.length - 1;
             const bulge = verts[lastIdx].bulge;
             const [lx, ly] = tx(verts[lastIdx].x, verts[lastIdx].y);
+            track(lx, ly);
             if (bulge && Math.abs(bulge) > 1e-6) {
               d += ' ' + bulgeArcSegment(lx, -ly, sx, -sy, bulge);
             }
@@ -218,8 +261,9 @@ export function parseDxfToSvg(dxf: any): DxfSvgData {
           const r = entity.radius;
           if (c.x != null && c.y != null && r) {
             const [cx, cy] = tx(c.x, c.y);
-            const sr = r * Math.abs(scaleX); // approximate scaled radius
-            track(cx - sr, cy - sr); track(cx + sr, cy + sr);
+            const sr = r * Math.abs(scaleX);
+            track(cx - sr, cy - sr);
+            track(cx + sr, cy + sr);
             addPath(layer, `M ${cx - sr} ${-cy} A ${sr} ${sr} 0 1 0 ${cx + sr} ${-cy} A ${sr} ${sr} 0 1 0 ${cx - sr} ${-cy}`);
           }
           break;
@@ -230,11 +274,9 @@ export function parseDxfToSvg(dxf: any): DxfSvgData {
           if (c.x != null && c.y != null && r) {
             const [cx, cy] = tx(c.x, c.y);
             const sr = r * Math.abs(scaleX);
-            track(cx - sr, cy - sr); track(cx + sr, cy + sr);
-            const sa = -(entity.endAngle || 0);
-            const ea = -(entity.startAngle || 0);
-            const path = arcToSvgPath(cx, -cy, sr, sa, ea);
-            addPath(layer, path);
+            track(cx - sr, cy - sr);
+            track(cx + sr, cy + sr);
+            addPath(layer, arcToSvgPath(cx, -cy, sr, -(entity.endAngle || 0), -(entity.startAngle || 0)));
           }
           break;
         }
@@ -247,7 +289,8 @@ export function parseDxfToSvg(dxf: any): DxfSvgData {
             const rx = Math.sqrt(m.x * m.x + (m.y || 0) * (m.y || 0)) * Math.abs(scaleX);
             const ry = rx * ratio;
             const angle = Math.atan2(m.y || 0, m.x) * (180 / Math.PI);
-            track(cx - rx, cy - ry); track(cx + rx, cy + ry);
+            track(cx - rx, cy - ry);
+            track(cx + rx, cy + ry);
             addPath(layer, `M ${cx - rx} ${-cy} A ${rx} ${ry} ${-angle} 1 0 ${cx + rx} ${-cy} A ${rx} ${ry} ${-angle} 1 0 ${cx - rx} ${-cy}`);
           }
           break;
@@ -258,15 +301,13 @@ export function parseDxfToSvg(dxf: any): DxfSvgData {
           const pts = ctrlPts.length >= 2 ? ctrlPts : fitPts;
 
           if (pts.length >= 2) {
-            // Transform all points
             const transformed = pts.map((p: any) => {
               const [px, py] = tx(p.x, p.y);
               track(px, py);
               return { x: px, y: py };
             });
 
-            const isClosed = entity.closed || entity.shape;
-            const d = splineToSvgPath(transformed, !!isClosed);
+            const d = splineToSvgPath(transformed, !!(entity.closed || entity.shape));
             if (d) addPath(layer, d);
           }
           break;
@@ -282,7 +323,6 @@ export function parseDxfToSvg(dxf: any): DxfSvgData {
         }
         case 'SOLID':
         case '3DFACE': {
-          // Solid fills / 3D faces - draw as filled polygon outline
           const corners = entity.points || entity.vertices || [];
           if (corners.length >= 3) {
             const tCorners = corners.map((p: any) => {
@@ -290,6 +330,7 @@ export function parseDxfToSvg(dxf: any): DxfSvgData {
               track(px, py);
               return { x: px, y: py };
             });
+
             let d = `M ${tCorners[0].x} ${-tCorners[0].y}`;
             for (let i = 1; i < tCorners.length; i++) {
               d += ` L ${tCorners[i].x} ${-tCorners[i].y}`;
@@ -300,9 +341,7 @@ export function parseDxfToSvg(dxf: any): DxfSvgData {
           break;
         }
         case 'INSERT': {
-          // Block references
-          const blockName = entity.name;
-          const blockEntities = blocks.get(blockName);
+          const blockEntities = blocks.get(entity.name);
           if (!blockEntities) break;
 
           const insertX = entity.position?.x || entity.x || 0;
@@ -310,10 +349,8 @@ export function parseDxfToSvg(dxf: any): DxfSvgData {
           const insertScaleX = entity.xScale ?? entity.scaleX ?? 1;
           const insertScaleY = entity.yScale ?? entity.scaleY ?? 1;
           const insertRotation = entity.rotation || 0;
-
           const [newOffX, newOffY] = tx(insertX, insertY);
 
-          // Recursively process block entities with accumulated transform
           for (const blockEntity of blockEntities) {
             processEntity(
               blockEntity,
@@ -321,31 +358,30 @@ export function parseDxfToSvg(dxf: any): DxfSvgData {
               newOffY,
               scaleX * insertScaleX,
               scaleY * insertScaleY,
-              rotation + insertRotation
+              rotation + insertRotation,
             );
           }
           break;
         }
         case 'HATCH': {
-          // Render hatch boundary paths
           const boundaries = entity.boundaries || entity.boundaryPaths || [];
           for (const boundary of boundaries) {
-            const edges = boundary.edges || boundary.polyline || [];
-            if (boundary.polyline) {
-              const pts = boundary.polyline;
-              if (pts.length >= 2) {
-                const [sx2, sy2] = tx(pts[0].x, pts[0].y);
-                let d = `M ${sx2} ${-sy2}`;
-                track(sx2, sy2);
-                for (let i = 1; i < pts.length; i++) {
-                  const [px, py] = tx(pts[i].x, pts[i].y);
-                  track(px, py);
-                  d += ` L ${px} ${-py}`;
-                }
-                d += ' Z';
-                addPath(layer, d);
-              }
+            if (!boundary.polyline) continue;
+            const pts = boundary.polyline;
+            if (pts.length < 2) continue;
+
+            const [sx2, sy2] = tx(pts[0].x, pts[0].y);
+            let d = `M ${sx2} ${-sy2}`;
+            track(sx2, sy2);
+
+            for (let i = 1; i < pts.length; i++) {
+              const [px, py] = tx(pts[i].x, pts[i].y);
+              track(px, py);
+              d += ` L ${px} ${-py}`;
             }
+
+            d += ' Z';
+            addPath(layer, d);
           }
           break;
         }
@@ -357,20 +393,16 @@ export function parseDxfToSvg(dxf: any): DxfSvgData {
     }
   }
 
-  // Process all top-level entities
   for (const entity of dxf.entities || []) {
     processEntity(entity);
   }
 
-  // Add padding
-  if (!isFinite(minX)) { minX = 0; minY = 0; maxX = 100; maxY = 100; }
-  const padding = Math.max(maxX - minX, maxY - minY) * 0.05;
-  
-  // Build layer list
-  const allLayerNames = new Set<string>();
-  pathsByLayer.forEach((_, name) => allLayerNames.add(name));
-  
-  const layers: DxfLayer[] = Array.from(allLayerNames).sort().map(name => ({
+  const bounds = resolveViewBounds(sampledXs, sampledYs);
+  const width = Math.max(bounds.maxX - bounds.minX, 1);
+  const height = Math.max(bounds.maxY - bounds.minY, 1);
+  const padding = Math.max(width, height) * 0.05;
+
+  const layers: DxfLayer[] = Array.from(pathsByLayer.keys()).sort().map(name => ({
     name,
     color: aciToHex(layerColors.get(name)),
     visible: true,
@@ -380,10 +412,10 @@ export function parseDxfToSvg(dxf: any): DxfSvgData {
     layers,
     pathsByLayer,
     viewBox: {
-      minX: minX - padding,
-      minY: -(maxY + padding),
-      width: (maxX - minX) + padding * 2,
-      height: (maxY - minY) + padding * 2,
+      minX: bounds.minX - padding,
+      minY: -(bounds.maxY + padding),
+      width: width + padding * 2,
+      height: height + padding * 2,
     },
   };
 }
