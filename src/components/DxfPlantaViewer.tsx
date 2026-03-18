@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
+import { useState, useRef, useCallback, useMemo, useEffect, useLayoutEffect } from 'react';
 import DxfParser from 'dxf-parser';
 import {
   MapPin, Upload, Loader2, Camera, Trash2, X,
