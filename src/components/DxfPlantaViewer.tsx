@@ -112,6 +112,17 @@ export default function DxfPlantaViewer({ planta, obraId, canEdit, onClose, visi
     [layers]
   );
 
+  // Track container size for fittedViewport calculation
+  useEffect(() => {
+    const node = svgContainerRef.current;
+    if (!node) return;
+    const update = () => setContainerSize({ width: node.clientWidth, height: node.clientHeight });
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
   // Mouse handlers for pan
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button === 1 || e.button === 2 || e.altKey) {
