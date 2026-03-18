@@ -47,7 +47,8 @@ export default function DxfPlantaViewer({ planta, obraId, canEdit, onClose, visi
   };
   const fotoInputRef = useRef<HTMLInputElement>(null);
   const svgContainerRef = useRef<HTMLDivElement>(null);
-
+  const fittedRef = useRef<HTMLDivElement>(null);
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [dxfData, setDxfData] = useState<DxfSvgData | null>(null);
   const [layers, setLayers] = useState<DxfLayer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,6 +112,17 @@ export default function DxfPlantaViewer({ planta, obraId, canEdit, onClose, visi
     [layers]
   );
 
+  // Track container size for fittedViewport calculation
+  useEffect(() => {
+    const node = svgContainerRef.current;
+    if (!node) return;
+    const update = () => setContainerSize({ width: node.clientWidth, height: node.clientHeight });
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
   // Mouse handlers for pan
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button === 1 || e.button === 2 || e.altKey) {
@@ -136,10 +148,14 @@ export default function DxfPlantaViewer({ planta, obraId, canEdit, onClose, visi
     setZoom(z => Math.min(10, Math.max(0.1, z * delta)));
   }, []);
 
-  // Click to place pin (percentage-based on SVG viewBox)
+  // Click to place pin — coordinates relative to fittedRef (the actual SVG drawing area)
   const handleSvgClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!canEdit || isPanning) return;
-    const rect = e.currentTarget.getBoundingClientRect();
+    const target = fittedRef.current;
+    if (!target) return;
+    const rect = target.getBoundingClientRect();
+    // Ignore clicks outside the fitted drawing area
+    if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) return;
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
     setPendingPin({ x, y });
@@ -209,6 +225,20 @@ export default function DxfPlantaViewer({ planta, obraId, canEdit, onClose, visi
   }
 
   const { viewBox, pathsByLayer } = dxfData;
+  const aspectRatio = viewBox.width > 0 && viewBox.height > 0 ? viewBox.width / viewBox.height : 1;
+
+  // Compute the fitted viewport so pins align with actual drawing area
+  const fittedViewport = (() => {
+    const { width, height } = containerSize;
+    if (!width || !height) return null;
+    const containerRatio = width / height;
+    if (containerRatio > aspectRatio) {
+      const fittedWidth = height * aspectRatio;
+      return { width: fittedWidth, height, left: (width - fittedWidth) / 2, top: 0 };
+    }
+    const fittedHeight = width / aspectRatio;
+    return { width, height: fittedHeight, left: 0, top: (height - fittedHeight) / 2 };
+  })();
 
   return (
     <div className="flex flex-col gap-3">
@@ -312,70 +342,82 @@ export default function DxfPlantaViewer({ planta, obraId, canEdit, onClose, visi
             }}
           >
             <div
-              className={`w-full h-full ${canEdit && !isPanning ? 'cursor-crosshair' : isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
+              className={`relative h-full w-full ${canEdit && !isPanning ? 'cursor-crosshair' : isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
               onClick={handleSvgClick}
-              style={{ position: 'relative' }}
             >
-              <svg
-                viewBox={`${viewBox.minX} ${viewBox.minY} ${viewBox.width} ${viewBox.height}`}
-                className="w-full h-full"
-                preserveAspectRatio="xMidYMid meet"
-                style={{ background: 'transparent' }}
-              >
-                {Array.from(pathsByLayer.entries()).map(([layerName, paths]) => {
-                  if (!visibleLayerNames.has(layerName)) return null;
-                  const layerInfo = layers.find(l => l.name === layerName);
-                  const color = layerInfo?.color || '#888';
-                  return (
-                    <g key={layerName}>
-                      {paths.map((d, i) => (
-                        <path
-                          key={i}
-                          d={d}
-                          fill="none"
-                          stroke={color}
-                          strokeWidth={viewBox.width * 0.001}
-                          vectorEffect="non-scaling-stroke"
-                        />
-                      ))}
-                    </g>
-                  );
-                })}
-              </svg>
-
-              {/* Pins overlay */}
-              {fotos.filter(f => !visibleFotoIds || visibleFotoIds.has(f.id)).map(foto => (
-                <button
-                  key={foto.id}
-                  className={`absolute w-6 h-6 -ml-3 -mt-6 transition-transform hover:scale-125 ${
-                    selectedFoto?.id === foto.id ? 'scale-125 z-20' : 'z-10'
-                  }`}
-                  style={{
-                    left: `${foto.pos_x}%`,
-                    top: `${foto.pos_y}%`,
-                    transform: `scale(${1 / zoom})`,
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedFoto(foto);
-                    setPendingPin(null);
-                  }}
-                  title={foto.descricao || 'Foto'}
-                >
-                  <MapPin className="h-6 w-6 text-accent drop-shadow-md fill-accent/30" />
-                </button>
-              ))}
-
-              {pendingPin && (
+              {fittedViewport && (
                 <div
-                  className="absolute w-6 h-6 -ml-3 -mt-6 z-20 animate-bounce"
+                  ref={fittedRef}
+                  className="absolute overflow-hidden"
                   style={{
-                    left: `${pendingPin.x}%`,
-                    top: `${pendingPin.y}%`,
-                    transform: `scale(${1 / zoom})`,
+                    left: fittedViewport.left,
+                    top: fittedViewport.top,
+                    width: fittedViewport.width,
+                    height: fittedViewport.height,
                   }}
                 >
-                  <MapPin className="h-6 w-6 text-primary drop-shadow-md fill-primary/30" />
+                  <svg
+                    viewBox={`${viewBox.minX} ${viewBox.minY} ${viewBox.width} ${viewBox.height}`}
+                    className="block h-full w-full"
+                    preserveAspectRatio="none"
+                    style={{ background: 'transparent' }}
+                  >
+                    {Array.from(pathsByLayer.entries()).map(([layerName, paths]) => {
+                      if (!visibleLayerNames.has(layerName)) return null;
+                      const layerInfo = layers.find(l => l.name === layerName);
+                      const color = layerInfo?.color || '#888';
+                      return (
+                        <g key={layerName}>
+                          {paths.map((d, i) => (
+                            <path
+                              key={i}
+                              d={d}
+                              fill="none"
+                              stroke={color}
+                              strokeWidth={viewBox.width * 0.001}
+                              vectorEffect="non-scaling-stroke"
+                            />
+                          ))}
+                        </g>
+                      );
+                    })}
+                  </svg>
+
+                  {/* Pins overlay — inside fitted area so percentages align */}
+                  {fotos.filter(f => !visibleFotoIds || visibleFotoIds.has(f.id)).map(foto => (
+                    <button
+                      key={foto.id}
+                      className={`absolute transition-transform hover:scale-125 ${
+                        selectedFoto?.id === foto.id ? 'scale-125 z-20' : 'z-10'
+                      }`}
+                      style={{
+                        left: `${foto.pos_x}%`,
+                        top: `${foto.pos_y}%`,
+                        transform: `translate(-50%, -100%) scale(${1 / zoom})`,
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedFoto(foto);
+                        setPendingPin(null);
+                      }}
+                      title={foto.descricao || 'Foto'}
+                    >
+                      <MapPin className="h-6 w-6 text-accent drop-shadow-md fill-accent/30" />
+                    </button>
+                  ))}
+
+                  {pendingPin && (
+                    <div
+                      className="absolute z-20 animate-bounce"
+                      style={{
+                        left: `${pendingPin.x}%`,
+                        top: `${pendingPin.y}%`,
+                        transform: `translate(-50%, -100%) scale(${1 / zoom})`,
+                      }}
+                    >
+                      <MapPin className="h-6 w-6 text-primary drop-shadow-md fill-primary/30" />
+                    </div>
+                  )}
                 </div>
               )}
             </div>
