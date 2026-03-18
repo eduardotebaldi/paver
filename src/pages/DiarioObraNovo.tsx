@@ -125,7 +125,7 @@ function DxfPinCanvas({
     observer.observe(node);
 
     return () => observer.disconnect();
-  }, []);
+  }, [dxfData]);
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
