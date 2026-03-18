@@ -121,7 +121,7 @@ export default function DxfPlantaViewer({ planta, obraId, canEdit, onClose, visi
     const observer = new ResizeObserver(update);
     observer.observe(node);
     return () => observer.disconnect();
-  }, []);
+  }, [dxfData]);
 
   // Mouse handlers for pan
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
