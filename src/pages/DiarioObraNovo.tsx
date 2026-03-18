@@ -147,6 +147,28 @@ function DxfPinCanvas({
 
   const handleMouseUp = useCallback(() => setIsPanning(false), []);
 
+  const handleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (isPanning) return;
+
+    const rect = viewportRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    if (
+      e.clientX < rect.left ||
+      e.clientX > rect.right ||
+      e.clientY < rect.top ||
+      e.clientY > rect.bottom
+    ) {
+      return;
+    }
+
+    onPinPlace({
+      ...e,
+      currentTarget: viewportRef.current,
+      target: viewportRef.current,
+    } as React.MouseEvent<HTMLDivElement>);
+  }, [isPanning, onPinPlace]);
+
   if (dxfLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -189,28 +211,6 @@ function DxfPinCanvas({
       top: (height - fittedHeight) / 2,
     };
   })();
-
-  const handleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (isPanning) return;
-
-    const rect = viewportRef.current?.getBoundingClientRect();
-    if (!rect) return;
-
-    if (
-      e.clientX < rect.left ||
-      e.clientX > rect.right ||
-      e.clientY < rect.top ||
-      e.clientY > rect.bottom
-    ) {
-      return;
-    }
-
-    onPinPlace({
-      ...e,
-      currentTarget: viewportRef.current,
-      target: viewportRef.current,
-    } as React.MouseEvent<HTMLDivElement>);
-  }, [isPanning, onPinPlace]);
 
   return (
     <div className="space-y-2">
