@@ -47,7 +47,8 @@ export default function DxfPlantaViewer({ planta, obraId, canEdit, onClose, visi
   };
   const fotoInputRef = useRef<HTMLInputElement>(null);
   const svgContainerRef = useRef<HTMLDivElement>(null);
-
+  const fittedRef = useRef<HTMLDivElement>(null);
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [dxfData, setDxfData] = useState<DxfSvgData | null>(null);
   const [layers, setLayers] = useState<DxfLayer[]>([]);
   const [loading, setLoading] = useState(true);
