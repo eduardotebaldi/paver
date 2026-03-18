@@ -374,7 +374,7 @@ export default function DxfPlantaViewer({ planta, obraId, canEdit, onClose, visi
                               d={d}
                               fill="none"
                               stroke={color}
-                              strokeWidth={viewBox.width * 0.001}
+                              strokeWidth={0.5}
                               vectorEffect="non-scaling-stroke"
                             />
                           ))}

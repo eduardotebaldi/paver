@@ -331,7 +331,7 @@ function DxfPinCanvas({
                       return (
                         <g key={layerName}>
                           {paths.map((d, i) => (
-                            <path key={i} d={d} fill="none" stroke={color} strokeWidth={viewBox.width * 0.001} vectorEffect="non-scaling-stroke" />
+                            <path key={i} d={d} fill="none" stroke={color} strokeWidth={0.5} vectorEffect="non-scaling-stroke" />
                           ))}
                         </g>
                       );
