@@ -228,7 +228,7 @@ export default function DxfPlantaViewer({ planta, obraId, canEdit, onClose, visi
   const aspectRatio = viewBox.width > 0 && viewBox.height > 0 ? viewBox.width / viewBox.height : 1;
 
   // Compute the fitted viewport so pins align with actual drawing area
-  const fittedViewport = useMemo(() => {
+  const fittedViewport = (() => {
     const { width, height } = containerSize;
     if (!width || !height) return null;
     const containerRatio = width / height;
@@ -238,7 +238,7 @@ export default function DxfPlantaViewer({ planta, obraId, canEdit, onClose, visi
     }
     const fittedHeight = width / aspectRatio;
     return { width, height: fittedHeight, left: 0, top: (height - fittedHeight) / 2 };
-  }, [containerSize, aspectRatio]);
+  })();
 
   return (
     <div className="flex flex-col gap-3">
