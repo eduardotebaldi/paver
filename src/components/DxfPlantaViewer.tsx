@@ -148,10 +148,14 @@ export default function DxfPlantaViewer({ planta, obraId, canEdit, onClose, visi
     setZoom(z => Math.min(10, Math.max(0.1, z * delta)));
   }, []);
 
-  // Click to place pin (percentage-based on SVG viewBox)
+  // Click to place pin — coordinates relative to fittedRef (the actual SVG drawing area)
   const handleSvgClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!canEdit || isPanning) return;
-    const rect = e.currentTarget.getBoundingClientRect();
+    const target = fittedRef.current;
+    if (!target) return;
+    const rect = target.getBoundingClientRect();
+    // Ignore clicks outside the fitted drawing area
+    if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) return;
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
     setPendingPin({ x, y });
