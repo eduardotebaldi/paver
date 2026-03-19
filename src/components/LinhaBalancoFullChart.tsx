@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { BarChart3, Maximize, Minimize, RotateCcw, ZoomIn, ZoomOut } from 'lucide-react';
+import { BarChart3, Maximize, Minimize } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -27,6 +27,7 @@ import {
 import type { EapItem } from '@/services/api';
 
 type GroupMode = 'pacote' | 'servico';
+type FrameMode = 'completa' | 'anual' | 'trimestral' | 'mensal';
 
 const DAY_MS = 86400000;
 const WEEK_MS = DAY_MS * 7;
@@ -37,6 +38,12 @@ const SUB_COLORS = [
   'hsl(var(--chart-4))',
   'hsl(var(--chart-5))',
 ];
+
+const FRAME_DURATIONS: Record<Exclude<FrameMode, 'completa'>, number> = {
+  anual: DAY_MS * 365,
+  trimestral: DAY_MS * 90,
+  mensal: DAY_MS * 30,
+};
 
 interface SubBarItem {
   id: string;
@@ -68,7 +75,7 @@ interface Props {
   obraDataPrevisao?: string;
 }
 
-function getWeekBands(domainStart: number, domainEnd: number, maxBands = 26): { x1: number; x2: number; odd: boolean }[] {
+function getWeekBands(domainStart: number, domainEnd: number): { x1: number; x2: number; odd: boolean }[] {
   const startDate = new Date(domainStart);
   const day = startDate.getUTCDay();
   const diffToMonday = day === 0 ? -6 : 1 - day;
@@ -85,7 +92,6 @@ function getWeekBands(domainStart: number, domainEnd: number, maxBands = 26): { 
     bands.push({ x1: current, x2: Math.min(next, domainEnd), odd: idx % 2 === 1 });
     current = next;
     idx++;
-    if (bands.length >= maxBands) break;
   }
 
   return bands;
@@ -217,10 +223,17 @@ export default function LinhaBalancoFullChart({ eapItems, mode, obraName, obraDa
   const [detailGroup, setDetailGroup] = useState('');
   const [detailSubs, setDetailSubs] = useState<SubBarMeta[]>([]);
   const [detailColorMap, setDetailColorMap] = useState<Record<string, string>>({});
-  const [zoomDomain, setZoomDomain] = useState<[number, number] | null>(null);
+  const [frameMode, setFrameMode] = useState<FrameMode>('completa');
+  const [panOffset, setPanOffset] = useState(0); // ms offset from start for panning
   const [isFullscreen, setIsFullscreen] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
+  const chartAreaRef = useRef<HTMLDivElement>(null);
   const todayTs = useMemo(() => new Date().setHours(0, 0, 0, 0), []);
+
+  // Pan state refs
+  const isPanningRef = useRef(false);
+  const panStartXRef = useRef(0);
+  const panStartOffsetRef = useRef(0);
 
   useEffect(() => {
     const handler = () => setIsFullscreen(!!document.fullscreenElement);
@@ -228,12 +241,16 @@ export default function LinhaBalancoFullChart({ eapItems, mode, obraName, obraDa
     return () => document.removeEventListener('fullscreenchange', handler);
   }, []);
 
+  // Reset pan offset when frame mode changes
+  useEffect(() => {
+    setPanOffset(0);
+  }, [frameMode]);
+
   const items = useMemo(() => {
     return eapItems.filter(i => i.tipo === 'item');
   }, [eapItems]);
 
   const { chartData, subCategories, colorMap, lastMeasurementTs, domainMin, domainMax } = useMemo(() => {
-    // Primary domain: obra dates. Fallback: today ± 30 days
     const obraStartTs = obraDataInicio ? parseDateLocal(obraDataInicio) : null;
     const obraEndTs = obraDataPrevisao ? parseDateLocal(obraDataPrevisao) : null;
 
@@ -328,7 +345,7 @@ export default function LinhaBalancoFullChart({ eapItems, mode, obraName, obraDa
       return row;
     });
 
-    // Domain: strictly use obra dates when available
+    // Domain: strictly use obra dates
     const pad = DAY_MS * 7;
     const finalMin = obraStartTs !== null ? obraStartTs - pad : todayTs - DAY_MS * 30;
     const finalMax = obraEndTs !== null ? obraEndTs + pad : todayTs + DAY_MS * 30;
@@ -347,8 +364,88 @@ export default function LinhaBalancoFullChart({ eapItems, mode, obraName, obraDa
     };
   }, [items, mode, todayTs, obraDataInicio, obraDataPrevisao]);
 
-  const activeDomain = zoomDomain || [domainMin, domainMax];
+  // Calculate active domain based on frame mode + pan offset
+  const activeDomain: [number, number] = useMemo(() => {
+    if (frameMode === 'completa') {
+      return [domainMin, domainMax];
+    }
+    const windowSize = FRAME_DURATIONS[frameMode];
+    const maxOffset = Math.max(0, (domainMax - domainMin) - windowSize);
+    const clampedOffset = Math.max(0, Math.min(panOffset, maxOffset));
+    const start = domainMin + clampedOffset;
+    const end = Math.min(start + windowSize, domainMax);
+    return [start, end];
+  }, [frameMode, domainMin, domainMax, panOffset]);
+
   const weekBands = useMemo(() => getWeekBands(activeDomain[0], activeDomain[1]), [activeDomain]);
+
+  // Generate appropriate tick marks based on domain range
+  const xTicks = useMemo(() => {
+    const range = activeDomain[1] - activeDomain[0];
+    let interval: number;
+    if (range <= DAY_MS * 35) {
+      // mensal: every week
+      interval = WEEK_MS;
+    } else if (range <= DAY_MS * 100) {
+      // trimestral: every 2 weeks
+      interval = WEEK_MS * 2;
+    } else if (range <= DAY_MS * 400) {
+      // anual: every month (~30 days)
+      interval = DAY_MS * 30;
+    } else {
+      // obra completa: every 2 months
+      interval = DAY_MS * 60;
+    }
+    const ticks: number[] = [];
+    let t = activeDomain[0];
+    while (t <= activeDomain[1]) {
+      ticks.push(t);
+      t += interval;
+    }
+    // Always include the end
+    if (ticks[ticks.length - 1] < activeDomain[1] - interval * 0.3) {
+      ticks.push(activeDomain[1]);
+    }
+    return ticks;
+  }, [activeDomain]);
+
+  // Alt+drag pan handlers
+  const handlePanMouseDown = useCallback((e: React.MouseEvent) => {
+    if (!e.altKey || frameMode === 'completa') return;
+    isPanningRef.current = true;
+    panStartXRef.current = e.clientX;
+    panStartOffsetRef.current = panOffset;
+    e.preventDefault();
+  }, [frameMode, panOffset]);
+
+  useEffect(() => {
+    if (frameMode === 'completa') return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isPanningRef.current) return;
+      const chartEl = chartAreaRef.current;
+      if (!chartEl) return;
+      const chartWidth = chartEl.getBoundingClientRect().width - 120; // subtract Y-axis width
+      const domainRange = domainMax - domainMin;
+      const windowSize = FRAME_DURATIONS[frameMode];
+      const pxDelta = panStartXRef.current - e.clientX;
+      const tsDelta = (pxDelta / chartWidth) * windowSize;
+      const newOffset = panStartOffsetRef.current + tsDelta;
+      const maxOffset = Math.max(0, domainRange - windowSize);
+      setPanOffset(Math.max(0, Math.min(newOffset, maxOffset)));
+    };
+
+    const handleMouseUp = () => {
+      isPanningRef.current = false;
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [frameMode, domainMin, domainMax]);
 
   const toggleFullscreen = useCallback(() => {
     if (!cardRef.current) return;
@@ -367,24 +464,9 @@ export default function LinhaBalancoFullChart({ eapItems, mode, obraName, obraDa
     setDetailOpen(true);
   }, [colorMap]);
 
-  const zoomIn = () => {
-    const [left, right] = activeDomain;
-    const range = right - left;
-    const center = (left + right) / 2;
-    setZoomDomain([center - range * 0.25, center + range * 0.25]);
-  };
-
-  const zoomOut = () => {
-    const [left, right] = activeDomain;
-    const range = right - left;
-    const center = (left + right) / 2;
-    setZoomDomain([Math.max(domainMin, center - range), Math.min(domainMax, center + range)]);
-  };
-  const resetZoom = () => setZoomDomain(null);
-
   // Refs for the extracted MultiSubBarShape to avoid re-creating on each render
-  const activeDomainRef = useRef<[number, number]>(activeDomain as [number, number]);
-  activeDomainRef.current = activeDomain as [number, number];
+  const activeDomainRef = useRef<[number, number]>(activeDomain);
+  activeDomainRef.current = activeDomain;
   const colorMapRef = useRef(colorMap);
   colorMapRef.current = colorMap;
   const handleBarClickRef = useRef(handleBarClick);
@@ -409,20 +491,30 @@ export default function LinhaBalancoFullChart({ eapItems, mode, obraName, obraDa
     dynamicConfig[sub] = { label: sub, color: colorMap[sub] };
   });
 
+  const frameButtons: { key: FrameMode; label: string }[] = [
+    { key: 'completa', label: 'Obra completa' },
+    { key: 'anual', label: 'Anual' },
+    { key: 'trimestral', label: 'Trimestral' },
+    { key: 'mensal', label: 'Mensal' },
+  ];
+
   return (
     <>
       <Card ref={cardRef} className={`flex flex-col ${isFullscreen ? 'h-screen bg-background' : 'h-full'}`}>
-        <div className="flex items-center justify-end gap-1 px-4 pt-3">
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={zoomIn} title="Zoom in">
-            <ZoomIn className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={zoomOut} title="Zoom out">
-            <ZoomOut className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={resetZoom} title="Resetar zoom">
-            <RotateCcw className="h-3.5 w-3.5" />
-          </Button>
-          <div className="mx-1 h-4 w-px bg-border" />
+        <div className="flex items-center justify-between gap-2 px-4 pt-3">
+          <div className="flex items-center gap-1">
+            {frameButtons.map(fb => (
+              <Button
+                key={fb.key}
+                variant={frameMode === fb.key ? 'default' : 'outline'}
+                size="sm"
+                className="h-7 px-2.5 text-xs font-body"
+                onClick={() => setFrameMode(fb.key)}
+              >
+                {fb.label}
+              </Button>
+            ))}
+          </div>
           <Button
             variant="ghost"
             size="icon"
@@ -433,7 +525,12 @@ export default function LinhaBalancoFullChart({ eapItems, mode, obraName, obraDa
             {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
           </Button>
         </div>
-        <CardContent className="flex-1 min-h-0 p-2 pt-1">
+        <CardContent
+          ref={chartAreaRef}
+          className={`flex-1 min-h-0 p-2 pt-1 ${frameMode !== 'completa' ? 'cursor-grab active:cursor-grabbing' : ''}`}
+          onMouseDown={handlePanMouseDown}
+          style={{ userSelect: frameMode !== 'completa' ? 'none' : undefined }}
+        >
           <ChartContainer config={dynamicConfig} className="h-full w-full">
             <ComposedChart data={chartData} layout="vertical" margin={{ top: 5, right: 15, left: 0, bottom: 5 }}>
               {weekBands.filter(week => week.odd).map((week, index) => (
@@ -453,7 +550,8 @@ export default function LinhaBalancoFullChart({ eapItems, mode, obraName, obraDa
                 tickFormatter={formatDateTick}
                 fontSize={10}
                 scale="time"
-                ticks={weekBands.map(week => week.x1)}
+                ticks={xTicks}
+                allowDataOverflow
               />
               <YAxis
                 type="category"
@@ -484,6 +582,11 @@ export default function LinhaBalancoFullChart({ eapItems, mode, obraName, obraDa
             </ComposedChart>
           </ChartContainer>
         </CardContent>
+        {frameMode !== 'completa' && (
+          <p className="px-4 pb-2 text-center font-body text-[11px] italic text-muted-foreground">
+            Alt + arrastar para movimentar o gráfico
+          </p>
+        )}
       </Card>
 
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
