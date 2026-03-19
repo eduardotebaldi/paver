@@ -122,8 +122,85 @@ function LoaderIcon() {
   return <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary/30 border-t-primary" aria-hidden="true" />;
 }
 
+// Extracted outside component to prevent Recharts unmount/remount on every render
+function createMultiSubBarShape(
+  activeDomainRef: React.MutableRefObject<[number, number]>,
+  colorMapRef: React.MutableRefObject<Record<string, string>>,
+  handleBarClickRef: React.MutableRefObject<(data: any, clickedSub?: SubBarMeta) => void>,
+) {
+  return function MultiSubBarShape(props: any) {
+    const { x, y, width, height, payload } = props;
+    if (width == null || height == null || !payload) return null;
+
+    const subBars: SubBarMeta[] = (payload._subBars || []).filter(
+      (sub: SubBarMeta) => sub.start != null && sub.end != null,
+    );
+    if (subBars.length === 0) return null;
+
+    const chartLeft = Math.min(x, x + width);
+    const chartWidth = Math.abs(width);
+    const [domainStart, domainEnd] = activeDomainRef.current;
+    const domainRange = domainEnd - domainStart;
+    const tsToX = (ts: number) => chartLeft + ((ts - domainStart) / domainRange) * chartWidth;
+    const cMap = colorMapRef.current;
+    const onBarClick = handleBarClickRef.current;
+
+    const barH = Math.min(14, (height - (subBars.length - 1)) / subBars.length);
+    const totalBarHeight = barH * subBars.length + (subBars.length - 1);
+    const startY = y + (height - totalBarHeight) / 2;
+    const clipId = `clip-bars-${String(payload?.fullName || payload?.name || 'x').replace(/\s+/g, '-')}`;
+
+    return (
+      <g style={{ cursor: 'pointer' }}>
+        <defs>
+          <clipPath id={clipId}>
+            <rect x={chartLeft} y={y - 2} width={chartWidth} height={height + 4} />
+          </clipPath>
+        </defs>
+        <g clipPath={`url(#${clipId})`}>
+          {subBars.map((sub, index) => {
+            const barX = tsToX(sub.start!);
+            const barEndX = tsToX(sub.end!);
+            const barW = Math.max(barEndX - barX, 2);
+            const barY = startY + index * (barH + 1);
+            const fillColor = cMap[sub.name] || 'hsl(var(--muted-foreground))';
+            const filledW = barW * (sub.avanco / 100);
+            const visibleW = Math.max(0, Math.min(barX + barW, chartLeft + chartWidth) - Math.max(barX, chartLeft));
+            const maxChars = Math.max(0, Math.floor(visibleW / 7));
+            const label = sub.name.length > maxChars && maxChars > 1
+              ? `${sub.name.substring(0, maxChars - 1)}…`
+              : sub.name;
+            const labelX = Math.max(barX + 5, chartLeft + 5);
+
+            return (
+              <g key={sub.name} onClick={(event) => { event.stopPropagation(); onBarClick(payload, sub); }}>
+                <rect x={barX} y={barY} width={barW} height={barH} rx={2} ry={2} fill={fillColor} opacity={0.3} />
+                {filledW > 0 && (
+                  <rect x={barX} y={barY} width={Math.min(filledW, barW)} height={barH} rx={2} ry={2} fill={fillColor} opacity={0.9} />
+                )}
+                {visibleW > 40 && (
+                  <text
+                    x={labelX}
+                    y={barY + barH / 2}
+                    dominantBaseline="central"
+                    fontSize={9}
+                    fontWeight={600}
+                    fill="hsl(var(--primary-foreground))"
+                    style={{ textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}
+                  >
+                    {label}
+                  </text>
+                )}
+              </g>
+            );
+          })}
+        </g>
+      </g>
+    );
+  };
+}
+
 export default function LinhaBalancoFullChart({ eapItems, mode, obraName }: Props) {
-  const [isChartReady, setIsChartReady] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailGroup, setDetailGroup] = useState('');
   const [detailSubs, setDetailSubs] = useState<SubBarMeta[]>([]);
@@ -132,12 +209,6 @@ export default function LinhaBalancoFullChart({ eapItems, mode, obraName }: Prop
   const [isFullscreen, setIsFullscreen] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const todayTs = useMemo(() => new Date().setHours(0, 0, 0, 0), []);
-
-  useEffect(() => {
-    setIsChartReady(false);
-    const timer = window.setTimeout(() => setIsChartReady(true), 60);
-    return () => window.clearTimeout(timer);
-  }, [eapItems, mode]);
 
   useEffect(() => {
     const handler = () => setIsFullscreen(!!document.fullscreenElement);
