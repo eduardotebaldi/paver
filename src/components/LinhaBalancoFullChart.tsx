@@ -285,14 +285,14 @@ export default function LinhaBalancoFullChart({ eapItems, mode, obraName, obraDa
         entry.qtds.push(item.quantidade);
         entry.qtdsRealizadas.push(item.quantidade * ((item.avanco_realizado || 0) / 100));
       }
-      if (item.data_inicio_prevista) entry.starts.push(new Date(`${item.data_inicio_prevista}T00:00:00`).getTime());
-      if (item.data_fim_prevista) entry.ends.push(new Date(`${item.data_fim_prevista}T00:00:00`).getTime());
+      if (item.data_inicio_prevista) entry.starts.push(parseDateLocal(item.data_inicio_prevista));
+      if (item.data_fim_prevista) entry.ends.push(parseDateLocal(item.data_fim_prevista));
       if (item.data_inicio_real) {
-        const t = new Date(`${item.data_inicio_real}T00:00:00`).getTime();
+        const t = parseDateLocal(item.data_inicio_real);
         if (t > lastMeasurement) lastMeasurement = t;
       }
       if (item.data_fim_real) {
-        const t = new Date(`${item.data_fim_real}T00:00:00`).getTime();
+        const t = parseDateLocal(item.data_fim_real);
         if (t > lastMeasurement) lastMeasurement = t;
       }
     }
