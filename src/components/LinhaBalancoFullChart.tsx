@@ -73,6 +73,7 @@ interface Props {
   obraName?: string;
   obraDataInicio?: string;
   obraDataPrevisao?: string;
+  lastDiarioDate?: string;
 }
 
 function getWeekBands(domainStart: number, domainEnd: number): { x1: number; x2: number; odd: boolean }[] {
