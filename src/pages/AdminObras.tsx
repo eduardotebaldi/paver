@@ -238,6 +238,10 @@ export default function AdminObras() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.data_inicio || !form.data_previsao) {
+      toast({ title: 'Datas obrigatórias', description: 'Informe a data de início e previsão de conclusão.', variant: 'destructive' });
+      return;
+    }
     if (editingObra) {
       updateMutation.mutate({ id: editingObra.id, data: form });
     } else {
