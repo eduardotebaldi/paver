@@ -296,6 +296,36 @@ export default function LinhaBalancoPage() {
           </Select>
         </div>
 
+        <div className="flex items-end gap-2">
+          <div className="space-y-1">
+            <Label className="font-body text-xs text-muted-foreground">De</Label>
+            <Input
+              type="date"
+              value={customDateStart || selectedObraObj?.data_inicio || ''}
+              onChange={e => setCustomDateStart(e.target.value)}
+              className="w-36 h-8 text-xs font-body"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="font-body text-xs text-muted-foreground">Até</Label>
+            <Input
+              type="date"
+              value={customDateEnd || selectedObraObj?.data_previsao || ''}
+              onChange={e => setCustomDateEnd(e.target.value)}
+              className="w-36 h-8 text-xs font-body"
+            />
+          </div>
+          {(customDateStart || customDateEnd) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => { setCustomDateStart(''); setCustomDateEnd(''); }}
+              className="font-body text-xs h-8 px-2"
+            >
+              Resetar
+            </Button>
+          )}
+        </div>
         {canEdit && selectedObra && (
           <div className="ml-auto flex gap-2">
             {!showFullChart && (
