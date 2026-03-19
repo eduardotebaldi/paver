@@ -13,6 +13,7 @@ const Eap = lazy(() => import('./pages/Eap'));
 const Relatorios = lazy(() => import('./pages/Relatorios'));
 const RelatorioFotografico = lazy(() => import('./pages/RelatorioFotografico'));
 const LinhaBalancoPage = lazy(() => import('./pages/LinhaBalanco'));
+const DatasEap = lazy(() => import('./pages/DatasEap'));
 const Dependencias = lazy(() => import('./pages/Dependencias'));
 const DiarioObra = lazy(() => import('./pages/DiarioObra'));
 const DiarioObraNovo = lazy(() => import('./pages/DiarioObraNovo'));
