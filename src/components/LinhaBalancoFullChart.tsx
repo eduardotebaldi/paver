@@ -212,7 +212,7 @@ function createMultiSubBarShape(
   };
 }
 
-export default function LinhaBalancoFullChart({ eapItems, mode, obraName }: Props) {
+export default function LinhaBalancoFullChart({ eapItems, mode, obraName, obraDataInicio, obraDataPrevisao }: Props) {
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailGroup, setDetailGroup] = useState('');
   const [detailSubs, setDetailSubs] = useState<SubBarMeta[]>([]);
