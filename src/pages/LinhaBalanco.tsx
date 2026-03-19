@@ -374,7 +374,7 @@ export default function LinhaBalancoPage() {
           <PanelLoadingState title="Carregando dados da obra" description="Buscando itens da EAP para montar a linha de balanço." />
         ) : (
           <Suspense fallback={<PanelLoadingState title="Preparando gráfico" description="Montando a linha de balanço em segundo plano." />}>
-            <LinhaBalancoFullChart eapItems={filteredItems} mode={mode} obraName={obraName} obraDataInicio={effectiveDateStart} obraDataPrevisao={effectiveDateEnd} />
+            <LinhaBalancoFullChart eapItems={filteredItems} mode={mode} obraName={obraName} obraDataInicio={effectiveDateStart} obraDataPrevisao={effectiveDateEnd} lastDiarioDate={lastDiarioDate ?? undefined} />
           </Suspense>
         )}
       </div>
