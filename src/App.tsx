@@ -13,6 +13,7 @@ const Eap = lazy(() => import('./pages/Eap'));
 const Relatorios = lazy(() => import('./pages/Relatorios'));
 const RelatorioFotografico = lazy(() => import('./pages/RelatorioFotografico'));
 const LinhaBalancoPage = lazy(() => import('./pages/LinhaBalanco'));
+const DatasEap = lazy(() => import('./pages/DatasEap'));
 const Dependencias = lazy(() => import('./pages/Dependencias'));
 const DiarioObra = lazy(() => import('./pages/DiarioObra'));
 const DiarioObraNovo = lazy(() => import('./pages/DiarioObraNovo'));
@@ -61,6 +62,7 @@ const App = () => (
                 <Route path="/relatorios" element={<Relatorios />} />
                 <Route path="/relatorio-fotografico" element={<RelatorioFotografico />} />
                 <Route path="/linha-balanco" element={<LinhaBalancoPage />} />
+                <Route path="/datas-eap" element={<DatasEap />} />
                 <Route
                   path="/admin/obras"
                   element={(

@@ -66,7 +66,7 @@ interface Props {
   obraName?: string;
 }
 
-function getWeekBands(domainStart: number, domainEnd: number): { x1: number; x2: number; odd: boolean }[] {
+function getWeekBands(domainStart: number, domainEnd: number, maxBands = 26): { x1: number; x2: number; odd: boolean }[] {
   const startDate = new Date(domainStart);
   const day = startDate.getUTCDay();
   const diffToMonday = day === 0 ? -6 : 1 - day;
@@ -83,6 +83,7 @@ function getWeekBands(domainStart: number, domainEnd: number): { x1: number; x2:
     bands.push({ x1: current, x2: Math.min(next, domainEnd), odd: idx % 2 === 1 });
     current = next;
     idx++;
+    if (bands.length >= maxBands) break;
   }
 
   return bands;
@@ -121,8 +122,85 @@ function LoaderIcon() {
   return <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary/30 border-t-primary" aria-hidden="true" />;
 }
 
+// Extracted outside component to prevent Recharts unmount/remount on every render
+function createMultiSubBarShape(
+  activeDomainRef: React.MutableRefObject<[number, number]>,
+  colorMapRef: React.MutableRefObject<Record<string, string>>,
+  handleBarClickRef: React.MutableRefObject<(data: any, clickedSub?: SubBarMeta) => void>,
+) {
+  return function MultiSubBarShape(props: any) {
+    const { x, y, width, height, payload } = props;
+    if (width == null || height == null || !payload) return null;
+
+    const subBars: SubBarMeta[] = (payload._subBars || []).filter(
+      (sub: SubBarMeta) => sub.start != null && sub.end != null,
+    );
+    if (subBars.length === 0) return null;
+
+    const chartLeft = Math.min(x, x + width);
+    const chartWidth = Math.abs(width);
+    const [domainStart, domainEnd] = activeDomainRef.current;
+    const domainRange = domainEnd - domainStart;
+    const tsToX = (ts: number) => chartLeft + ((ts - domainStart) / domainRange) * chartWidth;
+    const cMap = colorMapRef.current;
+    const onBarClick = handleBarClickRef.current;
+
+    const barH = Math.min(14, (height - (subBars.length - 1)) / subBars.length);
+    const totalBarHeight = barH * subBars.length + (subBars.length - 1);
+    const startY = y + (height - totalBarHeight) / 2;
+    const clipId = `clip-bars-${String(payload?.fullName || payload?.name || 'x').replace(/\s+/g, '-')}`;
+
+    return (
+      <g style={{ cursor: 'pointer' }}>
+        <defs>
+          <clipPath id={clipId}>
+            <rect x={chartLeft} y={y - 2} width={chartWidth} height={height + 4} />
+          </clipPath>
+        </defs>
+        <g clipPath={`url(#${clipId})`}>
+          {subBars.map((sub, index) => {
+            const barX = tsToX(sub.start!);
+            const barEndX = tsToX(sub.end!);
+            const barW = Math.max(barEndX - barX, 2);
+            const barY = startY + index * (barH + 1);
+            const fillColor = cMap[sub.name] || 'hsl(var(--muted-foreground))';
+            const filledW = barW * (sub.avanco / 100);
+            const visibleW = Math.max(0, Math.min(barX + barW, chartLeft + chartWidth) - Math.max(barX, chartLeft));
+            const maxChars = Math.max(0, Math.floor(visibleW / 7));
+            const label = sub.name.length > maxChars && maxChars > 1
+              ? `${sub.name.substring(0, maxChars - 1)}…`
+              : sub.name;
+            const labelX = Math.max(barX + 5, chartLeft + 5);
+
+            return (
+              <g key={sub.name} onClick={(event) => { event.stopPropagation(); onBarClick(payload, sub); }}>
+                <rect x={barX} y={barY} width={barW} height={barH} rx={2} ry={2} fill={fillColor} opacity={0.3} />
+                {filledW > 0 && (
+                  <rect x={barX} y={barY} width={Math.min(filledW, barW)} height={barH} rx={2} ry={2} fill={fillColor} opacity={0.9} />
+                )}
+                {visibleW > 40 && (
+                  <text
+                    x={labelX}
+                    y={barY + barH / 2}
+                    dominantBaseline="central"
+                    fontSize={9}
+                    fontWeight={600}
+                    fill="hsl(var(--primary-foreground))"
+                    style={{ textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}
+                  >
+                    {label}
+                  </text>
+                )}
+              </g>
+            );
+          })}
+        </g>
+      </g>
+    );
+  };
+}
+
 export default function LinhaBalancoFullChart({ eapItems, mode, obraName }: Props) {
-  const [isChartReady, setIsChartReady] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailGroup, setDetailGroup] = useState('');
   const [detailSubs, setDetailSubs] = useState<SubBarMeta[]>([]);
@@ -133,35 +211,18 @@ export default function LinhaBalancoFullChart({ eapItems, mode, obraName }: Prop
   const todayTs = useMemo(() => new Date().setHours(0, 0, 0, 0), []);
 
   useEffect(() => {
-    setIsChartReady(false);
-    const timer = window.setTimeout(() => setIsChartReady(true), 60);
-    return () => window.clearTimeout(timer);
-  }, [eapItems, mode]);
-
-  useEffect(() => {
     const handler = () => setIsFullscreen(!!document.fullscreenElement);
     document.addEventListener('fullscreenchange', handler);
     return () => document.removeEventListener('fullscreenchange', handler);
   }, []);
 
   const items = useMemo(() => {
-    if (!isChartReady) return [] as EapItem[];
     return eapItems.filter(i => i.tipo === 'item');
-  }, [eapItems, isChartReady]);
+  }, [eapItems]);
 
   const { chartData, subCategories, colorMap, lastMeasurementTs, domainMin, domainMax } = useMemo(() => {
-    if (!isChartReady) {
-      const defaultMin = todayTs - DAY_MS * 30;
-      const defaultMax = todayTs + DAY_MS * 30;
-      return {
-        chartData: [] as Array<Record<string, any>>,
-        subCategories: [] as string[],
-        colorMap: {} as Record<string, string>,
-        lastMeasurementTs: null as number | null,
-        domainMin: defaultMin,
-        domainMax: defaultMax,
-      };
-    }
+    const defaultMin = todayTs - DAY_MS * 30;
+    const defaultMax = todayTs + DAY_MS * 30;
 
     const groupMap = new Map<string, Map<string, {
       starts: number[];
@@ -288,7 +349,7 @@ export default function LinhaBalancoFullChart({ eapItems, mode, obraName }: Prop
       domainMin: finalMin,
       domainMax: finalMax,
     };
-  }, [isChartReady, items, mode, todayTs]);
+  }, [items, mode, todayTs]);
 
   const activeDomain = zoomDomain || [domainMin, domainMax];
   const weekBands = useMemo(() => getWeekBands(activeDomain[0], activeDomain[1]), [activeDomain]);
@@ -323,12 +384,20 @@ export default function LinhaBalancoFullChart({ eapItems, mode, obraName }: Prop
     const center = (left + right) / 2;
     setZoomDomain([Math.max(domainMin, center - range), Math.min(domainMax, center + range)]);
   };
-
   const resetZoom = () => setZoomDomain(null);
 
-  if (!isChartReady) {
-    return <ChartLoadingState title="Preparando gráfico" description="Montando a linha de balanço sem travar a página." />;
-  }
+  // Refs for the extracted MultiSubBarShape to avoid re-creating on each render
+  const activeDomainRef = useRef<[number, number]>(activeDomain as [number, number]);
+  activeDomainRef.current = activeDomain as [number, number];
+  const colorMapRef = useRef(colorMap);
+  colorMapRef.current = colorMap;
+  const handleBarClickRef = useRef(handleBarClick);
+  handleBarClickRef.current = handleBarClick;
+
+  const MultiSubBarShape = useMemo(
+    () => createMultiSubBarShape(activeDomainRef, colorMapRef, handleBarClickRef),
+    [], // stable reference — reads latest values via refs
+  );
 
   if (items.length === 0) {
     return (
@@ -338,84 +407,6 @@ export default function LinhaBalancoFullChart({ eapItems, mode, obraName }: Prop
       </div>
     );
   }
-
-  const MultiSubBarShape = (props: any) => {
-    const { x, y, width, height, payload } = props;
-    if (width == null || height == null || !payload) return null;
-
-    const subBars: SubBarMeta[] = (payload._subBars || []).filter(
-      (sub: SubBarMeta) => sub.start != null && sub.end != null,
-    );
-    if (subBars.length === 0) return null;
-
-    const chartLeft = Math.min(x, x + width);
-    const chartWidth = Math.abs(width);
-    const [domainStart, domainEnd] = activeDomain;
-    const domainRange = domainEnd - domainStart;
-    const tsToX = (ts: number) => chartLeft + ((ts - domainStart) / domainRange) * chartWidth;
-
-    const barH = Math.min(14, (height - (subBars.length - 1)) / subBars.length);
-    const totalBarHeight = barH * subBars.length + (subBars.length - 1);
-    const startY = y + (height - totalBarHeight) / 2;
-    const clipId = `clip-bars-${String(payload?.fullName || payload?.name || 'x').replace(/\s+/g, '-')}`;
-
-    return (
-      <g style={{ cursor: 'pointer' }}>
-        <defs>
-          <clipPath id={clipId}>
-            <rect x={chartLeft} y={y - 2} width={chartWidth} height={height + 4} />
-          </clipPath>
-        </defs>
-        <g clipPath={`url(#${clipId})`}>
-          {subBars.map((sub, index) => {
-            const barX = tsToX(sub.start!);
-            const barEndX = tsToX(sub.end!);
-            const barW = Math.max(barEndX - barX, 2);
-            const barY = startY + index * (barH + 1);
-            const fillColor = colorMap[sub.name] || 'hsl(var(--muted-foreground))';
-            const filledW = barW * (sub.avanco / 100);
-            const visibleW = Math.max(0, Math.min(barX + barW, chartLeft + chartWidth) - Math.max(barX, chartLeft));
-            const maxChars = Math.max(0, Math.floor(visibleW / 7));
-            const label = sub.name.length > maxChars && maxChars > 1
-              ? `${sub.name.substring(0, maxChars - 1)}…`
-              : sub.name;
-            const labelX = Math.max(barX + 5, chartLeft + 5);
-
-            return (
-              <g key={sub.name} onClick={(event) => { event.stopPropagation(); handleBarClick(payload, sub); }}>
-                <rect x={barX} y={barY} width={barW} height={barH} rx={2} ry={2} fill={fillColor} opacity={0.3} />
-                {filledW > 0 && (
-                  <rect
-                    x={barX}
-                    y={barY}
-                    width={Math.min(filledW, barW)}
-                    height={barH}
-                    rx={2}
-                    ry={2}
-                    fill={fillColor}
-                    opacity={0.9}
-                  />
-                )}
-                {visibleW > 40 && (
-                  <text
-                    x={labelX}
-                    y={barY + barH / 2}
-                    dominantBaseline="central"
-                    fontSize={9}
-                    fontWeight={600}
-                    fill="hsl(var(--primary-foreground))"
-                    style={{ textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}
-                  >
-                    {label}
-                  </text>
-                )}
-              </g>
-            );
-          })}
-        </g>
-      </g>
-    );
-  };
 
   const dynamicConfig: ChartConfig = {};
   subCategories.forEach(sub => {
