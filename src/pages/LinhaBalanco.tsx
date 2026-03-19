@@ -146,6 +146,10 @@ export default function LinhaBalancoPage() {
   const selectedObraObj = obras.find(obra => obra.id === selectedObra);
   const obraName = selectedObraObj?.nome;
 
+  // Effective dates: custom overrides > obra dates
+  const effectiveDateStart = customDateStart || selectedObraObj?.data_inicio;
+  const effectiveDateEnd = customDateEnd || selectedObraObj?.data_previsao;
+
   const handleRecalcDeps = async () => {
     const calculated = calculateDependencyDates(eapItems);
     const changes: { id: string; updates: Partial<EapItem> }[] = [];
