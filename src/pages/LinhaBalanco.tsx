@@ -141,7 +141,8 @@ export default function LinhaBalancoPage() {
     return items;
   }, [eapItems, selectedPacote, selectedServico]);
 
-  const obraName = obras.find(obra => obra.id === selectedObra)?.nome;
+  const selectedObraObj = obras.find(obra => obra.id === selectedObra);
+  const obraName = selectedObraObj?.nome;
 
   const handleRecalcDeps = async () => {
     const calculated = calculateDependencyDates(eapItems);
