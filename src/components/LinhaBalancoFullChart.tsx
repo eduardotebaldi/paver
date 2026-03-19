@@ -64,6 +64,8 @@ interface Props {
   eapItems: EapItem[];
   mode: GroupMode;
   obraName?: string;
+  obraDataInicio?: string;
+  obraDataPrevisao?: string;
 }
 
 function getWeekBands(domainStart: number, domainEnd: number, maxBands = 26): { x1: number; x2: number; odd: boolean }[] {
@@ -89,14 +91,24 @@ function getWeekBands(domainStart: number, domainEnd: number, maxBands = 26): { 
   return bands;
 }
 
+function parseDateLocal(dateStr: string): number {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d).getTime();
+}
+
 function formatDateTick(ts: number) {
   const d = new Date(ts);
-  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getFullYear()).slice(2)}`;
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = String(d.getFullYear()).slice(-2);
+  return `${day}/${month}/${year}`;
 }
 
 function formatDateFull(ts: number) {
   const d = new Date(ts);
-  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  return `${day}/${month}/${d.getFullYear()}`;
 }
 
 function ChartLoadingState({ title, description }: { title: string; description: string }) {
@@ -200,7 +212,7 @@ function createMultiSubBarShape(
   };
 }
 
-export default function LinhaBalancoFullChart({ eapItems, mode, obraName }: Props) {
+export default function LinhaBalancoFullChart({ eapItems, mode, obraName, obraDataInicio, obraDataPrevisao }: Props) {
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailGroup, setDetailGroup] = useState('');
   const [detailSubs, setDetailSubs] = useState<SubBarMeta[]>([]);
@@ -273,14 +285,14 @@ export default function LinhaBalancoFullChart({ eapItems, mode, obraName }: Prop
         entry.qtds.push(item.quantidade);
         entry.qtdsRealizadas.push(item.quantidade * ((item.avanco_realizado || 0) / 100));
       }
-      if (item.data_inicio_prevista) entry.starts.push(new Date(`${item.data_inicio_prevista}T00:00:00`).getTime());
-      if (item.data_fim_prevista) entry.ends.push(new Date(`${item.data_fim_prevista}T00:00:00`).getTime());
+      if (item.data_inicio_prevista) entry.starts.push(parseDateLocal(item.data_inicio_prevista));
+      if (item.data_fim_prevista) entry.ends.push(parseDateLocal(item.data_fim_prevista));
       if (item.data_inicio_real) {
-        const t = new Date(`${item.data_inicio_real}T00:00:00`).getTime();
+        const t = parseDateLocal(item.data_inicio_real);
         if (t > lastMeasurement) lastMeasurement = t;
       }
       if (item.data_fim_real) {
-        const t = new Date(`${item.data_fim_real}T00:00:00`).getTime();
+        const t = parseDateLocal(item.data_fim_real);
         if (t > lastMeasurement) lastMeasurement = t;
       }
     }
@@ -331,11 +343,20 @@ export default function LinhaBalancoFullChart({ eapItems, mode, obraName }: Prop
       return row;
     });
 
+    // Use obra dates as domain bounds when available
+    if (obraDataInicio) {
+      const obraStart = parseDateLocal(obraDataInicio);
+      if (obraStart < dMin) dMin = obraStart;
+    }
+    if (obraDataPrevisao) {
+      const obraEnd = parseDateLocal(obraDataPrevisao);
+      if (obraEnd > dMax) dMax = obraEnd;
+    }
     if (todayTs < dMin) dMin = todayTs;
     if (todayTs > dMax) dMax = todayTs;
     const pad = Math.max((dMax - dMin) * 0.05, DAY_MS * 7);
-    const finalMin = dMin === Infinity ? todayTs - DAY_MS * 30 : dMin - pad;
-    const finalMax = dMax === -Infinity ? todayTs + DAY_MS * 30 : dMax + pad;
+    const finalMin = dMin === Infinity ? (obraDataInicio ? parseDateLocal(obraDataInicio) - DAY_MS * 7 : todayTs - DAY_MS * 30) : dMin - pad;
+    const finalMax = dMax === -Infinity ? (obraDataPrevisao ? parseDateLocal(obraDataPrevisao) + DAY_MS * 7 : todayTs + DAY_MS * 30) : dMax + pad;
 
     data.forEach(row => {
       row._allRange = [finalMin, finalMax];
@@ -349,7 +370,7 @@ export default function LinhaBalancoFullChart({ eapItems, mode, obraName }: Prop
       domainMin: finalMin,
       domainMax: finalMax,
     };
-  }, [items, mode, todayTs]);
+  }, [items, mode, todayTs, obraDataInicio, obraDataPrevisao]);
 
   const activeDomain = zoomDomain || [domainMin, domainMax];
   const weekBands = useMemo(() => getWeekBands(activeDomain[0], activeDomain[1]), [activeDomain]);

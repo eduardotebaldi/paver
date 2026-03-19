@@ -238,6 +238,10 @@ export default function AdminObras() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.data_inicio || !form.data_previsao) {
+      toast({ title: 'Datas obrigatórias', description: 'Informe a data de início e previsão de conclusão.', variant: 'destructive' });
+      return;
+    }
     if (editingObra) {
       updateMutation.mutate({ id: editingObra.id, data: form });
     } else {
@@ -307,12 +311,12 @@ export default function AdminObras() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label className="font-body">Data Início</Label>
-                    <Input type="date" value={form.data_inicio} onChange={e => setForm({ ...form, data_inicio: e.target.value })} className="font-body" />
+                    <Label className="font-body">Data Início *</Label>
+                    <Input type="date" value={form.data_inicio} onChange={e => setForm({ ...form, data_inicio: e.target.value })} required className="font-body" />
                   </div>
                   <div className="space-y-2">
-                    <Label className="font-body">Previsão Conclusão</Label>
-                    <Input type="date" value={form.data_previsao} onChange={e => setForm({ ...form, data_previsao: e.target.value })} className="font-body" />
+                    <Label className="font-body">Previsão Conclusão *</Label>
+                    <Input type="date" value={form.data_previsao} onChange={e => setForm({ ...form, data_previsao: e.target.value })} required className="font-body" />
                   </div>
                 </div>
                 <div className="flex justify-end gap-2 pt-2">
