@@ -188,7 +188,7 @@ export default function EapMassDateEditor({ open, onOpenChange, items, onSave }:
 
           <Button variant="ghost" size="sm" onClick={toggleAll} className="font-body h-8 text-xs">
             <ChevronsUpDown className="h-3.5 w-3.5 mr-1" />
-            {collapsedGroups.size === groups.length ? 'Expandir' : 'Recolher'}
+            {effectiveCollapsed.size === groups.length ? 'Expandir' : 'Recolher'}
           </Button>
 
           <div className="flex-1" />
