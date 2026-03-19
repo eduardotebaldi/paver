@@ -122,6 +122,21 @@ export default function LinhaBalancoPage() {
     enabled: !!selectedObra,
   });
 
+  const { data: lastDiarioDate } = useQuery({
+    queryKey: ['last-diario-date', selectedObra],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('paver_diarios')
+        .select('data')
+        .eq('obra_id', selectedObra)
+        .order('data', { ascending: false })
+        .limit(1);
+      if (error) throw error;
+      return data?.[0]?.data ?? null;
+    },
+    enabled: !!selectedObra,
+  });
+
   const uniquePacotes = useMemo(() => {
     const values = new Set<string>();
     eapItems.forEach(item => { if (item.pacote) values.add(item.pacote); });
