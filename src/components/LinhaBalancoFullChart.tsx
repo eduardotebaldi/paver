@@ -217,23 +217,12 @@ export default function LinhaBalancoFullChart({ eapItems, mode, obraName }: Prop
   }, []);
 
   const items = useMemo(() => {
-    if (!isChartReady) return [] as EapItem[];
     return eapItems.filter(i => i.tipo === 'item');
-  }, [eapItems, isChartReady]);
+  }, [eapItems]);
 
   const { chartData, subCategories, colorMap, lastMeasurementTs, domainMin, domainMax } = useMemo(() => {
-    if (!isChartReady) {
-      const defaultMin = todayTs - DAY_MS * 30;
-      const defaultMax = todayTs + DAY_MS * 30;
-      return {
-        chartData: [] as Array<Record<string, any>>,
-        subCategories: [] as string[],
-        colorMap: {} as Record<string, string>,
-        lastMeasurementTs: null as number | null,
-        domainMin: defaultMin,
-        domainMax: defaultMax,
-      };
-    }
+    const defaultMin = todayTs - DAY_MS * 30;
+    const defaultMax = todayTs + DAY_MS * 30;
 
     const groupMap = new Map<string, Map<string, {
       starts: number[];
