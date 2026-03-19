@@ -223,7 +223,7 @@ export default function EapMassDateEditor({ open, onOpenChange, items, onSave }:
             </TableHeader>
             <TableBody>
               {groups.map((group) => {
-                const isCollapsed = collapsedGroups.has(group.key);
+                const isCollapsed = effectiveCollapsed.has(group.key);
                 const groupChangedCount = group.items.filter(i => changes.has(i.id)).length;
 
                 return (
