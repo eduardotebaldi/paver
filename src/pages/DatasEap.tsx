@@ -128,13 +128,21 @@ export default function DatasEap() {
   }, [eapItems, groupMode, effectiveCollapsed]);
 
   const updateDate = useCallback((itemId: string, field: 'data_inicio_prevista' | 'data_fim_prevista', value: string) => {
+    if (value && obraInicio && value < obraInicio) {
+      toast({ title: 'Data fora do período da obra', description: `A data não pode ser anterior a ${obraInicio}.`, variant: 'destructive' });
+      return;
+    }
+    if (value && obraFim && value > obraFim) {
+      toast({ title: 'Data fora do período da obra', description: `A data não pode ser posterior a ${obraFim}.`, variant: 'destructive' });
+      return;
+    }
     setChanges(prev => {
       const next = new Map(prev);
       const existing = next.get(itemId) || { id: itemId };
       next.set(itemId, { ...existing, [field]: value });
       return next;
     });
-  }, []);
+  }, [obraInicio, obraFim, toast]);
 
   const getDate = useCallback((item: EapItem, field: 'data_inicio_prevista' | 'data_fim_prevista') => {
     const change = changes.get(item.id);
