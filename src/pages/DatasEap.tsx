@@ -386,12 +386,16 @@ export default function DatasEap() {
                   <Input
                     type="date"
                     value={inicio}
+                    min={obraInicio || undefined}
+                    max={obraFim || undefined}
                     onChange={e => updateDate(item.id, 'data_inicio_prevista', e.target.value)}
                     className="h-7 text-xs"
                   />
                   <Input
                     type="date"
                     value={fim}
+                    min={obraInicio || undefined}
+                    max={obraFim || undefined}
                     onChange={e => updateDate(item.id, 'data_fim_prevista', e.target.value)}
                     className="h-7 text-xs"
                   />
