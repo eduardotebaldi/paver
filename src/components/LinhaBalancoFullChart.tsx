@@ -350,7 +350,6 @@ export default function LinhaBalancoFullChart({ eapItems, mode, obraName, obraDa
       chartData: data,
       subCategories: sortedSubs,
       colorMap: cMap,
-      lastMeasurementTs: lastMeasurement || null,
       domainMin: finalMin,
       domainMax: finalMax,
     };
