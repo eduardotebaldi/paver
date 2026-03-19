@@ -48,9 +48,15 @@ export default function EapMassDateEditor({ open, onOpenChange, items, onSave }:
   const [saving, setSaving] = useState(false);
   const [changes, setChanges] = useState<Map<string, DateChange>>(new Map());
   const [groupMode, setGroupMode] = useState<GroupMode>('pacote');
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string> | null>(null);
 
   const groups = useMemo(() => buildGroups(items, groupMode), [items, groupMode]);
+
+  // Start with all groups collapsed to avoid rendering 500+ date inputs at once
+  const effectiveCollapsed = useMemo(() => {
+    if (collapsedGroups !== null) return collapsedGroups;
+    return new Set(groups.map(g => g.key));
+  }, [collapsedGroups, groups]);
 
   const editableItems = useMemo(() =>
     items.filter(i => i.tipo === 'item').sort((a, b) => (a.ordem || 0) - (b.ordem || 0)),
