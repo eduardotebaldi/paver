@@ -254,21 +254,25 @@ export default function LinhaBalancoPage() {
         )}
       </div>
 
-      {/* Mass date editor */}
-      <EapMassDateEditor
-        open={massDateOpen}
-        onOpenChange={setMassDateOpen}
-        items={eapItems}
-        onSave={handleBulkSave}
-      />
+      {/* Mass date editor — only mount when open */}
+      {massDateOpen && (
+        <EapMassDateEditor
+          open={massDateOpen}
+          onOpenChange={setMassDateOpen}
+          items={eapItems}
+          onSave={handleBulkSave}
+        />
+      )}
 
-      {/* Baseline manager */}
-      <BaselineManager
-        open={baselineOpen}
-        onOpenChange={setBaselineOpen}
-        obraId={selectedObra}
-        eapItems={eapItems}
-      />
+      {/* Baseline manager — only mount when open */}
+      {baselineOpen && (
+        <BaselineManager
+          open={baselineOpen}
+          onOpenChange={setBaselineOpen}
+          obraId={selectedObra}
+          eapItems={eapItems}
+        />
+      )}
     </div>
   );
 }
