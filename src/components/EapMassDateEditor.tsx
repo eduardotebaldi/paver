@@ -142,7 +142,7 @@ export default function EapMassDateEditor({ open, onOpenChange, items, onSave }:
 
   const switchGroupMode = (mode: GroupMode) => {
     setGroupMode(mode);
-    setCollapsedGroups(new Set());
+    setCollapsedGroups(null); // reset to all-collapsed default
   };
 
   return (
