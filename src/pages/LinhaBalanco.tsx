@@ -32,6 +32,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { fetchEapItems, fetchObras } from '@/services/api';
 import { bulkUpdateEapItems, calculateDependencyDates } from '@/services/eapApi';
+import { supabase } from '@/integrations/supabase/client';
 import type { EapItem } from '@/services/api';
 
 const BaselineManager = lazy(() => import('@/components/BaselineManager'));
