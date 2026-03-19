@@ -251,7 +251,7 @@ export default function LinhaBalancoFullChart({ eapItems, mode, obraName, obraDa
     return eapItems.filter(i => i.tipo === 'item');
   }, [eapItems]);
 
-  const { chartData, subCategories, colorMap, lastMeasurementTs, domainMin, domainMax } = useMemo(() => {
+  const { chartData, subCategories, colorMap, domainMin, domainMax } = useMemo(() => {
     const obraStartTs = obraDataInicio ? parseDateLocal(obraDataInicio) : null;
     const obraEndTs = obraDataPrevisao ? parseDateLocal(obraDataPrevisao) : null;
 
