@@ -370,7 +370,7 @@ export default function LinhaBalancoFullChart({ eapItems, mode, obraName, obraDa
       domainMin: finalMin,
       domainMax: finalMax,
     };
-  }, [items, mode, todayTs]);
+  }, [items, mode, todayTs, obraDataInicio, obraDataPrevisao]);
 
   const activeDomain = zoomDomain || [domainMin, domainMax];
   const weekBands = useMemo(() => getWeekBands(activeDomain[0], activeDomain[1]), [activeDomain]);
