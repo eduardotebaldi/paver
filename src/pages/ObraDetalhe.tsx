@@ -457,6 +457,8 @@ export default function ObraDetalhe() {
         item={editingItem}
         allItems={eapItems}
         onSave={handleSaveItem}
+        obraDataInicio={obra.data_inicio}
+        obraDataPrevisao={obra.data_previsao}
       />
 
       {/* Mass date editor */}

@@ -560,6 +560,8 @@ export default function AdminObras() {
           item={editingItem}
           allItems={editEapItems}
           onSave={handleSaveItem}
+          obraDataInicio={obras.find(o => o.id === editObraId)?.data_inicio}
+          obraDataPrevisao={obras.find(o => o.id === editObraId)?.data_previsao}
         />
 
         <EapEditorPanel
