@@ -233,8 +233,9 @@ export default function LinhaBalancoFullChart({ eapItems, mode, obraName, obraDa
   }, [eapItems]);
 
   const { chartData, subCategories, colorMap, lastMeasurementTs, domainMin, domainMax } = useMemo(() => {
-    const defaultMin = todayTs - DAY_MS * 30;
-    const defaultMax = todayTs + DAY_MS * 30;
+    // Primary domain: obra dates. Fallback: today ± 30 days
+    const obraStartTs = obraDataInicio ? parseDateLocal(obraDataInicio) : null;
+    const obraEndTs = obraDataPrevisao ? parseDateLocal(obraDataPrevisao) : null;
 
     const groupMap = new Map<string, Map<string, {
       starts: number[];
@@ -257,13 +258,8 @@ export default function LinhaBalancoFullChart({ eapItems, mode, obraName, obraDa
       const group = groupMap.get(groupKey)!;
       if (!group.has(subKey)) {
         group.set(subKey, {
-          starts: [],
-          ends: [],
-          avancos: [],
-          qtds: [],
-          qtdsRealizadas: [],
-          itemCount: 0,
-          items: [],
+          starts: [], ends: [], avancos: [], qtds: [], qtdsRealizadas: [],
+          itemCount: 0, items: [],
         });
       }
 
@@ -303,8 +299,6 @@ export default function LinhaBalancoFullChart({ eapItems, mode, obraName, obraDa
       cMap[sub] = SUB_COLORS[index % SUB_COLORS.length];
     });
 
-    let dMin = Infinity;
-    let dMax = -Infinity;
     const avg = (arr: number[]) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
     const sum = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
 
@@ -318,15 +312,6 @@ export default function LinhaBalancoFullChart({ eapItems, mode, obraName, obraDa
       for (const [subName, details] of subMap.entries()) {
         const start = details.starts.length ? Math.min(...details.starts) : null;
         const end = details.ends.length ? Math.max(...details.ends) : null;
-
-        if (start !== null) {
-          if (start < dMin) dMin = start;
-          if (start > dMax) dMax = start;
-        }
-        if (end !== null) {
-          if (end < dMin) dMin = end;
-          if (end > dMax) dMax = end;
-        }
 
         row._subBars.push({
           name: subName,
@@ -343,20 +328,10 @@ export default function LinhaBalancoFullChart({ eapItems, mode, obraName, obraDa
       return row;
     });
 
-    // Use obra dates as domain bounds when available
-    if (obraDataInicio) {
-      const obraStart = parseDateLocal(obraDataInicio);
-      if (obraStart < dMin) dMin = obraStart;
-    }
-    if (obraDataPrevisao) {
-      const obraEnd = parseDateLocal(obraDataPrevisao);
-      if (obraEnd > dMax) dMax = obraEnd;
-    }
-    if (todayTs < dMin) dMin = todayTs;
-    if (todayTs > dMax) dMax = todayTs;
-    const pad = Math.max((dMax - dMin) * 0.05, DAY_MS * 7);
-    const finalMin = dMin === Infinity ? (obraDataInicio ? parseDateLocal(obraDataInicio) - DAY_MS * 7 : todayTs - DAY_MS * 30) : dMin - pad;
-    const finalMax = dMax === -Infinity ? (obraDataPrevisao ? parseDateLocal(obraDataPrevisao) + DAY_MS * 7 : todayTs + DAY_MS * 30) : dMax + pad;
+    // Domain: strictly use obra dates when available
+    const pad = DAY_MS * 7;
+    const finalMin = obraStartTs !== null ? obraStartTs - pad : todayTs - DAY_MS * 30;
+    const finalMax = obraEndTs !== null ? obraEndTs + pad : todayTs + DAY_MS * 30;
 
     data.forEach(row => {
       row._allRange = [finalMin, finalMax];
