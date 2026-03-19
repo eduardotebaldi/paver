@@ -66,7 +66,7 @@ interface Props {
   obraName?: string;
 }
 
-function getWeekBands(domainStart: number, domainEnd: number): { x1: number; x2: number; odd: boolean }[] {
+function getWeekBands(domainStart: number, domainEnd: number, maxBands = 26): { x1: number; x2: number; odd: boolean }[] {
   const startDate = new Date(domainStart);
   const day = startDate.getUTCDay();
   const diffToMonday = day === 0 ? -6 : 1 - day;
@@ -83,6 +83,7 @@ function getWeekBands(domainStart: number, domainEnd: number): { x1: number; x2:
     bands.push({ x1: current, x2: Math.min(next, domainEnd), odd: idx % 2 === 1 });
     current = next;
     idx++;
+    if (bands.length >= maxBands) break;
   }
 
   return bands;
