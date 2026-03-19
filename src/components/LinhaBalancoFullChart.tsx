@@ -264,7 +264,6 @@ export default function LinhaBalancoFullChart({ eapItems, mode, obraName, obraDa
       itemCount: number;
       items: SubBarItem[];
     }>>();
-    let lastMeasurement = 0;
     const allSubs = new Set<string>();
 
     for (const item of items) {
