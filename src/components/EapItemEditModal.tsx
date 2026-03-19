@@ -20,7 +20,8 @@ interface Props {
   obraDataPrevisao?: string;
 }
 
-export default function EapItemEditModal({ open, onOpenChange, item, allItems, onSave }: Props) {
+export default function EapItemEditModal({ open, onOpenChange, item, allItems, onSave, obraDataInicio, obraDataPrevisao }: Props) {
+  const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [dataInicioPrevista, setDataInicioPrevista] = useState('');
   const [dataFimPrevista, setDataFimPrevista] = useState('');
