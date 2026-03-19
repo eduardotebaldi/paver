@@ -230,7 +230,10 @@ export default function EapMassDateEditor({ open, onOpenChange, items, onSave }:
             <TableBody>
               {groups.map((group) => {
                 const isCollapsed = effectiveCollapsed.has(group.key);
-                const groupChangedCount = group.items.filter(i => changes.has(i.id)).length;
+                const groupChangedCount = isCollapsed ? 0 : group.items.filter(i => changes.has(i.id)).length;
+                const visibleLimit = visibleCounts[group.key] || 30;
+                const displayedItems = group.items.slice(0, visibleLimit);
+                const remaining = group.items.length - visibleLimit;
 
                 return (
                   <>{/* Fragment for group */}
@@ -259,7 +262,7 @@ export default function EapMassDateEditor({ open, onOpenChange, items, onSave }:
                       </TableCell>
                     </TableRow>
 
-                    {!isCollapsed && group.items.map((item) => {
+                    {!isCollapsed && displayedItems.map((item) => {
                       const inicio = getDate(item, 'data_inicio_prevista');
                       const fim = getDate(item, 'data_fim_prevista');
                       const duration = inicio && fim
@@ -301,6 +304,21 @@ export default function EapMassDateEditor({ open, onOpenChange, items, onSave }:
                         </TableRow>
                       );
                     })}
+
+                    {!isCollapsed && remaining > 0 && (
+                      <TableRow key={`more-${group.key}`}>
+                        <TableCell colSpan={4} className="py-1.5 text-center">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs font-body h-7 text-muted-foreground"
+                            onClick={(e) => { e.stopPropagation(); showMore(group.key); }}
+                          >
+                            Mostrar mais ({remaining} restantes)
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    )}
                   </>
                 );
               })}
