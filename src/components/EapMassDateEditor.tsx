@@ -162,6 +162,9 @@ export default function EapMassDateEditor({ open, onOpenChange, items, onSave }:
               <Badge variant="default" className="text-xs font-body">{changedCount} alterações</Badge>
             )}
           </DialogTitle>
+          <DialogDescription className="font-body text-xs text-muted-foreground">
+            Carregamento progressivo por grupos para editar datas sem travar a página.
+          </DialogDescription>
         </DialogHeader>
 
         {/* Toolbar */}
