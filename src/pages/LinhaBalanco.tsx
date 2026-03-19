@@ -15,6 +15,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import {
@@ -95,6 +96,8 @@ export default function LinhaBalancoPage() {
   const [pacotePopoverOpen, setPacotePopoverOpen] = useState(false);
   const [pendingBaseline, setPendingBaseline] = useState(false);
   const [showFullChart, setShowFullChart] = useState(false);
+  const [customDateStart, setCustomDateStart] = useState('');
+  const [customDateEnd, setCustomDateEnd] = useState('');
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -143,6 +146,10 @@ export default function LinhaBalancoPage() {
 
   const selectedObraObj = obras.find(obra => obra.id === selectedObra);
   const obraName = selectedObraObj?.nome;
+
+  // Effective dates: custom overrides > obra dates
+  const effectiveDateStart = customDateStart || selectedObraObj?.data_inicio;
+  const effectiveDateEnd = customDateEnd || selectedObraObj?.data_previsao;
 
   const handleRecalcDeps = async () => {
     const calculated = calculateDependencyDates(eapItems);
@@ -290,6 +297,36 @@ export default function LinhaBalancoPage() {
           </Select>
         </div>
 
+        <div className="flex items-end gap-2">
+          <div className="space-y-1">
+            <Label className="font-body text-xs text-muted-foreground">De</Label>
+            <Input
+              type="date"
+              value={customDateStart || selectedObraObj?.data_inicio || ''}
+              onChange={e => setCustomDateStart(e.target.value)}
+              className="w-36 h-8 text-xs font-body"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="font-body text-xs text-muted-foreground">Até</Label>
+            <Input
+              type="date"
+              value={customDateEnd || selectedObraObj?.data_previsao || ''}
+              onChange={e => setCustomDateEnd(e.target.value)}
+              className="w-36 h-8 text-xs font-body"
+            />
+          </div>
+          {(customDateStart || customDateEnd) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => { setCustomDateStart(''); setCustomDateEnd(''); }}
+              className="font-body text-xs h-8 px-2"
+            >
+              Resetar
+            </Button>
+          )}
+        </div>
         {canEdit && selectedObra && (
           <div className="ml-auto flex gap-2">
             {!showFullChart && (
@@ -346,7 +383,7 @@ export default function LinhaBalancoPage() {
           <PanelLoadingState title="Carregando dados da obra" description="Buscando itens da EAP para montar a linha de balanço." />
         ) : showFullChart ? (
           <Suspense fallback={<PanelLoadingState title="Preparando gráfico" description="Montando a linha de balanço em segundo plano." />}>
-            <LinhaBalancoFullChart eapItems={filteredItems} mode={mode} obraName={obraName} obraDataInicio={selectedObraObj?.data_inicio} obraDataPrevisao={selectedObraObj?.data_previsao} />
+            <LinhaBalancoFullChart eapItems={filteredItems} mode={mode} obraName={obraName} obraDataInicio={effectiveDateStart} obraDataPrevisao={effectiveDateEnd} />
           </Suspense>
         ) : (
           <Suspense fallback={<PanelLoadingState title="Preparando resumo" description="Montando a tabela resumo." />}>
