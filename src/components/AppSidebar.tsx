@@ -23,6 +23,7 @@ const mainItems = [
   { title: "Relatórios", url: "/relatorios", icon: FileBarChart },
   { title: "Rel. Fotográfico", url: "/relatorio-fotografico", icon: Camera },
   { title: "Linha de Balanço", url: "/linha-balanco", icon: BarChart3 },
+  { title: "Datas EAP", url: "/datas-eap", icon: Calendar },
   { title: "Dependências", url: "/dependencias", icon: GitBranch },
 ];
 

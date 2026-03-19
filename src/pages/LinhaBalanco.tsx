@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import {
   BarChart3,
   Building2,
@@ -9,6 +10,7 @@ import {
   FolderTree,
   History,
   Layers,
+  LineChart,
   Link2,
   Loader2,
 } from 'lucide-react';
@@ -32,12 +34,11 @@ import { fetchEapItems, fetchObras } from '@/services/api';
 import { bulkUpdateEapItems, calculateDependencyDates } from '@/services/eapApi';
 import type { EapItem } from '@/services/api';
 
-const EapMassDateEditor = lazy(() => import('@/components/EapMassDateEditor'));
 const BaselineManager = lazy(() => import('@/components/BaselineManager'));
 const LinhaBalancoFullChart = lazy(() => import('@/components/LinhaBalancoFullChart'));
+const LinhaBalancoSummaryTable = lazy(() => import('@/components/LinhaBalancoSummaryTable'));
 
 type GroupMode = 'pacote' | 'servico';
-type PendingModal = 'datas' | 'baseline' | null;
 
 function PanelLoadingState({ title, description }: { title: string; description: string }) {
   return (
@@ -90,27 +91,25 @@ export default function LinhaBalancoPage() {
   const [mode, setMode] = useState<GroupMode>('pacote');
   const [selectedPacote, setSelectedPacote] = useState('all');
   const [selectedServico, setSelectedServico] = useState('all');
-  const [massDateOpen, setMassDateOpen] = useState(false);
   const [baselineOpen, setBaselineOpen] = useState(false);
   const [pacotePopoverOpen, setPacotePopoverOpen] = useState(false);
-  const [pendingModal, setPendingModal] = useState<PendingModal>(null);
+  const [pendingBaseline, setPendingBaseline] = useState(false);
+  const [showFullChart, setShowFullChart] = useState(false);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { hasRole } = useAuth();
   const canEdit = hasRole('admin') || hasRole('engenharia');
 
   useEffect(() => {
-    if (!pendingModal) return;
-
+    if (!pendingBaseline) return;
     const timer = window.setTimeout(() => {
-      if (pendingModal === 'datas') setMassDateOpen(true);
-      if (pendingModal === 'baseline') setBaselineOpen(true);
-      setPendingModal(null);
+      setBaselineOpen(true);
+      setPendingBaseline(false);
     }, 30);
-
     return () => window.clearTimeout(timer);
-  }, [pendingModal]);
+  }, [pendingBaseline]);
 
   const { data: obras = [] } = useQuery({
     queryKey: ['obras'],
@@ -125,17 +124,13 @@ export default function LinhaBalancoPage() {
 
   const uniquePacotes = useMemo(() => {
     const values = new Set<string>();
-    eapItems.forEach(item => {
-      if (item.pacote) values.add(item.pacote);
-    });
+    eapItems.forEach(item => { if (item.pacote) values.add(item.pacote); });
     return Array.from(values).sort();
   }, [eapItems]);
 
   const uniqueServicos = useMemo(() => {
     const values = new Set<string>();
-    eapItems.forEach(item => {
-      if (item.lote) values.add(item.lote);
-    });
+    eapItems.forEach(item => { if (item.lote) values.add(item.lote); });
     return Array.from(values).sort();
   }, [eapItems]);
 
@@ -148,12 +143,6 @@ export default function LinhaBalancoPage() {
 
   const obraName = obras.find(obra => obra.id === selectedObra)?.nome;
 
-  const handleBulkSave = async (changes: { id: string; updates: Partial<EapItem> }[]) => {
-    await bulkUpdateEapItems(changes);
-    queryClient.invalidateQueries({ queryKey: ['eap-items-balance', selectedObra] });
-    toast({ title: `${changes.length} itens atualizados!` });
-  };
-
   const handleRecalcDeps = async () => {
     const calculated = calculateDependencyDates(eapItems);
     const changes: { id: string; updates: Partial<EapItem> }[] = [];
@@ -161,10 +150,7 @@ export default function LinhaBalancoPage() {
     calculated.forEach((dates, itemId) => {
       changes.push({
         id: itemId,
-        updates: {
-          data_inicio_prevista: dates.inicio,
-          data_fim_prevista: dates.fim,
-        },
+        updates: { data_inicio_prevista: dates.inicio, data_fim_prevista: dates.fim },
       });
     });
 
@@ -200,9 +186,7 @@ export default function LinhaBalancoPage() {
           </SelectTrigger>
           <SelectContent>
             {obras.map(obra => (
-              <SelectItem key={obra.id} value={obra.id} className="font-body">
-                {obra.nome}
-              </SelectItem>
+              <SelectItem key={obra.id} value={obra.id} className="font-body">{obra.nome}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -221,6 +205,7 @@ export default function LinhaBalancoPage() {
               setSelectedObra(value);
               setSelectedPacote('all');
               setSelectedServico('all');
+              setShowFullChart(false);
             }}
           >
             <SelectTrigger className="w-52 font-body">
@@ -229,9 +214,7 @@ export default function LinhaBalancoPage() {
             </SelectTrigger>
             <SelectContent>
               {obras.map(obra => (
-                <SelectItem key={obra.id} value={obra.id} className="font-body">
-                  {obra.nome}
-                </SelectItem>
+                <SelectItem key={obra.id} value={obra.id} className="font-body">{obra.nome}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -243,9 +226,7 @@ export default function LinhaBalancoPage() {
             <button
               onClick={() => setMode('pacote')}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-body transition-colors ${
-                mode === 'pacote'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-background text-muted-foreground hover:bg-muted'
+                mode === 'pacote' ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'
               }`}
             >
               <FolderTree className="h-3.5 w-3.5" />
@@ -254,9 +235,7 @@ export default function LinhaBalancoPage() {
             <button
               onClick={() => setMode('servico')}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-body transition-colors ${
-                mode === 'servico'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-background text-muted-foreground hover:bg-muted'
+                mode === 'servico' ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'
               }`}
             >
               <Layers className="h-3.5 w-3.5" />
@@ -278,31 +257,14 @@ export default function LinhaBalancoPage() {
               <Command>
                 <CommandInput placeholder="Buscar pacote..." className="font-body" />
                 <CommandList>
-                  <CommandEmpty className="py-3 text-center font-body text-xs text-muted-foreground">
-                    Nenhum pacote encontrado
-                  </CommandEmpty>
+                  <CommandEmpty className="py-3 text-center font-body text-xs text-muted-foreground">Nenhum pacote encontrado</CommandEmpty>
                   <CommandGroup>
-                    <CommandItem
-                      value="all"
-                      onSelect={() => {
-                        setSelectedPacote('all');
-                        setPacotePopoverOpen(false);
-                      }}
-                      className="font-body"
-                    >
+                    <CommandItem value="all" onSelect={() => { setSelectedPacote('all'); setPacotePopoverOpen(false); }} className="font-body">
                       <Check className={cn('mr-2 h-4 w-4', selectedPacote === 'all' ? 'opacity-100' : 'opacity-0')} />
                       Todos
                     </CommandItem>
                     {uniquePacotes.map(pacote => (
-                      <CommandItem
-                        key={pacote}
-                        value={pacote}
-                        onSelect={() => {
-                          setSelectedPacote(pacote);
-                          setPacotePopoverOpen(false);
-                        }}
-                        className="font-body"
-                      >
+                      <CommandItem key={pacote} value={pacote} onSelect={() => { setSelectedPacote(pacote); setPacotePopoverOpen(false); }} className="font-body">
                         <Check className={cn('mr-2 h-4 w-4', selectedPacote === pacote ? 'opacity-100' : 'opacity-0')} />
                         {pacote}
                       </CommandItem>
@@ -317,15 +279,11 @@ export default function LinhaBalancoPage() {
         <div className="space-y-1">
           <Label className="font-body text-xs text-muted-foreground">Tipo Serviço</Label>
           <Select value={selectedServico} onValueChange={setSelectedServico}>
-            <SelectTrigger className="w-48 font-body">
-              <SelectValue />
-            </SelectTrigger>
+            <SelectTrigger className="w-48 font-body"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all" className="font-body">Todos</SelectItem>
               {uniqueServicos.map(servico => (
-                <SelectItem key={servico} value={servico} className="font-body">
-                  {servico}
-                </SelectItem>
+                <SelectItem key={servico} value={servico} className="font-body">{servico}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -333,24 +291,45 @@ export default function LinhaBalancoPage() {
 
         {canEdit && selectedObra && (
           <div className="ml-auto flex gap-2">
+            {!showFullChart && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowFullChart(true)}
+                className="font-body"
+              >
+                <LineChart className="mr-1.5 h-4 w-4" />
+                Ver Gráfico
+              </Button>
+            )}
+            {showFullChart && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowFullChart(false)}
+                className="font-body"
+              >
+                <BarChart3 className="mr-1.5 h-4 w-4" />
+                Ver Resumo
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setPendingModal('datas')}
-              disabled={pendingModal === 'datas'}
+              onClick={() => navigate(`/datas-eap?obra=${selectedObra}`)}
               className="font-body"
             >
-              {pendingModal === 'datas' ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Calendar className="mr-1.5 h-4 w-4" />}
+              <Calendar className="mr-1.5 h-4 w-4" />
               Datas
             </Button>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setPendingModal('baseline')}
-              disabled={pendingModal === 'baseline'}
+              onClick={() => setPendingBaseline(true)}
+              disabled={pendingBaseline}
               className="font-body"
             >
-              {pendingModal === 'baseline' ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <History className="mr-1.5 h-4 w-4" />}
+              {pendingBaseline ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <History className="mr-1.5 h-4 w-4" />}
               Baselines
             </Button>
             <Button variant="outline" size="sm" onClick={handleRecalcDeps} className="font-body">
@@ -363,43 +342,17 @@ export default function LinhaBalancoPage() {
 
       <div className="flex-1 min-h-0">
         {isLoading ? (
-          <PanelLoadingState
-            title="Carregando dados da obra"
-            description="Buscando itens da EAP para montar a linha de balanço sem bloquear a navegação."
-          />
-        ) : (
-          <Suspense
-            fallback={
-              <PanelLoadingState
-                title="Preparando gráfico"
-                description="Montando a linha de balanço em segundo plano para evitar travamentos."
-              />
-            }
-          >
+          <PanelLoadingState title="Carregando dados da obra" description="Buscando itens da EAP para montar a linha de balanço." />
+        ) : showFullChart ? (
+          <Suspense fallback={<PanelLoadingState title="Preparando gráfico" description="Montando a linha de balanço em segundo plano." />}>
             <LinhaBalancoFullChart eapItems={filteredItems} mode={mode} obraName={obraName} />
+          </Suspense>
+        ) : (
+          <Suspense fallback={<PanelLoadingState title="Preparando resumo" description="Montando a tabela resumo." />}>
+            <LinhaBalancoSummaryTable eapItems={filteredItems} mode={mode} />
           </Suspense>
         )}
       </div>
-
-      {massDateOpen && (
-        <Suspense
-          fallback={
-            <ModalLoadingState
-              open={massDateOpen}
-              onOpenChange={setMassDateOpen}
-              title="Carregando editor de datas"
-              description="Preparando a edição em lotes sem travar a página."
-            />
-          }
-        >
-          <EapMassDateEditor
-            open={massDateOpen}
-            onOpenChange={setMassDateOpen}
-            items={eapItems}
-            onSave={handleBulkSave}
-          />
-        </Suspense>
-      )}
 
       {baselineOpen && (
         <Suspense
