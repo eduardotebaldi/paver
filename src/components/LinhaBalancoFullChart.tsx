@@ -343,11 +343,20 @@ export default function LinhaBalancoFullChart({ eapItems, mode, obraName, obraDa
       return row;
     });
 
+    // Use obra dates as domain bounds when available
+    if (obraDataInicio) {
+      const obraStart = parseDateLocal(obraDataInicio);
+      if (obraStart < dMin) dMin = obraStart;
+    }
+    if (obraDataPrevisao) {
+      const obraEnd = parseDateLocal(obraDataPrevisao);
+      if (obraEnd > dMax) dMax = obraEnd;
+    }
     if (todayTs < dMin) dMin = todayTs;
     if (todayTs > dMax) dMax = todayTs;
     const pad = Math.max((dMax - dMin) * 0.05, DAY_MS * 7);
-    const finalMin = dMin === Infinity ? todayTs - DAY_MS * 30 : dMin - pad;
-    const finalMax = dMax === -Infinity ? todayTs + DAY_MS * 30 : dMax + pad;
+    const finalMin = dMin === Infinity ? (obraDataInicio ? parseDateLocal(obraDataInicio) - DAY_MS * 7 : todayTs - DAY_MS * 30) : dMin - pad;
+    const finalMax = dMax === -Infinity ? (obraDataPrevisao ? parseDateLocal(obraDataPrevisao) + DAY_MS * 7 : todayTs + DAY_MS * 30) : dMax + pad;
 
     data.forEach(row => {
       row._allRange = [finalMin, finalMax];

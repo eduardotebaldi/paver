@@ -346,7 +346,7 @@ export default function LinhaBalancoPage() {
           <PanelLoadingState title="Carregando dados da obra" description="Buscando itens da EAP para montar a linha de balanço." />
         ) : showFullChart ? (
           <Suspense fallback={<PanelLoadingState title="Preparando gráfico" description="Montando a linha de balanço em segundo plano." />}>
-            <LinhaBalancoFullChart eapItems={filteredItems} mode={mode} obraName={obraName} />
+            <LinhaBalancoFullChart eapItems={filteredItems} mode={mode} obraName={obraName} obraDataInicio={selectedObraObj?.data_inicio} obraDataPrevisao={selectedObraObj?.data_previsao} />
           </Suspense>
         ) : (
           <Suspense fallback={<PanelLoadingState title="Preparando resumo" description="Montando a tabela resumo." />}>
