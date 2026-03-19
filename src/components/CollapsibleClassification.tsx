@@ -1,31 +1,39 @@
-import { useState } from 'react';
+import { forwardRef, useState } from 'react';
 
 interface Props {
   text: string;
   previewLength?: number;
 }
 
-/**
- * Shows a classification label collapsed by default:
- * "(assentam…)" expands to "(assentamento de tubos)" on click.
- */
-export default function CollapsibleClassification({ text, previewLength = 12 }: Props) {
+const CollapsibleClassification = forwardRef<HTMLButtonElement, Props>(function CollapsibleClassification(
+  { text, previewLength = 12 },
+  ref,
+) {
   const [expanded, setExpanded] = useState(false);
+
   if (!text) return null;
 
   const needsTruncation = text.length > previewLength;
-  const preview = needsTruncation ? text.slice(0, previewLength) + '…' : text;
+  const preview = needsTruncation ? `${text.slice(0, previewLength)}…` : text;
 
   return (
     <button
+      ref={ref}
       type="button"
-      onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
-      className="text-muted-foreground/50 hover:text-muted-foreground/80 transition-colors inline ml-1"
+      onClick={(event) => {
+        event.stopPropagation();
+        setExpanded(!expanded);
+      }}
+      className="ml-1 inline text-muted-foreground/50 transition-colors hover:text-muted-foreground/80"
       title={expanded ? 'Recolher' : text}
     >
-      <span className="italic text-[10px] font-body">
+      <span className="font-body text-[10px] italic">
         ({expanded ? text : preview})
       </span>
     </button>
   );
-}
+});
+
+CollapsibleClassification.displayName = 'CollapsibleClassification';
+
+export default CollapsibleClassification;

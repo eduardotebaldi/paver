@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -162,6 +162,9 @@ export default function EapMassDateEditor({ open, onOpenChange, items, onSave }:
               <Badge variant="default" className="text-xs font-body">{changedCount} alterações</Badge>
             )}
           </DialogTitle>
+          <DialogDescription className="font-body text-xs text-muted-foreground">
+            Carregamento progressivo por grupos para editar datas sem travar a página.
+          </DialogDescription>
         </DialogHeader>
 
         {/* Toolbar */}
