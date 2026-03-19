@@ -77,6 +77,10 @@ export default function DatasEap() {
     enabled: !!selectedObra,
   });
 
+  const selectedObraObj = obras.find(o => o.id === selectedObra);
+  const obraInicio = selectedObraObj?.data_inicio || '';
+  const obraFim = selectedObraObj?.data_previsao || '';
+
   const effectiveCollapsed = useMemo(() => {
     if (collapsed !== null) return collapsed;
     const editableItems = eapItems.filter(i => i.tipo === 'item');
