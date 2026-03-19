@@ -8,15 +8,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Loader2, Link2, X } from 'lucide-react';
 import type { EapItem } from '@/services/api';
 
+import { useToast } from '@/hooks/use-toast';
+
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   item: EapItem | null;
   allItems: EapItem[];
   onSave: (id: string, updates: Partial<EapItem>) => Promise<void>;
+  obraDataInicio?: string;
+  obraDataPrevisao?: string;
 }
 
-export default function EapItemEditModal({ open, onOpenChange, item, allItems, onSave }: Props) {
+export default function EapItemEditModal({ open, onOpenChange, item, allItems, onSave, obraDataInicio, obraDataPrevisao }: Props) {
+  const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [dataInicioPrevista, setDataInicioPrevista] = useState('');
   const [dataFimPrevista, setDataFimPrevista] = useState('');
@@ -53,6 +58,23 @@ export default function EapItemEditModal({ open, onOpenChange, item, allItems, o
   if (!item) return null;
 
   const handleSave = async () => {
+    // Validate predicted dates are within obra range
+    if (dataInicioPrevista && obraDataInicio && dataInicioPrevista < obraDataInicio) {
+      toast({ title: 'Data fora do período', description: `Início previsto não pode ser anterior a ${obraDataInicio}.`, variant: 'destructive' });
+      return;
+    }
+    if (dataInicioPrevista && obraDataPrevisao && dataInicioPrevista > obraDataPrevisao) {
+      toast({ title: 'Data fora do período', description: `Início previsto não pode ser posterior a ${obraDataPrevisao}.`, variant: 'destructive' });
+      return;
+    }
+    if (dataFimPrevista && obraDataInicio && dataFimPrevista < obraDataInicio) {
+      toast({ title: 'Data fora do período', description: `Fim previsto não pode ser anterior a ${obraDataInicio}.`, variant: 'destructive' });
+      return;
+    }
+    if (dataFimPrevista && obraDataPrevisao && dataFimPrevista > obraDataPrevisao) {
+      toast({ title: 'Data fora do período', description: `Fim previsto não pode ser posterior a ${obraDataPrevisao}.`, variant: 'destructive' });
+      return;
+    }
     setSaving(true);
     try {
       await onSave(item.id, {

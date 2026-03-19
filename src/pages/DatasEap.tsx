@@ -77,6 +77,10 @@ export default function DatasEap() {
     enabled: !!selectedObra,
   });
 
+  const selectedObraObj = obras.find(o => o.id === selectedObra);
+  const obraInicio = selectedObraObj?.data_inicio || '';
+  const obraFim = selectedObraObj?.data_previsao || '';
+
   const effectiveCollapsed = useMemo(() => {
     if (collapsed !== null) return collapsed;
     const editableItems = eapItems.filter(i => i.tipo === 'item');
@@ -124,13 +128,21 @@ export default function DatasEap() {
   }, [eapItems, groupMode, effectiveCollapsed]);
 
   const updateDate = useCallback((itemId: string, field: 'data_inicio_prevista' | 'data_fim_prevista', value: string) => {
+    if (value && obraInicio && value < obraInicio) {
+      toast({ title: 'Data fora do período da obra', description: `A data não pode ser anterior a ${obraInicio}.`, variant: 'destructive' });
+      return;
+    }
+    if (value && obraFim && value > obraFim) {
+      toast({ title: 'Data fora do período da obra', description: `A data não pode ser posterior a ${obraFim}.`, variant: 'destructive' });
+      return;
+    }
     setChanges(prev => {
       const next = new Map(prev);
       const existing = next.get(itemId) || { id: itemId };
       next.set(itemId, { ...existing, [field]: value });
       return next;
     });
-  }, []);
+  }, [obraInicio, obraFim, toast]);
 
   const getDate = useCallback((item: EapItem, field: 'data_inicio_prevista' | 'data_fim_prevista') => {
     const change = changes.get(item.id);
@@ -143,22 +155,30 @@ export default function DatasEap() {
     if (isNaN(days)) return;
     const editableItems = eapItems.filter(i => i.tipo === 'item');
     const next = new Map(changes);
+    let outOfRange = 0;
     for (const item of editableItems) {
       const existing = next.get(item.id) || { id: item.id };
       if (item.data_inicio_prevista) {
-        const d = new Date(item.data_inicio_prevista);
-        d.setDate(d.getDate() + days);
-        existing.data_inicio_prevista = d.toISOString().split('T')[0];
+        const [y, m, d] = item.data_inicio_prevista.split('-').map(Number);
+        const date = new Date(y, m - 1, d + days);
+        const val = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        if ((obraInicio && val < obraInicio) || (obraFim && val > obraFim)) { outOfRange++; continue; }
+        existing.data_inicio_prevista = val;
       }
       if (item.data_fim_prevista) {
-        const d = new Date(item.data_fim_prevista);
-        d.setDate(d.getDate() + days);
-        existing.data_fim_prevista = d.toISOString().split('T')[0];
+        const [y, m, d] = item.data_fim_prevista.split('-').map(Number);
+        const date = new Date(y, m - 1, d + days);
+        const val = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        if ((obraInicio && val < obraInicio) || (obraFim && val > obraFim)) { outOfRange++; continue; }
+        existing.data_fim_prevista = val;
       }
       next.set(item.id, existing);
     }
     setChanges(next);
-  }, [offsetDays, eapItems, changes]);
+    if (outOfRange > 0) {
+      toast({ title: `${outOfRange} datas ignoradas`, description: 'Algumas datas ficaram fora do período da obra.', variant: 'destructive' });
+    }
+  }, [offsetDays, eapItems, changes, obraInicio, obraFim, toast]);
 
   const handleSave = async () => {
     if (changes.size === 0) return;
@@ -366,12 +386,16 @@ export default function DatasEap() {
                   <Input
                     type="date"
                     value={inicio}
+                    min={obraInicio || undefined}
+                    max={obraFim || undefined}
                     onChange={e => updateDate(item.id, 'data_inicio_prevista', e.target.value)}
                     className="h-7 text-xs"
                   />
                   <Input
                     type="date"
                     value={fim}
+                    min={obraInicio || undefined}
+                    max={obraFim || undefined}
                     onChange={e => updateDate(item.id, 'data_fim_prevista', e.target.value)}
                     className="h-7 text-xs"
                   />
