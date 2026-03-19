@@ -155,22 +155,30 @@ export default function DatasEap() {
     if (isNaN(days)) return;
     const editableItems = eapItems.filter(i => i.tipo === 'item');
     const next = new Map(changes);
+    let outOfRange = 0;
     for (const item of editableItems) {
       const existing = next.get(item.id) || { id: item.id };
       if (item.data_inicio_prevista) {
-        const d = new Date(item.data_inicio_prevista);
-        d.setDate(d.getDate() + days);
-        existing.data_inicio_prevista = d.toISOString().split('T')[0];
+        const [y, m, d] = item.data_inicio_prevista.split('-').map(Number);
+        const date = new Date(y, m - 1, d + days);
+        const val = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        if ((obraInicio && val < obraInicio) || (obraFim && val > obraFim)) { outOfRange++; continue; }
+        existing.data_inicio_prevista = val;
       }
       if (item.data_fim_prevista) {
-        const d = new Date(item.data_fim_prevista);
-        d.setDate(d.getDate() + days);
-        existing.data_fim_prevista = d.toISOString().split('T')[0];
+        const [y, m, d] = item.data_fim_prevista.split('-').map(Number);
+        const date = new Date(y, m - 1, d + days);
+        const val = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        if ((obraInicio && val < obraInicio) || (obraFim && val > obraFim)) { outOfRange++; continue; }
+        existing.data_fim_prevista = val;
       }
       next.set(item.id, existing);
     }
     setChanges(next);
-  }, [offsetDays, eapItems, changes]);
+    if (outOfRange > 0) {
+      toast({ title: `${outOfRange} datas ignoradas`, description: 'Algumas datas ficaram fora do período da obra.', variant: 'destructive' });
+    }
+  }, [offsetDays, eapItems, changes, obraInicio, obraFim, toast]);
 
   const handleSave = async () => {
     if (changes.size === 0) return;
