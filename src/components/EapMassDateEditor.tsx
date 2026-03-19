@@ -48,9 +48,15 @@ export default function EapMassDateEditor({ open, onOpenChange, items, onSave }:
   const [saving, setSaving] = useState(false);
   const [changes, setChanges] = useState<Map<string, DateChange>>(new Map());
   const [groupMode, setGroupMode] = useState<GroupMode>('pacote');
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string> | null>(null);
 
   const groups = useMemo(() => buildGroups(items, groupMode), [items, groupMode]);
+
+  // Start with all groups collapsed to avoid rendering 500+ date inputs at once
+  const effectiveCollapsed = useMemo(() => {
+    if (collapsedGroups !== null) return collapsedGroups;
+    return new Set(groups.map(g => g.key));
+  }, [collapsedGroups, groups]);
 
   const editableItems = useMemo(() =>
     items.filter(i => i.tipo === 'item').sort((a, b) => (a.ordem || 0) - (b.ordem || 0)),
@@ -119,16 +125,15 @@ export default function EapMassDateEditor({ open, onOpenChange, items, onSave }:
   };
 
   const toggleGroup = (key: string) => {
-    setCollapsedGroups(prev => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
+    const base = effectiveCollapsed;
+    const next = new Set(base);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    setCollapsedGroups(next);
   };
 
   const toggleAll = () => {
-    if (collapsedGroups.size === groups.length) {
+    if (effectiveCollapsed.size === groups.length) {
       setCollapsedGroups(new Set());
     } else {
       setCollapsedGroups(new Set(groups.map(g => g.key)));
@@ -137,7 +142,7 @@ export default function EapMassDateEditor({ open, onOpenChange, items, onSave }:
 
   const switchGroupMode = (mode: GroupMode) => {
     setGroupMode(mode);
-    setCollapsedGroups(new Set());
+    setCollapsedGroups(null); // reset to all-collapsed default
   };
 
   return (
@@ -183,7 +188,7 @@ export default function EapMassDateEditor({ open, onOpenChange, items, onSave }:
 
           <Button variant="ghost" size="sm" onClick={toggleAll} className="font-body h-8 text-xs">
             <ChevronsUpDown className="h-3.5 w-3.5 mr-1" />
-            {collapsedGroups.size === groups.length ? 'Expandir' : 'Recolher'}
+            {effectiveCollapsed.size === groups.length ? 'Expandir' : 'Recolher'}
           </Button>
 
           <div className="flex-1" />
@@ -218,7 +223,7 @@ export default function EapMassDateEditor({ open, onOpenChange, items, onSave }:
             </TableHeader>
             <TableBody>
               {groups.map((group) => {
-                const isCollapsed = collapsedGroups.has(group.key);
+                const isCollapsed = effectiveCollapsed.has(group.key);
                 const groupChangedCount = group.items.filter(i => changes.has(i.id)).length;
 
                 return (

@@ -294,7 +294,7 @@ export type Database = {
           assunto: string | null
           cliente_id: number | null
           cliente_nome: string | null
-          created_at: string
+          created_at: string | null
           data_envio: string | null
           data_vencimento: string | null
           documento_titulo: string | null
@@ -319,7 +319,7 @@ export type Database = {
           assunto?: string | null
           cliente_id?: number | null
           cliente_nome?: string | null
-          created_at?: string
+          created_at?: string | null
           data_envio?: string | null
           data_vencimento?: string | null
           documento_titulo?: string | null
@@ -330,7 +330,7 @@ export type Database = {
           empresa_nome?: string | null
           enviou_email?: boolean | null
           enviou_sms?: boolean | null
-          id: number
+          id?: number
           mensagem_notificacao?: string | null
           origem?: string | null
           parcela_id?: number | null
@@ -344,7 +344,7 @@ export type Database = {
           assunto?: string | null
           cliente_id?: number | null
           cliente_nome?: string | null
-          created_at?: string
+          created_at?: string | null
           data_envio?: string | null
           data_vencimento?: string | null
           documento_titulo?: string | null
@@ -371,52 +371,67 @@ export type Database = {
         Row: {
           empreendimento_id: number | null
           empresa_id: number | null
-          executado_em: string
+          executado_em: string | null
           id: number
           mensagem: string | null
           registros_importados: number | null
-          status: string | null
+          status: string
         }
         Insert: {
           empreendimento_id?: number | null
           empresa_id?: number | null
-          executado_em?: string
-          id: number
+          executado_em?: string | null
+          id?: number
           mensagem?: string | null
           registros_importados?: number | null
-          status?: string | null
+          status: string
         }
         Update: {
           empreendimento_id?: number | null
           empresa_id?: number | null
-          executado_em?: string
+          executado_em?: string | null
           id?: number
           mensagem?: string | null
           registros_importados?: number | null
-          status?: string | null
+          status?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "cobranca_historico_sincronizacao_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "cobranca_empreendimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cobranca_historico_sincronizacao_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "cobranca_empresas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       cobranca_inadimplencia: {
         Row: {
           acrescimos: number | null
           atraso_atualizado: number | null
           atraso_desde: string | null
-          atualizado_em: string
+          atualizado_em: string | null
           cliente_cpf: string | null
           cliente_email: string | null
           cliente_endereco: string | null
           cliente_id: number | null
           cliente_telefone: string | null
           contrato_id: number | null
-          criado_em: string
+          criado_em: string | null
           dados_originais: Json | null
           data_contrato: string | null
           data_venda: string | null
           documento_titulo: string | null
-          empreendimento_id: number | null
+          empreendimento_id: number
           empreendimento_nome: string | null
-          empresa_id: number | null
+          empresa_id: number
           id: number
           numero_contrato: string | null
           proprietario: string | null
@@ -432,22 +447,22 @@ export type Database = {
           acrescimos?: number | null
           atraso_atualizado?: number | null
           atraso_desde?: string | null
-          atualizado_em?: string
+          atualizado_em?: string | null
           cliente_cpf?: string | null
           cliente_email?: string | null
           cliente_endereco?: string | null
           cliente_id?: number | null
           cliente_telefone?: string | null
           contrato_id?: number | null
-          criado_em?: string
+          criado_em?: string | null
           dados_originais?: Json | null
           data_contrato?: string | null
           data_venda?: string | null
           documento_titulo?: string | null
-          empreendimento_id?: number | null
+          empreendimento_id: number
           empreendimento_nome?: string | null
-          empresa_id?: number | null
-          id: number
+          empresa_id: number
+          id?: number
           numero_contrato?: string | null
           proprietario?: string | null
           qtd_parcelas?: number | null
@@ -462,21 +477,21 @@ export type Database = {
           acrescimos?: number | null
           atraso_atualizado?: number | null
           atraso_desde?: string | null
-          atualizado_em?: string
+          atualizado_em?: string | null
           cliente_cpf?: string | null
           cliente_email?: string | null
           cliente_endereco?: string | null
           cliente_id?: number | null
           cliente_telefone?: string | null
           contrato_id?: number | null
-          criado_em?: string
+          criado_em?: string | null
           dados_originais?: Json | null
           data_contrato?: string | null
           data_venda?: string | null
           documento_titulo?: string | null
-          empreendimento_id?: number | null
+          empreendimento_id?: number
           empreendimento_nome?: string | null
-          empresa_id?: number | null
+          empresa_id?: number
           id?: number
           numero_contrato?: string | null
           proprietario?: string | null
@@ -488,7 +503,22 @@ export type Database = {
           valor_recebido?: number | null
           valor_total_contrato?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "cobranca_inadimplencia_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "cobranca_empreendimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cobranca_inadimplencia_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "cobranca_empresas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       cobranca_indexadores_sienge: {
         Row: {
@@ -792,71 +822,6 @@ export type Database = {
           valor_cobrado?: number | null
         }
         Relationships: []
-      }
-      cobranca_parcelas_inadimplencia: {
-        Row: {
-          atualizado_em: string | null
-          cliente_id: number | null
-          criado_em: string | null
-          data_vencimento: string
-          dias_atraso: number | null
-          documento_titulo: string | null
-          empreendimento_id: number
-          empresa_id: number
-          id: number
-          inadimplencia_id: number | null
-          numero_parcela: string | null
-          saldo_atual: number | null
-          saldo_com_acrescimos: number | null
-          situacao: string | null
-          titulo_id: number | null
-          valor_original: number
-        }
-        Insert: {
-          atualizado_em?: string | null
-          cliente_id?: number | null
-          criado_em?: string | null
-          data_vencimento: string
-          dias_atraso?: number | null
-          documento_titulo?: string | null
-          empreendimento_id: number
-          empresa_id: number
-          id?: number
-          inadimplencia_id?: number | null
-          numero_parcela?: string | null
-          saldo_atual?: number | null
-          saldo_com_acrescimos?: number | null
-          situacao?: string | null
-          titulo_id?: number | null
-          valor_original: number
-        }
-        Update: {
-          atualizado_em?: string | null
-          cliente_id?: number | null
-          criado_em?: string | null
-          data_vencimento?: string
-          dias_atraso?: number | null
-          documento_titulo?: string | null
-          empreendimento_id?: number
-          empresa_id?: number
-          id?: number
-          inadimplencia_id?: number | null
-          numero_parcela?: string | null
-          saldo_atual?: number | null
-          saldo_com_acrescimos?: number | null
-          situacao?: string | null
-          titulo_id?: number | null
-          valor_original?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "cobranca_parcelas_inadimplencia_inadimplencia_id_fkey"
-            columns: ["inadimplencia_id"]
-            isOneToOne: false
-            referencedRelation: "cobranca_inadimplencia"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       comercial_corretores: {
         Row: {
@@ -1353,6 +1318,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      dashboard_comunicados: {
+        Row: {
+          autor_id: string
+          autor_nome: string
+          conteudo: string
+          created_at: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          autor_id: string
+          autor_nome?: string
+          conteudo: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          autor_id?: string
+          autor_nome?: string
+          conteudo?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       esquadro_comentarios: {
         Row: {
