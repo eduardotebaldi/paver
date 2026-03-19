@@ -64,6 +64,8 @@ interface Props {
   eapItems: EapItem[];
   mode: GroupMode;
   obraName?: string;
+  obraDataInicio?: string;
+  obraDataPrevisao?: string;
 }
 
 function getWeekBands(domainStart: number, domainEnd: number, maxBands = 26): { x1: number; x2: number; odd: boolean }[] {
