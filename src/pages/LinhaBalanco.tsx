@@ -95,6 +95,8 @@ export default function LinhaBalancoPage() {
   const [pacotePopoverOpen, setPacotePopoverOpen] = useState(false);
   const [pendingBaseline, setPendingBaseline] = useState(false);
   const [showFullChart, setShowFullChart] = useState(false);
+  const [customDateStart, setCustomDateStart] = useState('');
+  const [customDateEnd, setCustomDateEnd] = useState('');
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
