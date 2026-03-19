@@ -384,6 +384,7 @@ export default function LinhaBalancoFullChart({ eapItems, mode, obraName }: Prop
     const center = (left + right) / 2;
     setZoomDomain([Math.max(domainMin, center - range), Math.min(domainMax, center + range)]);
   };
+  const resetZoom = () => setZoomDomain(null);
 
   // Refs for the extracted MultiSubBarShape to avoid re-creating on each render
   const activeDomainRef = useRef<[number, number]>(activeDomain as [number, number]);
