@@ -300,14 +300,6 @@ export default function LinhaBalancoFullChart({ eapItems, mode, obraName, obraDa
       }
       if (item.data_inicio_prevista) entry.starts.push(parseDateLocal(item.data_inicio_prevista));
       if (item.data_fim_prevista) entry.ends.push(parseDateLocal(item.data_fim_prevista));
-      if (item.data_inicio_real) {
-        const t = parseDateLocal(item.data_inicio_real);
-        if (t > lastMeasurement) lastMeasurement = t;
-      }
-      if (item.data_fim_real) {
-        const t = parseDateLocal(item.data_fim_real);
-        if (t > lastMeasurement) lastMeasurement = t;
-      }
     }
 
     const sortedSubs = Array.from(allSubs).sort();
