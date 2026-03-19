@@ -8,12 +8,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Loader2, Link2, X } from 'lucide-react';
 import type { EapItem } from '@/services/api';
 
+import { useToast } from '@/hooks/use-toast';
+
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   item: EapItem | null;
   allItems: EapItem[];
   onSave: (id: string, updates: Partial<EapItem>) => Promise<void>;
+  obraDataInicio?: string;
+  obraDataPrevisao?: string;
 }
 
 export default function EapItemEditModal({ open, onOpenChange, item, allItems, onSave }: Props) {
