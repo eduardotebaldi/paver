@@ -560,13 +560,13 @@ export default function LinhaBalancoFullChart({ eapItems, mode, obraName, obraDa
                 strokeDasharray="4 4"
                 label={{ value: 'Hoje', position: 'top', fill: 'hsl(var(--destructive))', fontSize: 10 }}
               />
-              {lastMeasurementTs && (
+              {lastDiarioDate && (
                 <ReferenceLine
-                  x={lastMeasurementTs}
-                  stroke="hsl(var(--chart-4))"
+                  x={parseDateLocal(lastDiarioDate)}
+                  stroke="hsl(var(--primary))"
                   strokeWidth={2}
                   strokeDasharray="6 3"
-                  label={{ value: 'Últ. medição', position: 'top', fill: 'hsl(var(--chart-4))', fontSize: 10 }}
+                  label={{ value: 'Últ. diário', position: 'top', fill: 'hsl(var(--primary))', fontSize: 10 }}
                 />
               )}
               <Bar dataKey="_allRange" barSize={50} fill="transparent" shape={<MultiSubBarShape />} />
