@@ -133,7 +133,7 @@ export default function EapMassDateEditor({ open, onOpenChange, items, onSave }:
   };
 
   const toggleAll = () => {
-    if (collapsedGroups.size === groups.length) {
+    if (effectiveCollapsed.size === groups.length) {
       setCollapsedGroups(new Set());
     } else {
       setCollapsedGroups(new Set(groups.map(g => g.key)));
