@@ -49,6 +49,7 @@ export default function EapMassDateEditor({ open, onOpenChange, items, onSave }:
   const [changes, setChanges] = useState<Map<string, DateChange>>(new Map());
   const [groupMode, setGroupMode] = useState<GroupMode>('pacote');
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string> | null>(null);
+  const [visibleCounts, setVisibleCounts] = useState<Record<string, number>>({});
 
   const groups = useMemo(() => buildGroups(items, groupMode), [items, groupMode]);
 
