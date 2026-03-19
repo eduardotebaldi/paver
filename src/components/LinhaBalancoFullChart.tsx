@@ -385,11 +385,18 @@ export default function LinhaBalancoFullChart({ eapItems, mode, obraName }: Prop
     setZoomDomain([Math.max(domainMin, center - range), Math.min(domainMax, center + range)]);
   };
 
-  const resetZoom = () => setZoomDomain(null);
+  // Refs for the extracted MultiSubBarShape to avoid re-creating on each render
+  const activeDomainRef = useRef<[number, number]>(activeDomain as [number, number]);
+  activeDomainRef.current = activeDomain as [number, number];
+  const colorMapRef = useRef(colorMap);
+  colorMapRef.current = colorMap;
+  const handleBarClickRef = useRef(handleBarClick);
+  handleBarClickRef.current = handleBarClick;
 
-  if (!isChartReady) {
-    return <ChartLoadingState title="Preparando gráfico" description="Montando a linha de balanço sem travar a página." />;
-  }
+  const MultiSubBarShape = useMemo(
+    () => createMultiSubBarShape(activeDomainRef, colorMapRef, handleBarClickRef),
+    [], // stable reference — reads latest values via refs
+  );
 
   if (items.length === 0) {
     return (
@@ -399,84 +406,6 @@ export default function LinhaBalancoFullChart({ eapItems, mode, obraName }: Prop
       </div>
     );
   }
-
-  const MultiSubBarShape = (props: any) => {
-    const { x, y, width, height, payload } = props;
-    if (width == null || height == null || !payload) return null;
-
-    const subBars: SubBarMeta[] = (payload._subBars || []).filter(
-      (sub: SubBarMeta) => sub.start != null && sub.end != null,
-    );
-    if (subBars.length === 0) return null;
-
-    const chartLeft = Math.min(x, x + width);
-    const chartWidth = Math.abs(width);
-    const [domainStart, domainEnd] = activeDomain;
-    const domainRange = domainEnd - domainStart;
-    const tsToX = (ts: number) => chartLeft + ((ts - domainStart) / domainRange) * chartWidth;
-
-    const barH = Math.min(14, (height - (subBars.length - 1)) / subBars.length);
-    const totalBarHeight = barH * subBars.length + (subBars.length - 1);
-    const startY = y + (height - totalBarHeight) / 2;
-    const clipId = `clip-bars-${String(payload?.fullName || payload?.name || 'x').replace(/\s+/g, '-')}`;
-
-    return (
-      <g style={{ cursor: 'pointer' }}>
-        <defs>
-          <clipPath id={clipId}>
-            <rect x={chartLeft} y={y - 2} width={chartWidth} height={height + 4} />
-          </clipPath>
-        </defs>
-        <g clipPath={`url(#${clipId})`}>
-          {subBars.map((sub, index) => {
-            const barX = tsToX(sub.start!);
-            const barEndX = tsToX(sub.end!);
-            const barW = Math.max(barEndX - barX, 2);
-            const barY = startY + index * (barH + 1);
-            const fillColor = colorMap[sub.name] || 'hsl(var(--muted-foreground))';
-            const filledW = barW * (sub.avanco / 100);
-            const visibleW = Math.max(0, Math.min(barX + barW, chartLeft + chartWidth) - Math.max(barX, chartLeft));
-            const maxChars = Math.max(0, Math.floor(visibleW / 7));
-            const label = sub.name.length > maxChars && maxChars > 1
-              ? `${sub.name.substring(0, maxChars - 1)}…`
-              : sub.name;
-            const labelX = Math.max(barX + 5, chartLeft + 5);
-
-            return (
-              <g key={sub.name} onClick={(event) => { event.stopPropagation(); handleBarClick(payload, sub); }}>
-                <rect x={barX} y={barY} width={barW} height={barH} rx={2} ry={2} fill={fillColor} opacity={0.3} />
-                {filledW > 0 && (
-                  <rect
-                    x={barX}
-                    y={barY}
-                    width={Math.min(filledW, barW)}
-                    height={barH}
-                    rx={2}
-                    ry={2}
-                    fill={fillColor}
-                    opacity={0.9}
-                  />
-                )}
-                {visibleW > 40 && (
-                  <text
-                    x={labelX}
-                    y={barY + barH / 2}
-                    dominantBaseline="central"
-                    fontSize={9}
-                    fontWeight={600}
-                    fill="hsl(var(--primary-foreground))"
-                    style={{ textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}
-                  >
-                    {label}
-                  </text>
-                )}
-              </g>
-            );
-          })}
-        </g>
-      </g>
-    );
-  };
 
   const dynamicConfig: ChartConfig = {};
   subCategories.forEach(sub => {
