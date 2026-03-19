@@ -10,7 +10,6 @@ import {
   FolderTree,
   History,
   Layers,
-  LineChart,
   Link2,
   Loader2,
 } from 'lucide-react';
@@ -37,7 +36,6 @@ import type { EapItem } from '@/services/api';
 
 const BaselineManager = lazy(() => import('@/components/BaselineManager'));
 const LinhaBalancoFullChart = lazy(() => import('@/components/LinhaBalancoFullChart'));
-const LinhaBalancoSummaryTable = lazy(() => import('@/components/LinhaBalancoSummaryTable'));
 
 type GroupMode = 'pacote' | 'servico';
 
@@ -95,7 +93,6 @@ export default function LinhaBalancoPage() {
   const [baselineOpen, setBaselineOpen] = useState(false);
   const [pacotePopoverOpen, setPacotePopoverOpen] = useState(false);
   const [pendingBaseline, setPendingBaseline] = useState(false);
-  const [showFullChart, setShowFullChart] = useState(false);
   const [customDateStart, setCustomDateStart] = useState('');
   const [customDateEnd, setCustomDateEnd] = useState('');
 
@@ -147,7 +144,6 @@ export default function LinhaBalancoPage() {
   const selectedObraObj = obras.find(obra => obra.id === selectedObra);
   const obraName = selectedObraObj?.nome;
 
-  // Effective dates: custom overrides > obra dates
   const effectiveDateStart = customDateStart || selectedObraObj?.data_inicio;
   const effectiveDateEnd = customDateEnd || selectedObraObj?.data_previsao;
 
@@ -203,7 +199,8 @@ export default function LinhaBalancoPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-5rem)] flex-col gap-3">
+    <div className="flex h-[calc(100vh-5rem)] flex-col gap-2">
+      {/* Linha 1: Filtros */}
       <div className="flex flex-wrap items-end gap-3 shrink-0">
         <div className="space-y-1">
           <Label className="font-body text-xs text-muted-foreground">Obra</Label>
@@ -213,11 +210,10 @@ export default function LinhaBalancoPage() {
               setSelectedObra(value);
               setSelectedPacote('all');
               setSelectedServico('all');
-              setShowFullChart(false);
             }}
           >
-            <SelectTrigger className="w-52 font-body">
-              <Building2 className="mr-2 h-4 w-4" />
+            <SelectTrigger className="w-48 h-8 font-body text-sm">
+              <Building2 className="mr-1.5 h-3.5 w-3.5" />
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -230,23 +226,23 @@ export default function LinhaBalancoPage() {
 
         <div className="space-y-1">
           <Label className="font-body text-xs text-muted-foreground">Agrupar por</Label>
-          <div className="overflow-hidden rounded-md border border-border flex items-center">
+          <div className="overflow-hidden rounded-md border border-border flex items-center h-8">
             <button
               onClick={() => setMode('pacote')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-body transition-colors ${
+              className={`flex items-center gap-1 px-2.5 h-full text-xs font-body transition-colors ${
                 mode === 'pacote' ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'
               }`}
             >
-              <FolderTree className="h-3.5 w-3.5" />
+              <FolderTree className="h-3 w-3" />
               Pacote
             </button>
             <button
               onClick={() => setMode('servico')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-body transition-colors ${
+              className={`flex items-center gap-1 px-2.5 h-full text-xs font-body transition-colors ${
                 mode === 'servico' ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'
               }`}
             >
-              <Layers className="h-3.5 w-3.5" />
+              <Layers className="h-3 w-3" />
               Serviço
             </button>
           </div>
@@ -256,9 +252,9 @@ export default function LinhaBalancoPage() {
           <Label className="font-body text-xs text-muted-foreground">Pacote</Label>
           <Popover open={pacotePopoverOpen} onOpenChange={setPacotePopoverOpen}>
             <PopoverTrigger asChild>
-              <Button variant="outline" role="combobox" className="w-48 justify-between font-body text-sm font-normal">
+              <Button variant="outline" role="combobox" className="w-44 h-8 justify-between font-body text-xs font-normal">
                 <span className="truncate">{selectedPacote === 'all' ? 'Todos' : selectedPacote}</span>
-                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                <ChevronsUpDown className="ml-1 h-3.5 w-3.5 shrink-0 opacity-50" />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-56 p-0" align="start">
@@ -287,7 +283,7 @@ export default function LinhaBalancoPage() {
         <div className="space-y-1">
           <Label className="font-body text-xs text-muted-foreground">Tipo Serviço</Label>
           <Select value={selectedServico} onValueChange={setSelectedServico}>
-            <SelectTrigger className="w-48 font-body"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-44 h-8 font-body text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all" className="font-body">Todos</SelectItem>
               {uniqueServicos.map(servico => (
@@ -297,97 +293,72 @@ export default function LinhaBalancoPage() {
           </Select>
         </div>
 
-        <div className="flex items-end gap-2">
-          <div className="space-y-1">
-            <Label className="font-body text-xs text-muted-foreground">De</Label>
-            <Input
-              type="date"
-              value={customDateStart || selectedObraObj?.data_inicio || ''}
-              onChange={e => setCustomDateStart(e.target.value)}
-              className="w-36 h-8 text-xs font-body"
-            />
-          </div>
-          <div className="space-y-1">
-            <Label className="font-body text-xs text-muted-foreground">Até</Label>
-            <Input
-              type="date"
-              value={customDateEnd || selectedObraObj?.data_previsao || ''}
-              onChange={e => setCustomDateEnd(e.target.value)}
-              className="w-36 h-8 text-xs font-body"
-            />
-          </div>
-          {(customDateStart || customDateEnd) && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => { setCustomDateStart(''); setCustomDateEnd(''); }}
-              className="font-body text-xs h-8 px-2"
-            >
-              Resetar
-            </Button>
-          )}
+        <div className="space-y-1">
+          <Label className="font-body text-xs text-muted-foreground">De</Label>
+          <Input
+            type="date"
+            value={customDateStart || selectedObraObj?.data_inicio || ''}
+            onChange={e => setCustomDateStart(e.target.value)}
+            className="w-32 h-8 text-xs font-body"
+          />
         </div>
-        {canEdit && selectedObra && (
-          <div className="ml-auto flex gap-2">
-            {!showFullChart && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowFullChart(true)}
-                className="font-body"
-              >
-                <LineChart className="mr-1.5 h-4 w-4" />
-                Ver Gráfico
-              </Button>
-            )}
-            {showFullChart && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowFullChart(false)}
-                className="font-body"
-              >
-                <BarChart3 className="mr-1.5 h-4 w-4" />
-                Ver Resumo
-              </Button>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate(`/datas-eap?obra=${selectedObra}`)}
-              className="font-body"
-            >
-              <Calendar className="mr-1.5 h-4 w-4" />
-              Datas
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPendingBaseline(true)}
-              disabled={pendingBaseline}
-              className="font-body"
-            >
-              {pendingBaseline ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <History className="mr-1.5 h-4 w-4" />}
-              Baselines
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleRecalcDeps} className="font-body">
-              <Link2 className="mr-1.5 h-4 w-4" />
-              Recalcular
-            </Button>
-          </div>
+        <div className="space-y-1">
+          <Label className="font-body text-xs text-muted-foreground">Até</Label>
+          <Input
+            type="date"
+            value={customDateEnd || selectedObraObj?.data_previsao || ''}
+            onChange={e => setCustomDateEnd(e.target.value)}
+            className="w-32 h-8 text-xs font-body"
+          />
+        </div>
+        {(customDateStart || customDateEnd) && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => { setCustomDateStart(''); setCustomDateEnd(''); }}
+            className="font-body text-xs h-8 px-2"
+          >
+            Resetar
+          </Button>
         )}
       </div>
 
+      {/* Linha 2: Botões de ação */}
+      {canEdit && selectedObra && (
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate(`/datas-eap?obra=${selectedObra}`)}
+            className="font-body h-7 text-xs"
+          >
+            <Calendar className="mr-1.5 h-3.5 w-3.5" />
+            Datas
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPendingBaseline(true)}
+            disabled={pendingBaseline}
+            className="font-body h-7 text-xs"
+          >
+            {pendingBaseline ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <History className="mr-1.5 h-3.5 w-3.5" />}
+            Baselines
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleRecalcDeps} className="font-body h-7 text-xs">
+            <Link2 className="mr-1.5 h-3.5 w-3.5" />
+            Recalcular
+          </Button>
+        </div>
+      )}
+
+      {/* Gráfico */}
       <div className="flex-1 min-h-0">
         {isLoading ? (
           <PanelLoadingState title="Carregando dados da obra" description="Buscando itens da EAP para montar a linha de balanço." />
-        ) : showFullChart ? (
+        ) : (
           <Suspense fallback={<PanelLoadingState title="Preparando gráfico" description="Montando a linha de balanço em segundo plano." />}>
             <LinhaBalancoFullChart eapItems={filteredItems} mode={mode} obraName={obraName} obraDataInicio={effectiveDateStart} obraDataPrevisao={effectiveDateEnd} />
-          </Suspense>
-        ) : (
-          <Suspense fallback={<PanelLoadingState title="Preparando resumo" description="Montando a tabela resumo." />}>
-            <LinhaBalancoSummaryTable eapItems={filteredItems} mode={mode} />
           </Suspense>
         )}
       </div>
