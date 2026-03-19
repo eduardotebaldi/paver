@@ -73,6 +73,7 @@ interface Props {
   obraName?: string;
   obraDataInicio?: string;
   obraDataPrevisao?: string;
+  lastDiarioDate?: string;
 }
 
 function getWeekBands(domainStart: number, domainEnd: number): { x1: number; x2: number; odd: boolean }[] {
@@ -218,7 +219,7 @@ function createMultiSubBarShape(
   };
 }
 
-export default function LinhaBalancoFullChart({ eapItems, mode, obraName, obraDataInicio, obraDataPrevisao }: Props) {
+export default function LinhaBalancoFullChart({ eapItems, mode, obraName, obraDataInicio, obraDataPrevisao, lastDiarioDate }: Props) {
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailGroup, setDetailGroup] = useState('');
   const [detailSubs, setDetailSubs] = useState<SubBarMeta[]>([]);
@@ -250,7 +251,7 @@ export default function LinhaBalancoFullChart({ eapItems, mode, obraName, obraDa
     return eapItems.filter(i => i.tipo === 'item');
   }, [eapItems]);
 
-  const { chartData, subCategories, colorMap, lastMeasurementTs, domainMin, domainMax } = useMemo(() => {
+  const { chartData, subCategories, colorMap, domainMin, domainMax } = useMemo(() => {
     const obraStartTs = obraDataInicio ? parseDateLocal(obraDataInicio) : null;
     const obraEndTs = obraDataPrevisao ? parseDateLocal(obraDataPrevisao) : null;
 
@@ -263,7 +264,6 @@ export default function LinhaBalancoFullChart({ eapItems, mode, obraName, obraDa
       itemCount: number;
       items: SubBarItem[];
     }>>();
-    let lastMeasurement = 0;
     const allSubs = new Set<string>();
 
     for (const item of items) {
@@ -300,14 +300,6 @@ export default function LinhaBalancoFullChart({ eapItems, mode, obraName, obraDa
       }
       if (item.data_inicio_prevista) entry.starts.push(parseDateLocal(item.data_inicio_prevista));
       if (item.data_fim_prevista) entry.ends.push(parseDateLocal(item.data_fim_prevista));
-      if (item.data_inicio_real) {
-        const t = parseDateLocal(item.data_inicio_real);
-        if (t > lastMeasurement) lastMeasurement = t;
-      }
-      if (item.data_fim_real) {
-        const t = parseDateLocal(item.data_fim_real);
-        if (t > lastMeasurement) lastMeasurement = t;
-      }
     }
 
     const sortedSubs = Array.from(allSubs).sort();
@@ -358,7 +350,6 @@ export default function LinhaBalancoFullChart({ eapItems, mode, obraName, obraDa
       chartData: data,
       subCategories: sortedSubs,
       colorMap: cMap,
-      lastMeasurementTs: lastMeasurement || null,
       domainMin: finalMin,
       domainMax: finalMax,
     };
@@ -569,13 +560,13 @@ export default function LinhaBalancoFullChart({ eapItems, mode, obraName, obraDa
                 strokeDasharray="4 4"
                 label={{ value: 'Hoje', position: 'top', fill: 'hsl(var(--destructive))', fontSize: 10 }}
               />
-              {lastMeasurementTs && (
+              {lastDiarioDate && (
                 <ReferenceLine
-                  x={lastMeasurementTs}
-                  stroke="hsl(var(--chart-4))"
+                  x={parseDateLocal(lastDiarioDate)}
+                  stroke="hsl(var(--primary))"
                   strokeWidth={2}
                   strokeDasharray="6 3"
-                  label={{ value: 'Últ. medição', position: 'top', fill: 'hsl(var(--chart-4))', fontSize: 10 }}
+                  label={{ value: 'Últ. diário', position: 'top', fill: 'hsl(var(--primary))', fontSize: 10 }}
                 />
               )}
               <Bar dataKey="_allRange" barSize={50} fill="transparent" shape={<MultiSubBarShape />} />

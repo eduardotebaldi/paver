@@ -32,6 +32,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { fetchEapItems, fetchObras } from '@/services/api';
 import { bulkUpdateEapItems, calculateDependencyDates } from '@/services/eapApi';
+import { supabase } from '@/integrations/supabase/client';
 import type { EapItem } from '@/services/api';
 
 const BaselineManager = lazy(() => import('@/components/BaselineManager'));
@@ -119,6 +120,21 @@ export default function LinhaBalancoPage() {
   const { data: eapItems = [], isLoading } = useQuery({
     queryKey: ['eap-items-balance', selectedObra],
     queryFn: () => fetchEapItems(selectedObra),
+    enabled: !!selectedObra,
+  });
+
+  const { data: lastDiarioDate } = useQuery({
+    queryKey: ['last-diario-date', selectedObra],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('paver_diarios')
+        .select('data')
+        .eq('obra_id', selectedObra)
+        .order('data', { ascending: false })
+        .limit(1);
+      if (error) throw error;
+      return data?.[0]?.data ?? null;
+    },
     enabled: !!selectedObra,
   });
 
@@ -358,7 +374,7 @@ export default function LinhaBalancoPage() {
           <PanelLoadingState title="Carregando dados da obra" description="Buscando itens da EAP para montar a linha de balanço." />
         ) : (
           <Suspense fallback={<PanelLoadingState title="Preparando gráfico" description="Montando a linha de balanço em segundo plano." />}>
-            <LinhaBalancoFullChart eapItems={filteredItems} mode={mode} obraName={obraName} obraDataInicio={effectiveDateStart} obraDataPrevisao={effectiveDateEnd} />
+            <LinhaBalancoFullChart eapItems={filteredItems} mode={mode} obraName={obraName} obraDataInicio={effectiveDateStart} obraDataPrevisao={effectiveDateEnd} lastDiarioDate={lastDiarioDate ?? undefined} />
           </Suspense>
         )}
       </div>
