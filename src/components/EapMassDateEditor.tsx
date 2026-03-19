@@ -144,6 +144,11 @@ export default function EapMassDateEditor({ open, onOpenChange, items, onSave }:
   const switchGroupMode = (mode: GroupMode) => {
     setGroupMode(mode);
     setCollapsedGroups(null); // reset to all-collapsed default
+    setVisibleCounts({}); // reset pagination
+  };
+
+  const showMore = (key: string) => {
+    setVisibleCounts(prev => ({ ...prev, [key]: (prev[key] || 30) + 30 }));
   };
 
   return (
