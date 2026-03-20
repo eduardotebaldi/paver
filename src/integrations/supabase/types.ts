@@ -14,6 +14,92 @@ export type Database = {
   }
   public: {
     Tables: {
+      aditivo_empreendimentos: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+          taxa_padrao: number
+          template_path: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+          taxa_padrao: number
+          template_path?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+          taxa_padrao?: number
+          template_path?: string | null
+        }
+        Relationships: []
+      }
+      aditivo_profiles: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string | null
+          role: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          nome?: string | null
+          role?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string | null
+          role?: string
+        }
+        Relationships: []
+      }
+      aditivo_taxa_regras: {
+        Row: {
+          bracket_pago: string
+          created_at: string
+          data_contrato_fim: string | null
+          data_contrato_ini: string | null
+          empreendimento_id: string
+          id: string
+          taxa_mensal: number
+          terreno_registrado: boolean
+        }
+        Insert: {
+          bracket_pago: string
+          created_at?: string
+          data_contrato_fim?: string | null
+          data_contrato_ini?: string | null
+          empreendimento_id: string
+          id?: string
+          taxa_mensal: number
+          terreno_registrado: boolean
+        }
+        Update: {
+          bracket_pago?: string
+          created_at?: string
+          data_contrato_fim?: string | null
+          data_contrato_ini?: string | null
+          empreendimento_id?: string
+          id?: string
+          taxa_mensal?: number
+          terreno_registrado?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aditivo_taxa_regras_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "aditivo_empreendimentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       atividades: {
         Row: {
           created_at: string
