@@ -310,6 +310,19 @@ export default function DatasEap() {
         )}
       </div>
 
+      {/* Filter badge */}
+      {filterMissing && (
+        <div className="flex items-center gap-2 shrink-0">
+          <Badge variant="destructive" className="font-body text-xs flex items-center gap-1">
+            <AlertTriangle className="h-3 w-3" />
+            Exibindo apenas atividades sem datas previstas ({filteredForDisplay.length} itens)
+            <button onClick={() => navigate(`/datas-eap?obra=${selectedObra}`)} className="ml-1 hover:opacity-70">
+              <X className="h-3 w-3" />
+            </button>
+          </Badge>
+        </div>
+      )}
+
       {/* Table Header */}
       <div className="grid grid-cols-[1fr_160px_160px_80px] gap-1 px-4 py-2 bg-muted/50 rounded-t-md border border-border text-xs font-body text-muted-foreground font-medium shrink-0">
         <span>Item</span>
