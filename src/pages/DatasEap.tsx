@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { Building2, Calendar, ChevronDown, ChevronRight, ChevronsUpDown, FolderTree, Layers, Loader2, Save } from 'lucide-react';
+import { AlertTriangle, Building2, Calendar, ChevronDown, ChevronRight, ChevronsUpDown, FolderTree, Layers, Loader2, Save, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
