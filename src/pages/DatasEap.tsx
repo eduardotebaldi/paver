@@ -94,15 +94,17 @@ export default function DatasEap() {
     return groups; // Start all collapsed
   }, [collapsed, eapItems, groupMode, filterMissing]);
 
-  const filteredItems = useMemo(() => {
+  const filteredForDisplay = useMemo(() => {
     if (!filterMissing) return eapItems;
-    return eapItems.filter(i => i.tipo === 'item' && (!i.data_inicio_prevista || !i.data_fim_prevista))
-      .concat(eapItems.filter(i => i.tipo !== 'item'));
+    return eapItems.filter(i => {
+      if (i.tipo !== 'item') return false;
+      return !i.data_inicio_prevista || !i.data_fim_prevista;
+    });
   }, [eapItems, filterMissing]);
 
   const flatRows = useMemo(
-    () => buildFlatRows(filteredItems, groupMode, effectiveCollapsed),
-    [filteredItems, groupMode, effectiveCollapsed],
+    () => buildFlatRows(filterMissing ? filteredForDisplay : eapItems, groupMode, effectiveCollapsed),
+    [filteredForDisplay, eapItems, filterMissing, groupMode, effectiveCollapsed],
   );
 
   const virtualizer = useVirtualizer({

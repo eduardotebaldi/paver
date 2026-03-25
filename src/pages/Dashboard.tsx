@@ -97,7 +97,7 @@ export default function Dashboard() {
                 {obraName} — {missing} atividade{missing > 1 ? 's' : ''} sem datas previstas
               </AlertTitle>
               <AlertDescription className="font-body text-xs">
-                {missing} de {total} atividades não possuem datas de início ou fim previstas. Acesse a Linha de Balanço para corrigir.
+                {missing} de {total} atividades não possuem datas de início ou fim previstas. Clique para visualizar e corrigir.
               </AlertDescription>
             </Alert>
           ))}
