@@ -93,9 +93,15 @@ export default function DatasEap() {
     return groups; // Start all collapsed
   }, [collapsed, eapItems, groupMode]);
 
+  const filteredItems = useMemo(() => {
+    if (!filterMissing) return eapItems;
+    return eapItems.filter(i => i.tipo === 'item' && (!i.data_inicio_prevista || !i.data_fim_prevista))
+      .concat(eapItems.filter(i => i.tipo !== 'item'));
+  }, [eapItems, filterMissing]);
+
   const flatRows = useMemo(
-    () => buildFlatRows(eapItems, groupMode, effectiveCollapsed),
-    [eapItems, groupMode, effectiveCollapsed],
+    () => buildFlatRows(filteredItems, groupMode, effectiveCollapsed),
+    [filteredItems, groupMode, effectiveCollapsed],
   );
 
   const virtualizer = useVirtualizer({

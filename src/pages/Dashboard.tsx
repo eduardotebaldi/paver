@@ -91,7 +91,7 @@ export default function Dashboard() {
       {obrasWithMissingDates.length > 0 && (
         <div className="space-y-2">
           {obrasWithMissingDates.map(({ obraId, obraName, total, missing }) => (
-            <Alert key={obraId} variant="destructive" className="cursor-pointer" onClick={() => navigate('/linha-balanco')}>
+            <Alert key={obraId} variant="destructive" className="cursor-pointer" onClick={() => navigate(`/datas-eap?obra=${obraId}&filter=sem-datas`)}>
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle className="font-heading text-sm">
                 {obraName} — {missing} atividade{missing > 1 ? 's' : ''} sem datas previstas
