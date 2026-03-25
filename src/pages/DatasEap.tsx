@@ -1,8 +1,8 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { Building2, Calendar, ChevronDown, ChevronRight, ChevronsUpDown, FolderTree, Layers, Loader2, Save } from 'lucide-react';
+import { AlertTriangle, Building2, Calendar, ChevronDown, ChevronRight, ChevronsUpDown, FolderTree, Layers, Loader2, Save, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -57,6 +57,7 @@ function buildFlatRows(items: EapItem[], mode: GroupMode, collapsed: Set<string>
 export default function DatasEap() {
   const [searchParams] = useSearchParams();
   const initialObra = searchParams.get('obra') || '';
+  const filterMissing = searchParams.get('filter') === 'sem-datas';
   const [selectedObra, setSelectedObra] = useState(initialObra);
   const [groupMode, setGroupMode] = useState<GroupMode>('pacote');
   const [changes, setChanges] = useState<Map<string, DateChange>>(new Map());
@@ -65,6 +66,7 @@ export default function DatasEap() {
   const [offsetDays, setOffsetDays] = useState('');
   const parentRef = useRef<HTMLDivElement>(null);
 
+  const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { hasRole } = useAuth();
@@ -83,6 +85,7 @@ export default function DatasEap() {
 
   const effectiveCollapsed = useMemo(() => {
     if (collapsed !== null) return collapsed;
+    if (filterMissing) return new Set<string>(); // Start expanded when filtering
     const editableItems = eapItems.filter(i => i.tipo === 'item');
     const groups = new Set<string>();
     for (const item of editableItems) {
@@ -90,11 +93,19 @@ export default function DatasEap() {
       groups.add(key);
     }
     return groups; // Start all collapsed
-  }, [collapsed, eapItems, groupMode]);
+  }, [collapsed, eapItems, groupMode, filterMissing]);
+
+  const filteredForDisplay = useMemo(() => {
+    if (!filterMissing) return eapItems;
+    return eapItems.filter(i => {
+      if (i.tipo !== 'item') return false;
+      return !i.data_inicio_prevista || !i.data_fim_prevista;
+    });
+  }, [eapItems, filterMissing]);
 
   const flatRows = useMemo(
-    () => buildFlatRows(eapItems, groupMode, effectiveCollapsed),
-    [eapItems, groupMode, effectiveCollapsed],
+    () => buildFlatRows(filterMissing ? filteredForDisplay : eapItems, groupMode, effectiveCollapsed),
+    [filteredForDisplay, eapItems, filterMissing, groupMode, effectiveCollapsed],
   );
 
   const virtualizer = useVirtualizer({
@@ -299,6 +310,19 @@ export default function DatasEap() {
           </div>
         )}
       </div>
+
+      {/* Filter badge */}
+      {filterMissing && (
+        <div className="flex items-center gap-2 shrink-0">
+          <Badge variant="destructive" className="font-body text-xs flex items-center gap-1">
+            <AlertTriangle className="h-3 w-3" />
+            Exibindo apenas atividades sem datas previstas ({filteredForDisplay.length} itens)
+            <button onClick={() => navigate(`/datas-eap?obra=${selectedObra}`)} className="ml-1 hover:opacity-70">
+              <X className="h-3 w-3" />
+            </button>
+          </Badge>
+        </div>
+      )}
 
       {/* Table Header */}
       <div className="grid grid-cols-[1fr_160px_160px_80px] gap-1 px-4 py-2 bg-muted/50 rounded-t-md border border-border text-xs font-body text-muted-foreground font-medium shrink-0">
