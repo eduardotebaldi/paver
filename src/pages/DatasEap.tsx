@@ -84,6 +84,7 @@ export default function DatasEap() {
 
   const effectiveCollapsed = useMemo(() => {
     if (collapsed !== null) return collapsed;
+    if (filterMissing) return new Set<string>(); // Start expanded when filtering
     const editableItems = eapItems.filter(i => i.tipo === 'item');
     const groups = new Set<string>();
     for (const item of editableItems) {
@@ -91,7 +92,7 @@ export default function DatasEap() {
       groups.add(key);
     }
     return groups; // Start all collapsed
-  }, [collapsed, eapItems, groupMode]);
+  }, [collapsed, eapItems, groupMode, filterMissing]);
 
   const filteredItems = useMemo(() => {
     if (!filterMissing) return eapItems;
