@@ -57,6 +57,7 @@ function buildFlatRows(items: EapItem[], mode: GroupMode, collapsed: Set<string>
 export default function DatasEap() {
   const [searchParams] = useSearchParams();
   const initialObra = searchParams.get('obra') || '';
+  const filterMissing = searchParams.get('filter') === 'sem-datas';
   const [selectedObra, setSelectedObra] = useState(initialObra);
   const [groupMode, setGroupMode] = useState<GroupMode>('pacote');
   const [changes, setChanges] = useState<Map<string, DateChange>>(new Map());
