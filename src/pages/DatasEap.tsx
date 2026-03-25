@@ -66,6 +66,7 @@ export default function DatasEap() {
   const [offsetDays, setOffsetDays] = useState('');
   const parentRef = useRef<HTMLDivElement>(null);
 
+  const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { hasRole } = useAuth();
