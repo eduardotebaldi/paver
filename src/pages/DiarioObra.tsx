@@ -41,7 +41,7 @@ export default function DiarioObraPage() {
     return (Date.now() - created.getTime()) <= 2 * 24 * 60 * 60 * 1000;
   };
 
-  const [selectedObraId, setSelectedObraId] = useState<string>('');
+  const [selectedObraId, setSelectedObraId] = useState<string>('all');
 
   const { data: obras = [] } = useQuery({ queryKey: ['obras'], queryFn: fetchObras });
   const obrasMap = useMemo(() => new Map(obras.map(o => [o.id, o.nome])), [obras]);
