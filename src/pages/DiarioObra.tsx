@@ -52,7 +52,7 @@ export default function DiarioObraPage() {
   });
 
   const diarios = useMemo(() => {
-    if (!selectedObraId) return allDiarios;
+    if (!selectedObraId || selectedObraId === 'all') return allDiarios;
     return allDiarios.filter(d => d.obra_id === selectedObraId);
   }, [allDiarios, selectedObraId]);
 
