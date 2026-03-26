@@ -97,7 +97,7 @@ export default function DiarioObraPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-2xl font-heading font-bold text-foreground">Diário de Obra</h1>
-        {canEdit && selectedObraId && (
+        {canEdit && selectedObraId && selectedObraId !== 'all' && (
           <Button size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90 font-body"
             onClick={() => navigate(`/diario-obra/novo?obra=${selectedObraId}`)}>
             <Plus className="h-4 w-4 mr-2" />Novo Registro
