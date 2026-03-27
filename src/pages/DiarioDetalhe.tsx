@@ -1,18 +1,20 @@
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   ArrowLeft, Loader2, CloudSun, Cloud, CloudRain, Sun, Snowflake,
-  ClipboardList, User, Clock, Layers, Package, Camera, Video, Eye, Building2,
+  User, Clock, Camera, Video, Eye, Building2, MapPin,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
-import { fetchObras, fetchEapItems, EapItem } from '@/services/api';
+import { fetchObras, fetchEapItems, fetchPlantas, FotoLocalizada, PlantaObra } from '@/services/api';
 import { supabase } from '@/integrations/supabase/client';
 import CollapsibleClassification from '@/components/CollapsibleClassification';
+import DxfPlantaViewer from '@/components/DxfPlantaViewer';
 
 const climaOptions = [
   { value: 'ensolarado', label: 'Ensolarado', icon: Sun },
@@ -27,6 +29,10 @@ function isVideo(url: string) {
   return /\.(mp4|mov|webm|avi|mkv)(\?|$)/i.test(url);
 }
 
+function isDxf(url: string) {
+  return url.toLowerCase().includes('.dxf');
+}
+
 interface DiarioAtividade {
   id: string;
   diario_id: string;
@@ -38,6 +44,8 @@ interface DiarioAtividade {
 export default function DiarioDetalhePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [dxfViewerPlanta, setDxfViewerPlanta] = useState<PlantaObra | null>(null);
+  const [highlightFotoId, setHighlightFotoId] = useState<string | null>(null);
 
   // Fetch the diário
   const { data: diario, isLoading } = useQuery({
@@ -102,6 +110,50 @@ export default function DiarioDetalhePage() {
     enabled: !!diario?.created_by,
   });
 
+  // Fetch fotos localizadas linked to this diário
+  const { data: fotosLocalizadas = [] } = useQuery({
+    queryKey: ['fotos-localizadas-diario', id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('paver_fotos_localizadas')
+        .select('*')
+        .eq('diario_id', id!)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      return data as FotoLocalizada[];
+    },
+    enabled: !!id,
+  });
+
+  // Fetch plantas for this obra (to allow viewing DXF)
+  const { data: plantas = [] } = useQuery({
+    queryKey: ['plantas', diario?.obra_id],
+    queryFn: () => fetchPlantas(diario!.obra_id),
+    enabled: !!diario?.obra_id,
+  });
+
+  // Group fotos by planta
+  const fotosComPin = useMemo(() => fotosLocalizadas.filter(f => f.pos_x != null && f.pos_y != null), [fotosLocalizadas]);
+  const plantasComFotos = useMemo(() => {
+    const plantaIds = [...new Set(fotosComPin.map(f => f.planta_id))];
+    return plantas.filter(p => plantaIds.includes(p.id) && isDxf(p.imagem_url));
+  }, [fotosComPin, plantas]);
+
+  // All fotos (from diario.fotos array + fotos localizadas)
+  const allFotoUrls = useMemo(() => {
+    const fromDiario = (diario?.fotos || []) as string[];
+    const fromLocalizadas = fotosLocalizadas.map(f => f.foto_url);
+    // Deduplicate
+    return [...new Set([...fromDiario, ...fromLocalizadas])];
+  }, [diario, fotosLocalizadas]);
+
+  // Map foto URL to FotoLocalizada for pin info
+  const fotoLocMap = useMemo(() => {
+    const map = new Map<string, FotoLocalizada>();
+    fotosLocalizadas.forEach(f => map.set(f.foto_url, f));
+    return map;
+  }, [fotosLocalizadas]);
+
   const ClimaIcon = ({ clima }: { clima: string }) => {
     const opt = climaOptions.find(c => c.value === clima);
     if (!opt) return null;
@@ -133,6 +185,8 @@ export default function DiarioDetalhePage() {
       </div>
     );
   }
+
+  const visibleFotoIds = highlightFotoId ? new Set([highlightFotoId]) : new Set(fotosComPin.map(f => f.id));
 
   return (
     <div className="space-y-6">
@@ -193,6 +247,7 @@ export default function DiarioDetalhePage() {
         </CardContent>
       </Card>
 
+      {/* Atividades medidas */}
       <Card>
         <CardContent className="pt-6">
           {atividades.length === 0 ? (
@@ -260,38 +315,96 @@ export default function DiarioDetalhePage() {
       </Card>
 
       {/* Fotos e Vídeos */}
-      {diario.fotos && diario.fotos.length > 0 && (
+      {allFotoUrls.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="font-heading text-lg flex items-center gap-2">
               <Camera className="h-5 w-5 text-accent" />
-              Fotos e Vídeos ({diario.fotos.length})
+              Fotos e Vídeos ({allFotoUrls.length})
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              {diario.fotos.map((url: string, i: number) => (
-                <a key={i} href={url} target="_blank" rel="noopener noreferrer"
-                  className="aspect-square rounded-md overflow-hidden border border-border bg-muted relative group">
-                  {isVideo(url) ? (
-                    <>
-                      <video src={url} className="w-full h-full object-cover" muted />
-                      <div className="absolute top-1 left-1">
-                        <Badge variant="secondary" className="text-[8px] px-1 h-4"><Video className="h-2.5 w-2.5" /></Badge>
+              {allFotoUrls.map((url, i) => {
+                const fotoLoc = fotoLocMap.get(url);
+                const hasDxfPin = fotoLoc && fotoLoc.pos_x != null && fotoLoc.pos_y != null;
+                const planta = hasDxfPin ? plantas.find(p => p.id === fotoLoc.planta_id) : null;
+
+                return (
+                  <div key={i} className="relative group">
+                    <a href={url} target="_blank" rel="noopener noreferrer"
+                      className="aspect-square rounded-md overflow-hidden border border-border bg-muted relative block">
+                      {isVideo(url) ? (
+                        <>
+                          <video src={url} className="w-full h-full object-cover" muted />
+                          <div className="absolute top-1 left-1">
+                            <Badge variant="secondary" className="text-[8px] px-1 h-4"><Video className="h-2.5 w-2.5" /></Badge>
+                          </div>
+                        </>
+                      ) : (
+                        <img src={url} alt={`Foto ${i + 1}`} className="w-full h-full object-cover" />
+                      )}
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                        <Eye className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow" />
                       </div>
-                    </>
-                  ) : (
-                    <img src={url} alt={`Foto ${i + 1}`} className="w-full h-full object-cover" />
-                  )}
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                    <Eye className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow" />
+                    </a>
+                    {/* Pin indicator + button */}
+                    {hasDxfPin && planta && isDxf(planta.imagem_url) && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="absolute bottom-1 right-1 h-6 px-1.5 text-[10px] gap-1 opacity-80 hover:opacity-100"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setHighlightFotoId(fotoLoc.id);
+                          setDxfViewerPlanta(planta);
+                        }}
+                      >
+                        <MapPin className="h-3 w-3" />Ver na planta
+                      </Button>
+                    )}
+                    {fotoLoc?.descricao && (
+                      <p className="text-[10px] text-muted-foreground font-body mt-1 truncate">{fotoLoc.descricao}</p>
+                    )}
                   </div>
-                </a>
-              ))}
+                );
+              })}
             </div>
+
+            {/* Quick access: view all pins on DXF */}
+            {plantasComFotos.length > 0 && (
+              <div className="mt-4 pt-3 border-t border-border/50">
+                <p className="text-xs text-muted-foreground font-body mb-2">Visualizar posição na planta:</p>
+                <div className="flex flex-wrap gap-2">
+                  {plantasComFotos.map(p => (
+                    <Button key={p.id} size="sm" variant="outline" className="text-xs gap-1.5"
+                      onClick={() => { setHighlightFotoId(null); setDxfViewerPlanta(p); }}>
+                      <MapPin className="h-3 w-3 text-accent" />
+                      {p.nome || 'Planta DXF'}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
+
+      {/* DXF Viewer Dialog */}
+      <Dialog open={!!dxfViewerPlanta} onOpenChange={v => { if (!v) { setDxfViewerPlanta(null); setHighlightFotoId(null); } }}>
+        <DialogContent className="max-w-[95vw] max-h-[95vh] w-[95vw] h-[95vh] p-0 overflow-hidden">
+          {dxfViewerPlanta && (
+            <DxfPlantaViewer
+              planta={dxfViewerPlanta}
+              obraId={diario.obra_id}
+              canEdit={false}
+              visibleFotoIds={visibleFotoIds}
+              onClose={() => { setDxfViewerPlanta(null); setHighlightFotoId(null); }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
