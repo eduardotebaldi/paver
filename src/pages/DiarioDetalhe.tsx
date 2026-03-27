@@ -136,7 +136,7 @@ export default function DiarioDetalhePage() {
   const fotosComPin = useMemo(() => fotosLocalizadas.filter(f => f.pos_x != null && f.pos_y != null), [fotosLocalizadas]);
   const plantasComFotos = useMemo(() => {
     const plantaIds = [...new Set(fotosComPin.map(f => f.planta_id))];
-    return plantas.filter(p => plantaIds.includes(p.id) && isDxf(p.arquivo_url));
+    return plantas.filter(p => plantaIds.includes(p.id) && isDxf(p.imagem_url));
   }, [fotosComPin, plantas]);
 
   // All fotos (from diario.fotos array + fotos localizadas)
