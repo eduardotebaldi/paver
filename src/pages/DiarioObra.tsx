@@ -119,10 +119,7 @@ export default function DiarioObraPage() {
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="font-heading">Registros ({diarios.length})</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           {isLoading ? (
             <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-accent" /></div>
           ) : diarios.length === 0 ? (
@@ -138,24 +135,24 @@ export default function DiarioObraPage() {
                 return (
                   <div
                     key={diario.id}
-                    className="border rounded-lg p-4 space-y-2 cursor-pointer hover:bg-muted/30 transition-colors group"
+                    className="border rounded-lg p-3 space-y-1.5 cursor-pointer hover:bg-muted/30 transition-colors group"
                     onClick={() => navigate(`/diario-obra/${diario.id}`)}
                   >
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3 flex-wrap">
-                        <span className="text-sm font-heading font-semibold">
-                          {new Date(diario.data).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}
+                      <div className="flex items-center gap-2 flex-wrap min-w-0">
+                        <span className="text-sm font-heading font-semibold whitespace-nowrap">
+                          {new Date(diario.data).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
                         </span>
-                        <Badge variant="outline" className="text-[10px] flex items-center gap-1">
+                        <Badge variant="outline" className="text-[10px] flex items-center gap-1 shrink-0">
                           <ClimaIcon clima={diario.clima_manha || diario.clima} />
-                          {climaLabels[diario.clima_manha || diario.clima] || diario.clima}
+                          M
                         </Badge>
-                        <Badge variant="outline" className="text-[10px] flex items-center gap-1">
+                        <Badge variant="outline" className="text-[10px] flex items-center gap-1 shrink-0">
                           <ClimaIcon clima={diario.clima_tarde || diario.clima} />
-                          {climaLabels[diario.clima_tarde || diario.clima] || diario.clima}
+                          T
                         </Badge>
                         {fotoCount > 0 && (
-                          <Badge variant="secondary" className="text-[10px]">
+                          <Badge variant="secondary" className="text-[10px] shrink-0">
                             <Camera className="h-3 w-3 mr-0.5" />{fotoCount}
                           </Badge>
                         )}
@@ -185,14 +182,10 @@ export default function DiarioObraPage() {
                     </div>
 
                     {/* Obra name */}
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-body">
-                      <Building2 className="h-3 w-3" />
-                      <span>{obraNome}</span>
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-body truncate">
+                      <Building2 className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{obraNome}</span>
                     </div>
-
-                    {diario.atividades && diario.atividades !== 'Sem atividades registradas' && (
-                      <p className="text-xs text-foreground/70 font-body truncate">{diario.atividades}</p>
-                    )}
 
                     {/* Footer */}
                     <div className="flex items-center gap-4 pt-1 border-t border-border/50">

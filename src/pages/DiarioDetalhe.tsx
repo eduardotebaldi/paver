@@ -193,12 +193,8 @@ export default function DiarioDetalhePage() {
         </CardContent>
       </Card>
 
-      {/* Atividades medidas */}
       <Card>
-        <CardHeader>
-          <CardTitle className="font-heading text-lg">Atividades Medidas ({atividades.length})</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           {atividades.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-sm text-muted-foreground font-body">
@@ -214,13 +210,14 @@ export default function DiarioDetalhePage() {
                   <TableRow>
                     <TableHead className="font-body text-xs">Código</TableHead>
                     <TableHead className="font-body text-xs">Descrição</TableHead>
+                    <TableHead className="font-body text-xs">Pacote</TableHead>
                     <TableHead className="font-body text-xs">Lote</TableHead>
                     <TableHead className="font-body text-xs text-right">Qtd. Total</TableHead>
                     <TableHead className="font-body text-xs text-right">Qtd. Dia</TableHead>
-                    <TableHead className="font-body text-xs text-right">Qtd. Acumulada</TableHead>
-                    <TableHead className="font-body text-xs text-right">Saldo Restante</TableHead>
-                    <TableHead className="font-body text-xs text-right">Avanço (%)</TableHead>
-                    <TableHead className="font-body text-xs w-24">Progresso</TableHead>
+                    <TableHead className="font-body text-xs text-right">Acumulada</TableHead>
+                    <TableHead className="font-body text-xs text-right">Saldo</TableHead>
+                    <TableHead className="font-body text-xs text-right">%</TableHead>
+                    <TableHead className="font-body text-xs w-20">Progresso</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -242,11 +239,12 @@ export default function DiarioDetalhePage() {
                             )}
                           </div>
                         </TableCell>
+                        <TableCell className="text-xs font-body text-muted-foreground">{item?.pacote || '—'}</TableCell>
                         <TableCell className="text-xs font-body text-muted-foreground">{item?.lote || '—'}</TableCell>
                         <TableCell className="text-sm font-body text-right">{totalQtd > 0 ? `${totalQtd} ${item?.unidade || 'un'}` : '—'}</TableCell>
                         <TableCell className="text-sm font-body text-right font-medium text-accent">{a.quantidade_dia > 0 ? `+${a.quantidade_dia}` : '—'}</TableCell>
-                        <TableCell className="text-sm font-body text-right">{acumulado > 0 ? `${acumulado} ${item?.unidade || 'un'}` : '—'}</TableCell>
-                        <TableCell className="text-sm font-body text-right">{totalQtd > 0 ? `${saldo} ${item?.unidade || 'un'}` : '—'}</TableCell>
+                        <TableCell className="text-sm font-body text-right">{acumulado > 0 ? `${Number(acumulado.toFixed(2))} ${item?.unidade || 'un'}` : '—'}</TableCell>
+                        <TableCell className="text-sm font-body text-right">{totalQtd > 0 ? `${Number(saldo.toFixed(2))} ${item?.unidade || 'un'}` : '—'}</TableCell>
                         <TableCell className="text-sm font-body text-right font-medium">{percTotal}%</TableCell>
                         <TableCell>
                           <Progress value={percTotal} className="h-2" />
