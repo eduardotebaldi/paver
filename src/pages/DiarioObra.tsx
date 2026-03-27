@@ -188,11 +188,11 @@ export default function DiarioObraPage() {
                         </span>
                         <Badge variant="outline" className="text-[10px] flex items-center gap-1 shrink-0">
                           <ClimaIcon clima={diario.clima_manha || diario.clima} />
-                          M
+                          Manhã - {climaLabels[diario.clima_manha || diario.clima] || diario.clima}
                         </Badge>
                         <Badge variant="outline" className="text-[10px] flex items-center gap-1 shrink-0">
                           <ClimaIcon clima={diario.clima_tarde || diario.clima} />
-                          T
+                          Tarde - {climaLabels[diario.clima_tarde || diario.clima] || diario.clima}
                         </Badge>
                         {fotoCount > 0 && (
                           <Badge variant="secondary" className="text-[10px] shrink-0">
