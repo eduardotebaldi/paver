@@ -100,6 +100,24 @@ export default function DiarioObraPage() {
     return descs.join(', ');
   };
 
+  // Fetch fotos localizadas counts per diário
+  const { data: fotosLocCountMap = {} } = useQuery({
+    queryKey: ['fotos-loc-counts', allDiarioIds.length],
+    queryFn: async () => {
+      if (allDiarioIds.length === 0) return {};
+      const chunks: string[][] = [];
+      for (let i = 0; i < allDiarioIds.length; i += 200) chunks.push(allDiarioIds.slice(i, i + 200));
+      const results = await Promise.all(chunks.map(async chunk => {
+        const { data } = await supabase.from('paver_fotos_localizadas').select('diario_id').in('diario_id', chunk);
+        return data || [];
+      }));
+      const map: Record<string, number> = {};
+      results.flat().forEach((r: any) => { map[r.diario_id] = (map[r.diario_id] || 0) + 1; });
+      return map;
+    },
+    enabled: allDiarioIds.length > 0,
+  });
+
   const userIds = [...new Set(allDiarios.map(d => d.created_by).filter(Boolean))];
   const { data: profilesMap = {} } = useQuery({
     queryKey: ['paver-profiles', userIds],
@@ -173,7 +191,7 @@ export default function DiarioObraPage() {
           ) : (
             <div className="space-y-3">
               {diarios.map(diario => {
-                const fotoCount = diario.fotos?.length || 0;
+                const fotoCount = (diario.fotos?.length || 0) + (fotosLocCountMap[diario.id] || 0);
                 const obraNome = obrasMap.get(diario.obra_id) || 'Obra desconhecida';
                 return (
                   <div
