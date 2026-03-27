@@ -210,13 +210,14 @@ export default function DiarioDetalhePage() {
                   <TableRow>
                     <TableHead className="font-body text-xs">Código</TableHead>
                     <TableHead className="font-body text-xs">Descrição</TableHead>
+                    <TableHead className="font-body text-xs">Pacote</TableHead>
                     <TableHead className="font-body text-xs">Lote</TableHead>
                     <TableHead className="font-body text-xs text-right">Qtd. Total</TableHead>
                     <TableHead className="font-body text-xs text-right">Qtd. Dia</TableHead>
-                    <TableHead className="font-body text-xs text-right">Qtd. Acumulada</TableHead>
-                    <TableHead className="font-body text-xs text-right">Saldo Restante</TableHead>
-                    <TableHead className="font-body text-xs text-right">Avanço (%)</TableHead>
-                    <TableHead className="font-body text-xs w-24">Progresso</TableHead>
+                    <TableHead className="font-body text-xs text-right">Acumulada</TableHead>
+                    <TableHead className="font-body text-xs text-right">Saldo</TableHead>
+                    <TableHead className="font-body text-xs text-right">%</TableHead>
+                    <TableHead className="font-body text-xs w-20">Progresso</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
