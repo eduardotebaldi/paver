@@ -239,11 +239,12 @@ export default function DiarioDetalhePage() {
                             )}
                           </div>
                         </TableCell>
+                        <TableCell className="text-xs font-body text-muted-foreground">{item?.pacote || '—'}</TableCell>
                         <TableCell className="text-xs font-body text-muted-foreground">{item?.lote || '—'}</TableCell>
                         <TableCell className="text-sm font-body text-right">{totalQtd > 0 ? `${totalQtd} ${item?.unidade || 'un'}` : '—'}</TableCell>
                         <TableCell className="text-sm font-body text-right font-medium text-accent">{a.quantidade_dia > 0 ? `+${a.quantidade_dia}` : '—'}</TableCell>
-                        <TableCell className="text-sm font-body text-right">{acumulado > 0 ? `${acumulado} ${item?.unidade || 'un'}` : '—'}</TableCell>
-                        <TableCell className="text-sm font-body text-right">{totalQtd > 0 ? `${saldo} ${item?.unidade || 'un'}` : '—'}</TableCell>
+                        <TableCell className="text-sm font-body text-right">{acumulado > 0 ? `${Number(acumulado.toFixed(2))} ${item?.unidade || 'un'}` : '—'}</TableCell>
+                        <TableCell className="text-sm font-body text-right">{totalQtd > 0 ? `${Number(saldo.toFixed(2))} ${item?.unidade || 'un'}` : '—'}</TableCell>
                         <TableCell className="text-sm font-body text-right font-medium">{percTotal}%</TableCell>
                         <TableCell>
                           <Progress value={percTotal} className="h-2" />

@@ -182,14 +182,10 @@ export default function DiarioObraPage() {
                     </div>
 
                     {/* Obra name */}
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-body">
-                      <Building2 className="h-3 w-3" />
-                      <span>{obraNome}</span>
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-body truncate">
+                      <Building2 className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{obraNome}</span>
                     </div>
-
-                    {diario.atividades && diario.atividades !== 'Sem atividades registradas' && (
-                      <p className="text-xs text-foreground/70 font-body truncate">{diario.atividades}</p>
-                    )}
 
                     {/* Footer */}
                     <div className="flex items-center gap-4 pt-1 border-t border-border/50">
