@@ -56,6 +56,50 @@ export default function DiarioObraPage() {
     return allDiarios.filter(d => d.obra_id === selectedObraId);
   }, [allDiarios, selectedObraId]);
 
+  // Fetch atividades for all diários
+  const allDiarioIds = allDiarios.map(d => d.id);
+  const { data: allAtividades = [] } = useQuery({
+    queryKey: ['diario-atividades-all', allDiarioIds.length],
+    queryFn: async () => {
+      if (allDiarioIds.length === 0) return [];
+      // Batch in chunks of 200 to avoid query limits
+      const chunks: string[][] = [];
+      for (let i = 0; i < allDiarioIds.length; i += 200) chunks.push(allDiarioIds.slice(i, i + 200));
+      const results = await Promise.all(chunks.map(async chunk => {
+        const { data } = await supabase.from('paver_diario_atividades').select('diario_id, eap_item_id').in('diario_id', chunk);
+        return data || [];
+      }));
+      return results.flat() as { diario_id: string; eap_item_id: string }[];
+    },
+    enabled: allDiarioIds.length > 0,
+  });
+
+  // Fetch EAP item descriptions for referenced items
+  const eapItemIds = [...new Set(allAtividades.map(a => a.eap_item_id))];
+  const { data: eapDescMap = {} } = useQuery({
+    queryKey: ['eap-desc-map', eapItemIds.length],
+    queryFn: async () => {
+      if (eapItemIds.length === 0) return {};
+      const chunks: string[][] = [];
+      for (let i = 0; i < eapItemIds.length; i += 200) chunks.push(eapItemIds.slice(i, i + 200));
+      const results = await Promise.all(chunks.map(async chunk => {
+        const { data } = await supabase.from('paver_eap_items').select('id, descricao').in('id', chunk);
+        return data || [];
+      }));
+      const map: Record<string, string> = {};
+      results.flat().forEach((i: any) => { map[i.id] = i.descricao; });
+      return map;
+    },
+    enabled: eapItemIds.length > 0,
+  });
+
+  const getAtividadesSummary = (diarioId: string): string => {
+    const items = allAtividades.filter(a => a.diario_id === diarioId);
+    if (items.length === 0) return '—';
+    const descs = items.map(a => eapDescMap[a.eap_item_id] || 'Item').filter(Boolean);
+    return descs.join(', ');
+  };
+
   const userIds = [...new Set(allDiarios.map(d => d.created_by).filter(Boolean))];
   const { data: profilesMap = {} } = useQuery({
     queryKey: ['paver-profiles', userIds],
