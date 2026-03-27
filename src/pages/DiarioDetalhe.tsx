@@ -193,12 +193,8 @@ export default function DiarioDetalhePage() {
         </CardContent>
       </Card>
 
-      {/* Atividades medidas */}
       <Card>
-        <CardHeader>
-          <CardTitle className="font-heading text-lg">Atividades Medidas ({atividades.length})</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           {atividades.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-sm text-muted-foreground font-body">
