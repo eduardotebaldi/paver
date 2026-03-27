@@ -139,8 +139,7 @@ export default function DiarioObraPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-2xl font-heading font-bold text-foreground">Diário de Obra</h1>
+      <div className="flex items-center justify-end flex-wrap gap-3">
         {canEdit && selectedObraId && selectedObraId !== 'all' && (
           <Button size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90 font-body"
             onClick={() => navigate(`/diario-obra/novo?obra=${selectedObraId}`)}>
@@ -189,11 +188,11 @@ export default function DiarioObraPage() {
                         </span>
                         <Badge variant="outline" className="text-[10px] flex items-center gap-1 shrink-0">
                           <ClimaIcon clima={diario.clima_manha || diario.clima} />
-                          M
+                          Manhã - {climaLabels[diario.clima_manha || diario.clima] || diario.clima}
                         </Badge>
                         <Badge variant="outline" className="text-[10px] flex items-center gap-1 shrink-0">
                           <ClimaIcon clima={diario.clima_tarde || diario.clima} />
-                          T
+                          Tarde - {climaLabels[diario.clima_tarde || diario.clima] || diario.clima}
                         </Badge>
                         {fotoCount > 0 && (
                           <Badge variant="secondary" className="text-[10px] shrink-0">
@@ -236,7 +235,7 @@ export default function DiarioObraPage() {
                       <span className="text-muted-foreground">Atividades medidas: </span>
                       {(() => {
                         const summary = getAtividadesSummary(diario.id);
-                        return summary.length > 100 ? summary.slice(0, 100) + '…' : summary;
+                        return summary.length > 40 ? summary.slice(0, 40) + '…' : summary;
                       })()}
                     </p>
 
