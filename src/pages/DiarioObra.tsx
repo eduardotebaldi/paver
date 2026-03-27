@@ -135,7 +135,7 @@ export default function DiarioObraPage() {
                 return (
                   <div
                     key={diario.id}
-                    className="border rounded-lg p-4 space-y-2 cursor-pointer hover:bg-muted/30 transition-colors group"
+                    className="border rounded-lg p-3 space-y-1.5 cursor-pointer hover:bg-muted/30 transition-colors group"
                     onClick={() => navigate(`/diario-obra/${diario.id}`)}
                   >
                     <div className="flex items-center justify-between">
