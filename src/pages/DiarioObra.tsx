@@ -191,7 +191,7 @@ export default function DiarioObraPage() {
           ) : (
             <div className="space-y-3">
               {diarios.map(diario => {
-                const fotoCount = diario.fotos?.length || 0;
+                const fotoCount = (diario.fotos?.length || 0) + (fotosLocCountMap[diario.id] || 0);
                 const obraNome = obrasMap.get(diario.obra_id) || 'Obra desconhecida';
                 return (
                   <div
