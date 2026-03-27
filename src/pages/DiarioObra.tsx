@@ -139,20 +139,20 @@ export default function DiarioObraPage() {
                     onClick={() => navigate(`/diario-obra/${diario.id}`)}
                   >
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3 flex-wrap">
-                        <span className="text-sm font-heading font-semibold">
-                          {new Date(diario.data).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}
+                      <div className="flex items-center gap-2 flex-wrap min-w-0">
+                        <span className="text-sm font-heading font-semibold whitespace-nowrap">
+                          {new Date(diario.data).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
                         </span>
-                        <Badge variant="outline" className="text-[10px] flex items-center gap-1">
+                        <Badge variant="outline" className="text-[10px] flex items-center gap-1 shrink-0">
                           <ClimaIcon clima={diario.clima_manha || diario.clima} />
-                          {climaLabels[diario.clima_manha || diario.clima] || diario.clima}
+                          M
                         </Badge>
-                        <Badge variant="outline" className="text-[10px] flex items-center gap-1">
+                        <Badge variant="outline" className="text-[10px] flex items-center gap-1 shrink-0">
                           <ClimaIcon clima={diario.clima_tarde || diario.clima} />
-                          {climaLabels[diario.clima_tarde || diario.clima] || diario.clima}
+                          T
                         </Badge>
                         {fotoCount > 0 && (
-                          <Badge variant="secondary" className="text-[10px]">
+                          <Badge variant="secondary" className="text-[10px] shrink-0">
                             <Camera className="h-3 w-3 mr-0.5" />{fotoCount}
                           </Badge>
                         )}
