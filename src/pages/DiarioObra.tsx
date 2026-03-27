@@ -119,10 +119,7 @@ export default function DiarioObraPage() {
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="font-heading">Registros ({diarios.length})</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           {isLoading ? (
             <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-accent" /></div>
           ) : diarios.length === 0 ? (
