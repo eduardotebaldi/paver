@@ -349,7 +349,7 @@ export default function DiarioDetalhePage() {
                       </div>
                     </a>
                     {/* Pin indicator + button */}
-                    {hasDxfPin && planta && isDxf(planta.arquivo_url) && (
+                    {hasDxfPin && planta && isDxf(planta.imagem_url) && (
                       <Button
                         size="sm"
                         variant="secondary"
