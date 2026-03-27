@@ -231,6 +231,15 @@ export default function DiarioObraPage() {
                       <span className="truncate">{obraNome}</span>
                     </div>
 
+                    {/* Atividades medidas */}
+                    <p className="text-xs font-body text-foreground/70 truncate">
+                      <span className="text-muted-foreground">Atividades medidas: </span>
+                      {(() => {
+                        const summary = getAtividadesSummary(diario.id);
+                        return summary.length > 100 ? summary.slice(0, 100) + '…' : summary;
+                      })()}
+                    </p>
+
                     {/* Footer */}
                     <div className="flex items-center gap-4 pt-1 border-t border-border/50">
                       <span className="flex items-center gap-1 text-[11px] text-muted-foreground font-body">
