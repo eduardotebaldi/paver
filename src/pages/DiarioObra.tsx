@@ -235,7 +235,7 @@ export default function DiarioObraPage() {
                       <span className="text-muted-foreground">Atividades medidas: </span>
                       {(() => {
                         const summary = getAtividadesSummary(diario.id);
-                        return summary.length > 100 ? summary.slice(0, 100) + '…' : summary;
+                        return summary.length > 40 ? summary.slice(0, 40) + '…' : summary;
                       })()}
                     </p>
 
