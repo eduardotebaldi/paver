@@ -196,9 +196,53 @@ export default function DiarioDetalhePage() {
         <Button variant="ghost" size="sm" onClick={() => navigate('/diario-obra')}>
           <ArrowLeft className="h-4 w-4 mr-2" />Voltar
         </Button>
-        <h1 className="text-xl font-heading font-bold text-foreground">
+        <h1 className="text-xl font-heading font-bold text-foreground flex-1">
           Diário de Obra — {formatDate(diario.data)}
         </h1>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={exporting}
+          onClick={async () => {
+            setExporting(true);
+            try {
+              await exportDiarioPdf({
+                data: formatDate(diario.data),
+                obraNome: obraNome,
+                climaManha: diario.clima_manha || diario.clima,
+                climaTarde: diario.clima_tarde || diario.clima,
+                equipes: diario.mao_de_obra || '',
+                observacoes: diario.observacoes || '',
+                autor: profileName || 'Usuário',
+                criadoEm: formatCreatedAt(diario.created_at),
+                atividades: atividades.map(a => {
+                  const item = eapMap.get(a.eap_item_id);
+                  const totalQtd = item?.quantidade || 0;
+                  const acumulado = avancoMap.get(a.eap_item_id) || 0;
+                  const saldo = Math.max(0, totalQtd - acumulado);
+                  const perc = totalQtd > 0 ? Math.min(100, Math.round((acumulado / totalQtd) * 10000) / 100) : 0;
+                  return {
+                    codigo: item?.codigo || '—',
+                    descricao: item?.descricao || 'Item removido',
+                    pacote: item?.pacote || '—',
+                    lote: item?.lote || '—',
+                    qtdTotal: totalQtd > 0 ? `${totalQtd} ${item?.unidade || 'un'}` : '—',
+                    qtdDia: a.quantidade_dia > 0 ? `+${a.quantidade_dia}` : '—',
+                    acumulada: acumulado > 0 ? `${Number(acumulado.toFixed(2))} ${item?.unidade || 'un'}` : '—',
+                    saldo: totalQtd > 0 ? `${Number(saldo.toFixed(2))} ${item?.unidade || 'un'}` : '—',
+                    percentual: `${perc}%`,
+                  };
+                }),
+                fotoUrls: allFotoUrls,
+              });
+            } finally {
+              setExporting(false);
+            }
+          }}
+        >
+          {exporting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <FileDown className="h-4 w-4 mr-1" />}
+          Exportar PDF
+        </Button>
       </div>
 
       {/* Header info */}
