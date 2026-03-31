@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Loader2, CloudSun, Cloud, CloudRain, Sun, Snowflake, Trash2,
-  ClipboardList, User, Clock, Check, Camera, ChevronRight, Building2,
+  ClipboardList, User, Clock, Check, Camera, ChevronRight, Building2, FileDown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
