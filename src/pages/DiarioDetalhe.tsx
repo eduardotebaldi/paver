@@ -13,6 +13,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
 import { fetchObras, fetchEapItems, fetchPlantas, FotoLocalizada, PlantaObra } from '@/services/api';
 import { supabase } from '@/integrations/supabase/client';
+import { exportDiarioPdf } from '@/lib/exportDiarioPdf';
 import CollapsibleClassification from '@/components/CollapsibleClassification';
 import DxfPlantaViewer from '@/components/DxfPlantaViewer';
 
