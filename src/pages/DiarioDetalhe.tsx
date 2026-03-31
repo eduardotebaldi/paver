@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   ArrowLeft, Loader2, CloudSun, Cloud, CloudRain, Sun, Snowflake,
-  User, Clock, Camera, Video, Eye, Building2, MapPin,
+  User, Clock, Camera, Video, Eye, Building2, MapPin, FileDown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,6 +13,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
 import { fetchObras, fetchEapItems, fetchPlantas, FotoLocalizada, PlantaObra } from '@/services/api';
 import { supabase } from '@/integrations/supabase/client';
+import { exportDiarioPdf } from '@/lib/exportDiarioPdf';
 import CollapsibleClassification from '@/components/CollapsibleClassification';
 import DxfPlantaViewer from '@/components/DxfPlantaViewer';
 
@@ -46,6 +47,7 @@ export default function DiarioDetalhePage() {
   const navigate = useNavigate();
   const [dxfViewerPlanta, setDxfViewerPlanta] = useState<PlantaObra | null>(null);
   const [highlightFotoId, setHighlightFotoId] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   // Fetch the diário
   const { data: diario, isLoading } = useQuery({
@@ -194,9 +196,53 @@ export default function DiarioDetalhePage() {
         <Button variant="ghost" size="sm" onClick={() => navigate('/diario-obra')}>
           <ArrowLeft className="h-4 w-4 mr-2" />Voltar
         </Button>
-        <h1 className="text-xl font-heading font-bold text-foreground">
+        <h1 className="text-xl font-heading font-bold text-foreground flex-1">
           Diário de Obra — {formatDate(diario.data)}
         </h1>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={exporting}
+          onClick={async () => {
+            setExporting(true);
+            try {
+              await exportDiarioPdf({
+                data: formatDate(diario.data),
+                obraNome: obraNome,
+                climaManha: diario.clima_manha || diario.clima,
+                climaTarde: diario.clima_tarde || diario.clima,
+                equipes: diario.mao_de_obra || '',
+                observacoes: diario.observacoes || '',
+                autor: profileName || 'Usuário',
+                criadoEm: formatCreatedAt(diario.created_at),
+                atividades: atividades.map(a => {
+                  const item = eapMap.get(a.eap_item_id);
+                  const totalQtd = item?.quantidade || 0;
+                  const acumulado = avancoMap.get(a.eap_item_id) || 0;
+                  const saldo = Math.max(0, totalQtd - acumulado);
+                  const perc = totalQtd > 0 ? Math.min(100, Math.round((acumulado / totalQtd) * 10000) / 100) : 0;
+                  return {
+                    codigo: item?.codigo || '—',
+                    descricao: item?.descricao || 'Item removido',
+                    pacote: item?.pacote || '—',
+                    lote: item?.lote || '—',
+                    qtdTotal: totalQtd > 0 ? `${totalQtd} ${item?.unidade || 'un'}` : '—',
+                    qtdDia: a.quantidade_dia > 0 ? `+${a.quantidade_dia}` : '—',
+                    acumulada: acumulado > 0 ? `${Number(acumulado.toFixed(2))} ${item?.unidade || 'un'}` : '—',
+                    saldo: totalQtd > 0 ? `${Number(saldo.toFixed(2))} ${item?.unidade || 'un'}` : '—',
+                    percentual: `${perc}%`,
+                  };
+                }),
+                fotoUrls: allFotoUrls,
+              });
+            } finally {
+              setExporting(false);
+            }
+          }}
+        >
+          {exporting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <FileDown className="h-4 w-4 mr-1" />}
+          Exportar PDF
+        </Button>
       </div>
 
       {/* Header info */}
