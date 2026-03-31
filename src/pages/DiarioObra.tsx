@@ -269,7 +269,14 @@ export default function DiarioObraPage() {
                           </Badge>
                         )}
                       </div>
-                      <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                      <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                        <Button
+                          size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground"
+                          disabled={exportingId === diario.id}
+                          onClick={() => handleExportPdf(diario)}
+                        >
+                          {exportingId === diario.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileDown className="h-3 w-3" />}
+                        </Button>
                         {canModifyDiario(diario) && (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
