@@ -47,6 +47,7 @@ export default function DiarioDetalhePage() {
   const navigate = useNavigate();
   const [dxfViewerPlanta, setDxfViewerPlanta] = useState<PlantaObra | null>(null);
   const [highlightFotoId, setHighlightFotoId] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   // Fetch the diário
   const { data: diario, isLoading } = useQuery({
