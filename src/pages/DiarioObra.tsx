@@ -145,6 +145,55 @@ export default function DiarioObraPage() {
     onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
   });
 
+  const handleExportPdf = async (diario: DiarioObra) => {
+    setExportingId(diario.id);
+    try {
+      const obraNome = obrasMap.get(diario.obra_id) || 'Obra';
+      const { data: ativs } = await supabase.from('paver_diario_atividades').select('*').eq('diario_id', diario.id);
+      const atividadesList = ativs || [];
+      const eapItems = await fetchEapItems(diario.obra_id);
+      const eapItensOnly = eapItems.filter(i => i.tipo === 'item');
+      const localEapMap = new Map(eapItensOnly.map(i => [i.id, i]));
+      const { data: sums } = await supabase.rpc('get_eap_avanco_sums', { p_obra_id: diario.obra_id });
+      const localAvancoMap = new Map((sums || []).map((r: any) => [r.eap_item_id, Number(r.sum_quantidade_dia)]));
+      const { data: prof } = await supabase.from('paver_profiles').select('full_name').eq('id', diario.created_by).single();
+      const { data: fotosLoc } = await supabase.from('paver_fotos_localizadas').select('foto_url').eq('diario_id', diario.id);
+      const allFotoUrls = [...new Set([...(diario.fotos || []), ...(fotosLoc || []).map((f: any) => f.foto_url)])];
+      const fmtDate = (ds: string) => new Date(ds).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+      await exportDiarioPdf({
+        data: fmtDate(diario.data),
+        obraNome,
+        climaManha: diario.clima_manha || diario.clima,
+        climaTarde: diario.clima_tarde || diario.clima,
+        equipes: diario.mao_de_obra || '',
+        observacoes: diario.observacoes || '',
+        autor: prof?.full_name || 'Usuário',
+        criadoEm: formatCreatedAt(diario.created_at),
+        atividades: atividadesList.map((a: any) => {
+          const item = localEapMap.get(a.eap_item_id);
+          const totalQtd = item?.quantidade || 0;
+          const acumulado = localAvancoMap.get(a.eap_item_id) || 0;
+          const saldo = Math.max(0, totalQtd - acumulado);
+          const perc = totalQtd > 0 ? Math.min(100, Math.round((acumulado / totalQtd) * 10000) / 100) : 0;
+          return {
+            codigo: item?.codigo || '—', descricao: item?.descricao || 'Item removido',
+            pacote: item?.pacote || '—', lote: item?.lote || '—',
+            qtdTotal: totalQtd > 0 ? `${totalQtd} ${item?.unidade || 'un'}` : '—',
+            qtdDia: a.quantidade_dia > 0 ? `+${a.quantidade_dia}` : '—',
+            acumulada: acumulado > 0 ? `${Number(acumulado.toFixed(2))} ${item?.unidade || 'un'}` : '—',
+            saldo: totalQtd > 0 ? `${Number(saldo.toFixed(2))} ${item?.unidade || 'un'}` : '—',
+            percentual: `${perc}%`,
+          };
+        }),
+        fotoUrls: allFotoUrls,
+      });
+    } catch (err: any) {
+      toast({ title: 'Erro ao exportar', description: err.message, variant: 'destructive' });
+    } finally {
+      setExportingId(null);
+    }
+  };
+
   const ClimaIcon = ({ clima }: { clima: string }) => {
     const opt = climaOptions.find(c => c.value === clima);
     if (!opt) return null;
