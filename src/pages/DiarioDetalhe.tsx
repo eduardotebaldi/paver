@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   ArrowLeft, Loader2, CloudSun, Cloud, CloudRain, Sun, Snowflake,
-  User, Clock, Camera, Video, Eye, Building2, MapPin,
+  User, Clock, Camera, Video, Eye, Building2, MapPin, FileDown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
