@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Loader2, CloudSun, Cloud, CloudRain, Sun, Snowflake, Trash2,
-  ClipboardList, User, Clock, Check, Camera, ChevronRight, Building2,
+  ClipboardList, User, Clock, Check, Camera, ChevronRight, Building2, FileDown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,8 +13,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { fetchObras, fetchAllDiarios, deleteDiario, DiarioObra } from '@/services/api';
+import { fetchObras, fetchAllDiarios, deleteDiario, fetchEapItems, DiarioObra } from '@/services/api';
 import { supabase } from '@/integrations/supabase/client';
+import { exportDiarioPdf } from '@/lib/exportDiarioPdf';
 
 const climaOptions = [
   { value: 'ensolarado', label: 'Ensolarado', icon: Sun },
@@ -42,6 +43,7 @@ export default function DiarioObraPage() {
   };
 
   const [selectedObraId, setSelectedObraId] = useState<string>('all');
+  const [exportingId, setExportingId] = useState<string | null>(null);
 
   const { data: obras = [] } = useQuery({ queryKey: ['obras'], queryFn: fetchObras });
   const obrasMap = useMemo(() => new Map(obras.map(o => [o.id, o.nome])), [obras]);
@@ -143,6 +145,55 @@ export default function DiarioObraPage() {
     onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
   });
 
+  const handleExportPdf = async (diario: DiarioObra) => {
+    setExportingId(diario.id);
+    try {
+      const obraNome = obrasMap.get(diario.obra_id) || 'Obra';
+      const { data: ativs } = await supabase.from('paver_diario_atividades').select('*').eq('diario_id', diario.id);
+      const atividadesList = ativs || [];
+      const eapItems = await fetchEapItems(diario.obra_id);
+      const eapItensOnly = eapItems.filter(i => i.tipo === 'item');
+      const localEapMap = new Map(eapItensOnly.map(i => [i.id, i]));
+      const { data: sums } = await supabase.rpc('get_eap_avanco_sums', { p_obra_id: diario.obra_id });
+      const localAvancoMap = new Map((sums || []).map((r: any) => [r.eap_item_id, Number(r.sum_quantidade_dia)]));
+      const { data: prof } = await supabase.from('paver_profiles').select('full_name').eq('id', diario.created_by).single();
+      const { data: fotosLoc } = await supabase.from('paver_fotos_localizadas').select('foto_url').eq('diario_id', diario.id);
+      const allFotoUrls = [...new Set([...(diario.fotos || []), ...(fotosLoc || []).map((f: any) => f.foto_url)])];
+      const fmtDate = (ds: string) => new Date(ds).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+      await exportDiarioPdf({
+        data: fmtDate(diario.data),
+        obraNome,
+        climaManha: diario.clima_manha || diario.clima,
+        climaTarde: diario.clima_tarde || diario.clima,
+        equipes: diario.mao_de_obra || '',
+        observacoes: diario.observacoes || '',
+        autor: prof?.full_name || 'Usuário',
+        criadoEm: formatCreatedAt(diario.created_at),
+        atividades: atividadesList.map((a: any) => {
+          const item = localEapMap.get(a.eap_item_id);
+          const totalQtd = item?.quantidade || 0;
+          const acumulado = localAvancoMap.get(a.eap_item_id) || 0;
+          const saldo = Math.max(0, totalQtd - acumulado);
+          const perc = totalQtd > 0 ? Math.min(100, Math.round((acumulado / totalQtd) * 10000) / 100) : 0;
+          return {
+            codigo: item?.codigo || '—', descricao: item?.descricao || 'Item removido',
+            pacote: item?.pacote || '—', lote: item?.lote || '—',
+            qtdTotal: totalQtd > 0 ? `${totalQtd} ${item?.unidade || 'un'}` : '—',
+            qtdDia: a.quantidade_dia > 0 ? `+${a.quantidade_dia}` : '—',
+            acumulada: acumulado > 0 ? `${Number(acumulado.toFixed(2))} ${item?.unidade || 'un'}` : '—',
+            saldo: totalQtd > 0 ? `${Number(saldo.toFixed(2))} ${item?.unidade || 'un'}` : '—',
+            percentual: `${perc}%`,
+          };
+        }),
+        fotoUrls: allFotoUrls,
+      });
+    } catch (err: any) {
+      toast({ title: 'Erro ao exportar', description: err.message, variant: 'destructive' });
+    } finally {
+      setExportingId(null);
+    }
+  };
+
   const ClimaIcon = ({ clima }: { clima: string }) => {
     const opt = climaOptions.find(c => c.value === clima);
     if (!opt) return null;
@@ -218,7 +269,14 @@ export default function DiarioObraPage() {
                           </Badge>
                         )}
                       </div>
-                      <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                      <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                        <Button
+                          size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground"
+                          disabled={exportingId === diario.id}
+                          onClick={() => handleExportPdf(diario)}
+                        >
+                          {exportingId === diario.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileDown className="h-3 w-3" />}
+                        </Button>
                         {canModifyDiario(diario) && (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
