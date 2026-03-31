@@ -13,8 +13,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { fetchObras, fetchAllDiarios, deleteDiario, DiarioObra } from '@/services/api';
+import { fetchObras, fetchAllDiarios, deleteDiario, fetchEapItems, DiarioObra } from '@/services/api';
 import { supabase } from '@/integrations/supabase/client';
+import { exportDiarioPdf } from '@/lib/exportDiarioPdf';
 
 const climaOptions = [
   { value: 'ensolarado', label: 'Ensolarado', icon: Sun },
