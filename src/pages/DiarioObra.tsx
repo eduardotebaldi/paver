@@ -43,6 +43,7 @@ export default function DiarioObraPage() {
   };
 
   const [selectedObraId, setSelectedObraId] = useState<string>('all');
+  const [exportingId, setExportingId] = useState<string | null>(null);
 
   const { data: obras = [] } = useQuery({ queryKey: ['obras'], queryFn: fetchObras });
   const obrasMap = useMemo(() => new Map(obras.map(o => [o.id, o.nome])), [obras]);
